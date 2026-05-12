@@ -22,7 +22,7 @@ export const metadata = {
   openGraph: {
     title: "Pro-Tech Courts",
     description: "Premium pickleball court booking for Besa, Nagpur.",
-    images: ["/designs/landing-reference.png"],
+    images: ["/court-3.png"],
   },
 };
 

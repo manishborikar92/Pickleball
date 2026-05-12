@@ -48,7 +48,7 @@ export function ReviewForm({ bookingId }) {
         <span className="h-10 w-10" />
       </header>
 
-      <section className="relative h-56 overflow-hidden bg-[url('/designs/review-reference.png')] bg-cover bg-top">
+      <section className="relative h-56 overflow-hidden bg-[url('/court-3.png')] bg-cover bg-top">
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
         <div className="absolute bottom-0 left-0 p-6">
           <h2 className="text-3xl font-black">Thank you for playing!</h2>

@@ -144,7 +144,7 @@ export function BookingClient({ venue, courts, availability }) {
       <div className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[1fr_420px]">
         <div className="space-y-6">
           <section className="grid gap-5 md:grid-cols-[260px_1fr] md:items-center">
-            <div className="aspect-[4/3] overflow-hidden rounded-lg border border-line bg-[url('/designs/checkout-reference.png')] bg-cover bg-top" />
+            <div className="aspect-[4/3] overflow-hidden rounded-lg border border-line bg-[url('/court-2.png')] bg-cover bg-top" />
             <div>
               <Badge>Premium Court</Badge>
               <h2 className="mt-4 text-4xl font-black leading-tight">{venue.brandName}</h2>

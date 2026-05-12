@@ -48,8 +48,8 @@ select {
   background:
     linear-gradient(180deg, rgba(13, 15, 4, 0.08), rgba(13, 15, 4, 0.95)),
     linear-gradient(90deg, rgba(202, 255, 0, 0.08), transparent 34%),
-    url("/designs/landing-reference.png");
-  background-position: center top;
+    url("/court-1.png");
+  background-position: center center;
   background-size: cover;
 }
 
