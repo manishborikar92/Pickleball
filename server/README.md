@@ -1,14 +1,12 @@
 # Enterprise Express Backend Template
 
-Reusable Node.js + Express backend template extracted from `server-2` and `server-3`.
+Reusable Node.js + Express backend template.
 
 ## Design Choices
 
-- ESM and Express 5 app factory from `server-3`, improved with stronger security and runtime lifecycle ideas from `server-2`.
-- Generic template only: no payment, payout, Cloudinary, Firebase, business routes, uploads, or domain models live in `server/`.
 - Feature routes mount through one router factory, so future projects can add modules without changing `app.js`.
 - Request lifecycle is standardized: request id, Helmet, CORS, request logging, body parsers, rate limiting, routes, 404, global error handler.
-- Validation uses Joi and stores sanitized data in `req.validated` without mutating `req.body`, matching the cleaner pattern from `server-3`.
+- Validation uses Joi and stores sanitized data in `req.validated` without mutating `req.body`, matching the cleaner pattern.
 - Auth is generic JWT middleware. It can attach only token claims or call a project-provided `resolveUser`.
 - API responses use one envelope: `{ success, message, data, meta? }`.
 - MongoDB is optional and controlled by `DATABASE_ENABLED`, so the template can boot before a project chooses persistence.
