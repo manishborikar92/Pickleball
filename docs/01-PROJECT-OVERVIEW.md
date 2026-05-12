@@ -74,7 +74,7 @@ User Browser / Mobile
    ├── Redis (JWT denylist + optional TTL locks)  │
    ├── PhonePe Gateway (payment intent + webhooks)│
    ├── WhatsApp API (OTP, notifications)          │
-   └── Cloudflare R2 (image storage)             │
+   └── Cloudflare R2 (image storage)              │
                                                   │
   Background Worker (slot expiry, notifications) ◄┘
 ```
