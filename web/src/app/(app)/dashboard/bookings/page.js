@@ -1,0 +1,13 @@
+import { BookingsView } from "@/components/features/dashboard/DashboardViews";
+import { getUserBookings } from "@/lib/api";
+import { requireRouteAccess } from "@/lib/session";
+
+export const metadata = {
+  title: "My Bookings",
+};
+
+export default async function MyBookingsPage() {
+  await requireRouteAccess("/dashboard/bookings");
+  const bookings = await getUserBookings();
+  return <BookingsView bookings={bookings} />;
+}

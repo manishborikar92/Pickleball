@@ -1,0 +1,33 @@
+import Link from "next/link";
+
+const base =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
+
+const variants = {
+  primary: "bg-accent text-black shadow-[0_0_30px_rgba(202,255,0,0.16)] hover:bg-accent-dim",
+  secondary: "border border-line bg-surface-panel text-foreground hover:border-accent",
+  ghost: "text-muted hover:text-accent",
+  danger: "bg-danger text-black hover:opacity-90",
+};
+
+export function Button({
+  children,
+  variant = "primary",
+  className = "",
+  href,
+  ...props
+}) {
+  const classes = `${base} ${variants[variant]} ${className}`;
+  if (href) {
+    return (
+      <Link className={classes} href={href}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <button className={classes} {...props}>
+      {children}
+    </button>
+  );
+}

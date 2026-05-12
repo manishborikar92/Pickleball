@@ -1,26 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d0f04;
+  --foreground: #f7f7ef;
+  --surface: #121508;
+  --surface-soft: #1a1d10;
+  --surface-panel: #1f2315;
+  --surface-high: #292d1e;
+  --accent: #caff00;
+  --accent-dim: #a9d800;
+  --muted: #c5c9ac;
+  --border: rgba(197, 201, 172, 0.18);
+  --danger: #ff6b5f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-surface-panel: var(--surface-panel);
+  --color-surface-high: var(--surface-high);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-danger: var(--danger);
+  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  outline-color: var(--accent);
+}
+
+.court-hero {
+  background:
+    linear-gradient(180deg, rgba(13, 15, 4, 0.08), rgba(13, 15, 4, 0.95)),
+    linear-gradient(90deg, rgba(202, 255, 0, 0.08), transparent 34%),
+    url("/designs/landing-reference.png");
+  background-position: center top;
+  background-size: cover;
+}
+
+.glass-panel {
+  background: rgba(31, 35, 21, 0.82);
+  border: 1px solid var(--border);
+  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.22);
+}
+
+.pb-safe {
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
 }
