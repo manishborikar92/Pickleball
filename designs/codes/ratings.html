@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Review Court</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=Outfit:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#c5c9ac",
+                        "on-secondary-fixed": "#1c1b1b",
+                        "on-secondary": "#313030",
+                        "primary": "#ffffff",
+                        "on-primary-fixed": "#171e00",
+                        "surface-container-high": "#292b1d",
+                        "secondary-fixed-dim": "#c8c6c5",
+                        "primary-container": "#caf300",
+                        "on-surface": "#e2e4cf",
+                        "surface-container-lowest": "#0d0f04",
+                        "secondary": "#c8c6c5",
+                        "inverse-on-surface": "#2f3223",
+                        "outline-variant": "#444932",
+                        "secondary-container": "#4a4949",
+                        "surface-tint": "#b0d500",
+                        "surface-container": "#1e2113",
+                        "secondary-fixed": "#e5e2e1",
+                        "surface-container-highest": "#333627",
+                        "on-tertiary-container": "#636565",
+                        "on-secondary-container": "#bab8b7",
+                        "surface-variant": "#333627",
+                        "error-container": "#93000a",
+                        "surface": "#121508",
+                        "on-tertiary": "#2f3131",
+                        "on-primary-fixed-variant": "#3e4c00",
+                        "error": "#ffb4ab",
+                        "tertiary": "#ffffff",
+                        "on-primary-container": "#596c00",
+                        "on-secondary-fixed-variant": "#474646",
+                        "tertiary-container": "#e2e2e2",
+                        "outline": "#8f9378",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "surface-container-low": "#1a1d10",
+                        "primary-fixed": "#caf300",
+                        "tertiary-fixed": "#e2e2e2",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#e2e4cf",
+                        "inverse-primary": "#536600",
+                        "surface-bright": "#383b2b",
+                        "surface-dim": "#121508",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "primary-fixed-dim": "#b0d500",
+                        "background": "#121508",
+                        "on-primary": "#2a3400",
+                        "on-background": "#e2e4cf",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "on-error": "#690005"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "stack-sm": "8px",
+                        "container-padding": "24px",
+                        "gutter": "16px",
+                        "section-gap": "40px",
+                        "stack-md": "16px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "h1": ["Outfit"],
+                        "label-caps": ["Inter"],
+                        "display": ["Outfit"],
+                        "h2": ["Outfit"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "h1": ["32px", { "lineHeight": "1.2", "letterSpacing": "0.02em", "fontWeight": "700" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600" }],
+                        "display": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "h2": ["24px", { "lineHeight": "1.3", "letterSpacing": "0.01em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Hide scrollbar for clean aesthetic */
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- Contextual Header (Suppressed Global Nav per rules for transactional page) -->
+<header class="flex items-center justify-between px-container-padding py-stack-md pt-safe sticky top-0 z-50 bg-background/80 backdrop-blur-md">
+<button aria-label="Close" class="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high text-on-surface hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="font-h2 text-h2 text-primary font-bold tracking-tight">Review</h1>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<main class="flex-1 flex flex-col w-full max-w-3xl mx-auto">
+<!-- Hero Context & Thank You -->
+<section class="relative w-full h-48 sm:h-64 md:h-72 lg:rounded-b-[2rem] overflow-hidden flex-shrink-0">
+<!-- Background Image -->
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A professional-grade, bright blue and green outdoor pickleball court viewed at twilight. The scene is illuminated by striking, high-intensity stadium lights that cast crisp shadows and create a vibrant, energetic atmosphere. The setting embodies a sleek, modern 'Sport-Tech' aesthetic, contrasting the vivid lime lines of the court against the deep charcoal tones of the surrounding night." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDyAV4ncvPV0V84dFXx4asjrskh5vRVSTTgdfe7kCFnp3_CJaq2TU-SmriyoBKAVUBE_DRE2Bs3kBrlaw8_UD7Hah0ZG5PA8oRSLotRRbLxvJiUsKnOuTQMO1CiUVeK4XbXJpAb4pqgR4ZzgwvPm_F2eCThIUjDC3b_dxigd-o49OXaC7hv0wgu7Pe6wteH_THikm6tWuRAmKomxjgpEIfKq2CHD_Z931KfBDw_8be0NRl-rjLPbnaUk8gjLW7DetHaI00JSLooUF4');"></div>
+<!-- Dark Gradient Overlay -->
+<div class="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent"></div>
+<!-- Content -->
+<div class="absolute bottom-0 left-0 w-full p-container-padding flex flex-col gap-unit">
+<p class="font-h2 text-h2 text-primary font-bold tracking-tight">Thank you for playing!</p>
+<div class="flex items-center gap-2 text-on-surface-variant font-body-md text-body-md">
+<span class="material-symbols-outlined text-primary-fixed text-sm" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<span>Court 3 - The Apex Club</span>
+</div>
+</div>
+</section>
+<!-- Form Canvas -->
+<section class="px-container-padding py-section-gap flex flex-col gap-stack-lg">
+<!-- Rating Bento Box -->
+<div class="bg-surface-container-low border border-outline-variant/30 rounded-[1.5rem] p-stack-lg flex flex-col items-center text-center gap-stack-md shadow-lg shadow-black/20">
+<h2 class="font-h2 text-h2 text-primary">How was your experience?</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Tap a star to rate your session.</p>
+<!-- Interactive Stars -->
+<div class="flex items-center gap-2 mt-2">
+<button aria-label="Rate 1 star" class="text-primary-fixed hover:scale-110 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button aria-label="Rate 2 stars" class="text-primary-fixed hover:scale-110 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button aria-label="Rate 3 stars" class="text-primary-fixed hover:scale-110 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button aria-label="Rate 4 stars" class="text-primary-fixed hover:scale-110 active:scale-90 transition-transform cursor-pointer">
+<span class="material-symbols-outlined text-5xl" style="font-variation-settings: 'FILL' 1;">star</span>
+</button>
+<button aria-label="Rate 5 stars" class="text-surface-variant hover:text-primary-fixed hover:scale-110 active:scale-90 transition-all cursor-pointer">
+<span class="material-symbols-outlined text-5xl">star</span>
+</button>
+</div>
+</div>
+<!-- Feedback Text Area -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-body-lg text-body-lg text-primary font-semibold px-2" for="feedback">Share your thoughts</label>
+<div class="relative group">
+<textarea class="w-full bg-surface-container border border-outline-variant/50 rounded-xl p-4 font-body-md text-body-md text-primary placeholder:text-on-surface-variant/50 focus:border-primary-fixed focus:ring-1 focus:ring-primary-fixed outline-none resize-none transition-all" id="feedback" placeholder="How was the court surface? Did you have a good game?" rows="4"></textarea>
+<div class="absolute bottom-4 right-4 text-on-surface-variant/50 font-label-caps text-label-caps">
+                        Optional
+                    </div>
+</div>
+</div>
+<!-- Photo Upload Area -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-body-lg text-body-lg text-primary font-semibold px-2">Add a photo</label>
+<div class="w-full border-2 border-dashed border-outline-variant/40 rounded-xl p-stack-lg bg-surface-container-lowest hover:bg-surface-container-low hover:border-primary-fixed/50 transition-all cursor-pointer flex flex-col items-center justify-center gap-stack-sm group">
+<div class="w-14 h-14 rounded-full bg-surface-variant flex items-center justify-center group-hover:bg-primary-container group-hover:text-on-primary-container transition-colors">
+<span class="material-symbols-outlined text-2xl">add_a_photo</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-primary transition-colors">Tap to upload a court selfie</span>
+</div>
+</div>
+</section>
+<!-- Submit Action (Fixed at bottom for mobile, flowing naturally on larger screens) -->
+<div class="mt-auto px-container-padding py-stack-lg pb-safe">
+<button class="w-full bg-primary-fixed text-on-primary-fixed font-label-caps text-label-caps h-14 rounded-full flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-[0_0_30px_rgba(202,243,0,0.15)]">
+<span class="material-symbols-outlined text-lg">send</span>
+                SUBMIT REVIEW
+            </button>
+</div>
+</main>
+</body></html>
