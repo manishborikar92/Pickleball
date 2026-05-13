@@ -213,18 +213,26 @@ When the **business** must cancel (flood, power outage, court damage), the Admin
 
 ## 7. Automated Notification Matrix
 
-All notifications are delivered via WhatsApp API. SMS is a fallback if WhatsApp delivery fails.
+All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. An SMS fallback is triggered if the WhatsApp message is not delivered within a configurable timeout (e.g., 30 seconds for OTPs). All outbound messages use pre-approved Meta templates. Inbound support replies are free-form messages sent within the 24-hour Customer Service Window (CSW).
 
-| Trigger | Recipient | Message Content |
-|---|---|---|
-| OTP Request | User | 4-digit OTP code |
-| Booking Confirmed (T=0) | User | Confirmation, booking details, receipt, court PIN (future) |
-| Reminder (T−24 hours) | User | "You're playing tomorrow!" + booking details |
-| Reminder (T−2 hours) | User | Final reminder + facility rules |
-| Phantom Booking | User | Slot timeout apology + refund/credit confirmation |
-| Force Majeure Cancel | User | Cancellation notice + credits issued |
-| Stale Payment Alert | Admin | Conflict details requiring attention |
-| New Walk-in Entry | Admin | Confirmation of manual booking creation |
+See `06-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
+
+| Trigger | Recipient | WhatsApp Template Category | Charged? | Notes |
+|---|---|---|---|---|
+| OTP Request | User | **Authentication** | Yes, ~₹0.115–0.145 | Must use Meta's authentication template format |
+| Booking Confirmed (T=0) | User | **Utility** | Free if within CSW; else ~₹0.16 | Triggered after payment webhook; user likely active |
+| Reminder (T−24 hours) | User | **Utility** | Yes, ~₹0.16 | Outside CSW; charged per message |
+| Reminder (T−2 hours) | User | **Utility** | Yes, ~₹0.16 | Outside CSW; charged per message |
+| Phantom Booking Apology | User | **Utility** | Free if within CSW; else ~₹0.16 | Transactional/account update |
+| Force Majeure Cancellation | User | **Utility** | Free if within CSW; else ~₹0.16 | Transactional/account update |
+| Wallet Credit Issued | User | **Utility** | Free if within CSW; else ~₹0.16 | Account notification |
+| Review Request (post-session) | User | **Utility** | Yes, ~₹0.16 | Sent after slot end time; always outside CSW |
+| Flash Sale / Loyalty Promo | User | **Marketing** | Yes, ~₹0.86 | Requires explicit opt-in from user |
+| Stale Payment Alert | Admin | Internal (email/dashboard) | N/A | Not sent via WhatsApp |
+| New Walk-in Entry | Admin | Internal (dashboard) | N/A | Not sent via WhatsApp |
+
+> **18% GST** applies on top of all WhatsApp template message charges billed in India.
+> All rupee rates above are Meta's Tier 1 base rates for India (per message, as of Jan 2026). Rates reset monthly; check Meta's official rate card for the latest figures.
 
 ---
 
@@ -276,3 +284,82 @@ The review screen allows:
 - Court selfie photo upload to Cloudflare R2 (optional).
 
 One review is permitted per booking. Admin can suppress a review from public display (`is_published = false`) but cannot edit the content.
+
+---
+
+## 11. Loyalty Points System
+
+> **Terminology:** Loyalty points are non-monetary engagement points — distinct from `wallet_credits`, which are monetary INR credits issued only on business-initiated cancellations. The two systems are independent and must never be conflated in code or UI.
+
+### 11.1 Earning Rules
+
+Points are awarded automatically by the backend. The user takes no action to earn them.
+
+| Event | Points Awarded | Condition |
+|---|---|---|
+| Booking confirmed (online) | **1 point** | Status transitions to `confirmed` via payment webhook |
+| Booking confirmed (walk-in) | **1 point** | Admin creates a walk-in entry |
+| Admin block | 0 points | No user is associated |
+
+Points are **never awarded** for:
+- Bookings in `pending_payment` or `expired` state.
+- Cancelled bookings (force-majeure or otherwise).
+- Duplicate webhook signals for an already-confirmed booking.
+
+The award happens atomically inside the same database transaction that confirms the booking, ensuring no booking is confirmed without its point being issued, and no orphaned points exist without a confirmed booking.
+
+### 11.2 Point Transaction Integrity
+
+Every change to a user's point balance — positive or negative — is recorded as an immutable row in `loyalty_point_transactions` before `users.loyalty_points` is updated. The `balance_after` column on each transaction row is a snapshot that allows auditing the full history and detecting any inconsistencies.
+
+**Balance update sequence (atomic):**
+1. Insert row into `loyalty_point_transactions` with `balance_after = current_balance + delta`.
+2. Update `users.loyalty_points` to the new balance.
+3. Both operations occur within the same database transaction; if either fails, both roll back.
+
+### 11.3 Redemption Rules
+
+Users spend points by selecting a reward from the rewards catalogue.
+
+**Pre-redemption checks (all must pass):**
+1. `loyalty_rewards.is_active = true`.
+2. Current date is within `valid_from` and `valid_until` (if set).
+3. `loyalty_rewards.stock > 0` (if stock is finite). Stock is decremented atomically.
+4. `users.loyalty_points >= loyalty_rewards.points_cost`.
+
+**On successful redemption:**
+1. Deduct points: insert a `loyalty_point_transactions` row with `type = 'redeemed'` and negative `points`.
+2. Update `users.loyalty_points`.
+3. Insert a `loyalty_redemptions` row with `status = 'pending'`.
+4. Execute the reward fulfillment logic based on `loyalty_rewards.type`:
+   - `game` — run the prize draw using probabilities in `metadata.prizes`; store the outcome in `loyalty_redemptions.outcome`; if the prize is a coupon or wallet credit, issue it immediately.
+   - `discount_voucher` — generate and activate a one-time coupon record; store the code in `loyalty_redemptions.outcome`.
+   - `physical_item` — mark `status = 'pending'` for admin to fulfill manually; notify admin.
+   - `experience` — Yet to be decided.
+5. Update `loyalty_redemptions.status` to `fulfilled` (or `failed` if fulfillment errors).
+
+**On failed fulfillment:** Points are reinstated by inserting a correcting `loyalty_point_transactions` row with `type = 'admin_adjustment'` and a positive value, and the `loyalty_redemptions.status` is set to `failed`.
+
+### 11.4 Spinner Game Logic
+
+The spinner is a `loyalty_rewards` entry of `type = 'game'`. The prize pool and probabilities are stored in `metadata.prizes`. Each prize has:
+- `label` — display name shown on the spinner wheel.
+- `probability` — a decimal between 0 and 1; all probabilities in the array must sum to exactly 1.0.
+- `reward_type` — what is issued: `court_credit` (monetary wallet credit), `coupon`, `none` (no prize).
+- `value` or `coupon_code` — the specific reward issued on win.
+
+The backend determines the winning prize server-side using a seeded random draw against the probability distribution. The client animates the spinner to land on the server-determined outcome. **The result is never computed on the frontend.**
+
+### 11.5 Point Expiry
+
+Point expiry policy: **Yet to be decided.** Options: no expiry, expiry after N months of inactivity, expiry after a fixed date. When implemented, expired points are recorded as a `loyalty_point_transactions` row with `type = 'expired'`.
+
+### 11.6 Admin Controls
+
+| Action | Permission Required |
+|---|---|
+| View any user's point balance and history | `manage_bookings` |
+| Manually grant or deduct points (with a note) | `issue_credits` |
+| Create / edit / deactivate loyalty rewards | `edit_pricing` |
+| Fulfill pending physical item redemptions | `manage_bookings` |
+| Edit spinner prize probabilities | `edit_pricing` |

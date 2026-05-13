@@ -27,8 +27,8 @@ A **headless, multi-tenant, event-driven** Pickleball Court Booking Platform des
 | Backend | Express.js (JavaScript) | REST API; stateless, permission-guarded routes |
 | Database | PostgreSQL | ACID compliance, row-level locking, JSONB for flexible pricing rules |
 | Auth | JWT (short-lived) + Redis Denylist | 15-minute access tokens; instant revocation for admins |
-| OTP & Messaging | WhatsApp API (MSG91 or Twilio) | OTP delivery, booking confirmations, reminders |
-| Chat Support | WhatsApp API | Customer support channel |
+| OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP (Authentication templates), booking notifications (Utility templates), promotional campaigns (Marketing templates). No BSP middleman — billed directly by Meta in INR |
+| Chat Support | Meta WhatsApp Cloud API (direct) | Inbound user-initiated messages; service replies are free with no monthly cap |
 | Payments | PhonePe Payment Gateway | Webhook-driven confirmation; idempotent handling |
 | File Storage | Cloudflare R2 | Court images, court selfie uploads from reviews |
 | Background Jobs | Yet to be decided | Slot expiry sweeper, notification scheduler (options: BullMQ, pg-boss) |
