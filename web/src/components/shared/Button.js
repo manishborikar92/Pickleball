@@ -1,13 +1,13 @@
 import Link from "next/link";
 
 const base =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-bold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex min-h-[2.75rem] items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background select-none";
 
 const variants = {
-  primary: "bg-accent text-black shadow-[0_0_30px_rgba(202,255,0,0.16)] hover:bg-accent-dim",
-  secondary: "border border-line bg-surface-panel text-foreground hover:border-accent",
-  ghost: "text-muted hover:text-accent",
-  danger: "bg-danger text-black hover:opacity-90",
+  primary: "bg-accent text-black shadow-[0_0_30px_rgba(202,255,0,0.16)] hover:bg-accent/90 hover:shadow-[0_0_35px_rgba(202,255,0,0.2)]",
+  secondary: "border border-line bg-surface-panel text-foreground hover:border-accent hover:bg-surface-high",
+  ghost: "text-muted hover:bg-surface-high hover:text-foreground",
+  danger: "bg-danger text-black hover:bg-danger/90",
 };
 
 export function Button({
@@ -18,13 +18,15 @@ export function Button({
   ...props
 }) {
   const classes = `${base} ${variants[variant]} ${className}`;
+  
   if (href) {
     return (
-      <Link className={classes} href={href}>
+      <Link className={classes} href={href} {...props}>
         {children}
       </Link>
     );
   }
+  
   return (
     <button className={classes} {...props}>
       {children}

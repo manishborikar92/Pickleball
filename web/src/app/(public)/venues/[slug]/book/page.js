@@ -1,4 +1,4 @@
-import { BookingClient } from "@/components/features/booking/BookingClient";
+import { BookingClient } from "@/components/features/booking";
 import { getAvailability, getVenue } from "@/lib/api";
 
 export const metadata = {

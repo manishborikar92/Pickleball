@@ -1,21 +1,29 @@
-export function Card({ children, className = "" }) {
+export function Card({ children, className = "", as: Component = "section" }) {
   return (
-    <section className={`rounded-lg border border-line bg-surface-panel ${className}`}>
+    <Component className={`overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm ${className}`}>
       {children}
-    </section>
+    </Component>
   );
 }
 
 export function SectionHeader({ eyebrow, title, children, align = "center" }) {
+  const isLeft = align === "left";
+  
   return (
-    <div className={align === "left" ? "text-left" : "mx-auto max-w-2xl text-center"}>
-      {eyebrow ? (
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-accent">
+    <div className={`flex flex-col ${isLeft ? "text-left" : "mx-auto max-w-2xl items-center text-center"}`}>
+      {eyebrow && (
+        <p className="mb-2 text-xs font-bold uppercase tracking-wider text-accent sm:mb-3">
           {eyebrow}
         </p>
-      ) : null}
-      <h2 className="text-2xl font-black text-foreground sm:text-3xl">{title}</h2>
-      {children ? <p className="mt-3 text-base leading-7 text-muted">{children}</p> : null}
+      )}
+      <h2 className="text-balance text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl">
+        {title}
+      </h2>
+      {children && (
+        <p className={`mt-3 text-sm leading-relaxed text-muted sm:mt-4 sm:text-base ${isLeft ? "max-w-3xl" : "max-w-2xl"}`}>
+          {children}
+        </p>
+      )}
     </div>
   );
 }

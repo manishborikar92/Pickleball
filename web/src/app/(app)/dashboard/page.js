@@ -1,4 +1,4 @@
-import { DashboardOverview } from "@/components/features/dashboard/DashboardViews";
+import { DashboardOverview } from "@/components/features/dashboard";
 import { getUserBookings, getWallet } from "@/lib/api";
 import { requireRouteAccess } from "@/lib/session";
 

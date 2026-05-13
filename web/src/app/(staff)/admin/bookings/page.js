@@ -1,4 +1,4 @@
-import { AdminBookings } from "@/components/features/admin/AdminViews";
+import { AdminBookings } from "@/components/features/admin";
 import { getAdminOverview } from "@/lib/api";
 import { requireRouteAccess } from "@/lib/session";
 

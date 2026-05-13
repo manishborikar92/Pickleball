@@ -1,4 +1,4 @@
-import { ReviewForm } from "@/components/features/review/ReviewForm";
+import { ReviewForm } from "@/components/features/review";
 
 export const metadata = {
   title: "Rate Your Experience",

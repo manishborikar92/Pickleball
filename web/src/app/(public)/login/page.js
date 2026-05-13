@@ -1,6 +1,6 @@
 import { signInDemo } from "@/app/actions/auth-actions";
-import { Button } from "@/components/shared/Button";
-import { Card } from "@/components/shared/Card";
+import { Button } from "@/components/shared";
+import { Card } from "@/components/shared";
 
 export const metadata = {
   title: "Sign In",

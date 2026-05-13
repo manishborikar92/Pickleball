@@ -1,4 +1,4 @@
-import { PricingManager } from "@/components/features/admin/AdminViews";
+import { PricingManager } from "@/components/features/admin";
 import { requireRouteAccess } from "@/lib/session";
 
 export default async function PricingPage() {

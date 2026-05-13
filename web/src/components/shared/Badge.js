@@ -6,7 +6,9 @@ export function Badge({ children, tone = "neutral", className = "" }) {
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold ${tones[tone]} ${className}`}>
+    <span 
+      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold leading-5 whitespace-nowrap ${tones[tone]} ${className}`}
+    >
       {children}
     </span>
   );

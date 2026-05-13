@@ -1,4 +1,4 @@
-import { WalletView } from "@/components/features/dashboard/DashboardViews";
+import { WalletView } from "@/components/features/dashboard";
 import { getWallet } from "@/lib/api";
 import { requireRouteAccess } from "@/lib/session";
 

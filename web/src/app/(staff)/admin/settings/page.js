@@ -1,4 +1,4 @@
-import { SettingsView } from "@/components/features/admin/AdminViews";
+import { SettingsView } from "@/components/features/admin";
 import { requireRouteAccess } from "@/lib/session";
 
 export default async function SettingsPage() {

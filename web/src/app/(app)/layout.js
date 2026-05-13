@@ -1,4 +1,4 @@
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { AppSidebar } from "@/components/layout";
 import { requireRouteAccess } from "@/lib/session";
 
 export default async function CustomerLayout({ children }) {

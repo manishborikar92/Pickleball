@@ -1,4 +1,4 @@
-import { AdminShell } from "@/components/layout/AdminShell";
+import { AdminShell } from "@/components/layout";
 import { requireRouteAccess } from "@/lib/session";
 
 export default async function StaffLayout({ children }) {

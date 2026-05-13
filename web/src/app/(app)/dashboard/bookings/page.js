@@ -1,4 +1,4 @@
-import { BookingsView } from "@/components/features/dashboard/DashboardViews";
+import { BookingsView } from "@/components/features/dashboard";
 import { getUserBookings } from "@/lib/api";
 import { requireRouteAccess } from "@/lib/session";
 
