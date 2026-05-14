@@ -34,6 +34,8 @@ A **headless, multi-tenant, event-driven** Pickleball Court Booking Platform des
 | Background Jobs | Yet to be decided | Slot expiry sweeper, notification scheduler (options: BullMQ, pg-boss) |
 | Real-time Sync | Yet to be decided | Slot state broadcast to all connected clients (options: Socket.io, SSE) |
 | Caching / Session | Redis | JWT Denylist; optional slot-lock TTL cache |
+| Analytics & Session Replay | PostHog | Product analytics, web analytics, booking funnel tracking, session replay, error tracking. Cookieless mode; no consent banner required. See `07-ANALYTICS.md` |
+| Error Monitoring | PostHog (launch) → Sentry (future) | PostHog error autocapture covers launch; Sentry added when deeper backend tracing and on-call alerting workflows are needed |
 | Hosting / Infra | Yet to be decided | |
 
 ---
