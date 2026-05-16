@@ -12,6 +12,10 @@ export const venue = {
   phone: "+91 88012 34687",
   email: "hello@protechcourts.com",
   hours: "Mon-Sun: 6:00 AM - 11:00 PM",
+  location: {
+    lat: 21.0772,
+    lng: 79.0664,
+  },
 };
 
 export const courts = [
