@@ -97,8 +97,8 @@ The generated price quote is valid only for the duration of the 10-minute slot h
 
 ```
 Step 1 — Browse (Unauthenticated)
-  User views the schedule page. Available slots are rendered based on live
-  slot generation. No authentication required to browse.
+  User views the schedule page. Available slots rendered from live slot
+  generation. No authentication required to browse.
 
 Step 2 — Select & Lock
   User taps a slot. Backend immediately:
@@ -106,50 +106,109 @@ Step 2 — Select & Lock
     b. Checks slot availability with SELECT ... FOR UPDATE (row-level lock).
     c. If available: inserts a booking record with status = 'pending_payment',
        expires_at = NOW() + 10 minutes, and session_id from the client.
-    d. Commits the transaction.
-  The slot is now invisible to all other users.
+    d. Commits. Slot is now invisible to all other users.
   If two users click simultaneously, the database forces one to wait;
-  the second request is rejected because the slot is taken.
+  the second request fails because the slot is already locked.
 
 Step 3 — Auth Gate (Name → Phone → OTP)
-  The user is shown a bottom-sheet modal sequence:
-    a. Name entry ("Almost there! Tell us your name.")
-    b. Phone entry (+91 prefix, "Verify to Book")
-    c. OTP entry (6-digit code, "Enter Code")
-  The booking record is linked to the user's phone/session.
-  If the user already exists (phone found in users table), the booking
-  is attached to their profile. If new, a profile is created.
+  Bottom-sheet modal sequence:
+    a. Name entry.
+    b. Phone entry (+91 prefix).
+    c. 6-digit OTP entry.
+  The booking record is linked to the verified phone number.
+  Existing users: booking attached to their profile.
+  New users: profile created from name + phone.
+  Velocity check: if the phone already holds 2 pending bookings, block.
 
-Step 4 — Checkout & Waiver
-  User reviews the Order Summary (court, date, time, price breakdown).
-  User must:
-    a. Acknowledge the specific booking date and time (AM/PM trap prevention).
-    b. Accept the no-cancellation / no-refund policy (digital waiver).
-  Both acknowledgments are logged with timestamp, IP, and verified phone.
+Step 4 — Checkout Summary & Waiver
+  User reviews Order Summary (court, date, full time string, price breakdown).
+  Wallet credit balance is displayed if > 0; user can toggle credit application.
+  User must check both:
+    a. Time acknowledgment (exact date and time, AM/PM explicit).
+    b. No-cancellation / no-refund policy (digital waiver).
+  Both logged with server-side timestamp, IP address, and verified phone.
 
-Step 5 — Payment
-  Backend sends a payment intent to PhonePe with the locked total amount.
-  User completes payment in the PhonePe interface.
+Step 5 — Payment Initiation
+  User clicks "Confirm & Pay".
+  Backend computes final price quote with wallet credits applied:
 
-Step 6 — Confirmation
-  PhonePe sends a "Success" webhook to the backend.
-  Backend checks idempotency_key; if already processed, silently ignores.
-  If not yet processed:
-    a. Updates booking status → 'confirmed'.
-    b. Clears expires_at.
-    c. Updates payment record.
-    d. Sends WhatsApp confirmation + receipt to user.
+    total_payable  = base + modifiers - coupon + tax
+    credits_applied = min(wallet_credits, total_payable)
+    phonepe_amount  = total_payable - credits_applied
+
+  PATH A — Wallet-Only (phonepe_amount == 0):
+    a. Deduct credits_applied from users.wallet_credits (in DB transaction).
+    b. Insert wallet_transactions record (credit_redeemed).
+    c. Update booking status → 'confirmed' immediately.
+    d. Insert payments record (gateway='wallet', status='success', amount=0).
+    e. Return { type: 'wallet_only' } to frontend.
+    f. Trigger WhatsApp confirmation + PostHog event.
+
+  PATH B — PhonePe UPI Required (phonepe_amount > 0):
+    a. Optimistically deduct credits_applied from users.wallet_credits.
+    b. Insert wallet_transactions record (credit_redeemed).
+    c. Create PhonePe order with phonepe_amount (in paisa) via API v2.
+    d. paymentModeConfig restricts to UPI_INTENT, UPI_COLLECT, UPI_QR only.
+    e. Return { type: 'phonepe', redirect_url, merchant_order_id } to frontend.
+
+Step 6 — PhonePe Pay Page (PATH B only)
+  Frontend loads PhonePe JS bundle and calls:
+    PhonePeCheckout.transact({ tokenUrl: redirect_url, callback, type: 'IFRAME' })
+  User completes UPI payment on PhonePe's hosted pay page.
+  On completion PhonePe fires both a browser redirect (Step 7) and a
+  server-to-server webhook (Step 8).
+
+Step 7 — Browser Redirect (Secondary Verification, PATH B)
+  PhonePe redirects browser to:
+    GET /api/payment/redirect?orderId={merchant_order_id}
+  Backend calls PhonePe Order Status API:
+    COMPLETED → confirm booking (idempotent) → redirect to /booking/success
+    FAILED    → rollback wallet credits → redirect to /booking/failed
+    PENDING   → redirect to /booking/pending (webhook will settle it)
+
+Step 8 — Webhook (Primary Confirmation, PATH B)
+  PhonePe sends S2S webhook to POST /api/webhooks/phonepe.
+  Backend verifies SHA256 auth header. Responds 200 immediately.
+  Processes asynchronously:
+    checkout.order.completed + state=COMPLETED:
+      Check idempotency_key — if already confirmed, exit silently.
+      DB transaction: confirm booking, finalize wallet deduction,
+      update payment record, send WhatsApp confirmation.
+    checkout.order.failed:
+      Rollback wallet credits. Update payment to 'failed'.
+    pg.refund.completed:
+      Update payment to 'refunded'. Send WhatsApp to user.
 ```
 
-### 4.2 Anti-Hoarding — Velocity Check
+### 4.2 Payment Failure & Retry
+
+When `state === 'FAILED'` is received from either the redirect handler or the webhook:
+- Rollback the optimistically deducted wallet credits.
+- Do **not** expire the booking hold — give the user a chance to retry within the remaining hold time.
+- Frontend shows a "Try Again" button.
+- On retry: generate a **new** `merchantOrderId` (never reuse the failed order ID).
+- If the booking hold has already expired by the time the user retries: inform the user, redirect to the booking page.
+
+### 4.3 PENDING State Handling
+
+If Order Status API returns `PENDING` after the browser redirect:
+- Frontend polls `GET /api/payment/status/:merchantOrderId` (every 5 seconds, max 5 polls).
+- If terminal state reached during polling: process accordingly.
+- After 5 polls without a terminal state: stop polling, show "Payment processing — you will be notified via WhatsApp."
+- Webhook delivers the terminal state eventually. Do **not** cancel or rollback while PENDING.
+- Do **not** release wallet credits while PENDING.
+
+### 4.4 Anti-Hoarding — Velocity Check
 
 A single phone number or session ID cannot hold more than **2 slots in `pending_payment` state simultaneously**. Attempts beyond this limit return an error: "You already have 2 pending bookings. Complete or wait for them to expire before selecting another slot."
 
-### 4.3 Slot Expiry (Background Sweeper)
+### 4.5 Slot Expiry (Background Sweeper)
 
 A background job continuously monitors the `bookings` table. Any record where `status = 'pending_payment'` AND `expires_at < NOW()` is updated to `status = 'expired'`. The slot immediately re-enters the available pool.
 
-The sweeper runs at an interval short enough (e.g., every 30 seconds) to ensure expired slots reappear promptly.
+Before expiring each booking, the sweeper calls `rollbackWalletCredits(bookingId)` to return any optimistically deducted credits.
+
+The sweeper runs every **30 seconds**.
 
 ---
 

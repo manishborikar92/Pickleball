@@ -334,37 +334,118 @@ Attempts to place a 10-minute lock on a slot. This is the most critical endpoint
 
 ### `POST /bookings/:bookingId/initiate-payment`
 
-*Protected.* Backend sends a payment order to PhonePe and returns a payment URL or intent.
+*Protected.* Computes the final price quote, applies wallet credits, creates a PhonePe order, and returns the PhonePe-hosted pay page URL. The frontend uses this URL with PhonePe's JS bundle to open the pay page (iFrame or redirect mode). See `08-PAYMENT-INTEGRATION.md` for the complete flow.
+
+**Body:**
+```json
+{ "use_wallet_credits": true }
+```
+
+**Response `200` — Wallet-only (no PhonePe involved):**
+```json
+{
+  "type": "wallet_only",
+  "booking_id": "<uuid>",
+  "credits_applied": 689.50,
+  "total_amount": 689.50,
+  "phonepe_amount": 0
+}
+```
+
+**Response `200` — PhonePe UPI payment required:**
+```json
+{
+  "type": "phonepe",
+  "merchant_order_id": "PP-abc123",
+  "redirect_url": "https://mercury-uat.phonepe.com/transact/uat_v2?token=...",
+  "credits_applied": 200.00,
+  "phonepe_amount": 489.50,
+  "total_amount": 689.50,
+  "expires_at": "2025-05-17T04:29:00Z"
+}
+```
+
+**Frontend usage (iFrame mode):**
+```javascript
+// Load once on checkout page:
+// <script src="https://mercury.phonepe.com/web/bundle/checkout.js"></script>
+
+window.PhonePeCheckout.transact({
+  tokenUrl: response.redirect_url,
+  callback: (result) => {
+    if (result === 'CONCLUDED') verifyPaymentStatus(response.merchant_order_id);
+    if (result === 'USER_CANCEL') showRetryUI();
+  },
+  type: 'IFRAME',  // or 'REDIRECT' for full-page fallback
+});
+```
+
+**Errors:**
+- `422 Unprocessable Entity` — waiver not yet accepted.
+- `410 Gone` — booking hold has expired.
+- `402 Payment Required` — PhonePe order creation failed (details in error body).
+
+---
+
+### `GET /api/payment/redirect`
+
+*Public.* Called by PhonePe's hosted pay page after the transaction reaches a terminal state (redirect back). Verifies payment status via Order Status API, confirms or fails the booking, then redirects the browser to the Next.js success or failure page.
+
+This endpoint is **not** under `/api/v1` — it is a top-level redirect handler callable by PhonePe without auth.
+
+**Query params:** `orderId` (PhonePe's `merchantOrderId`)
+
+**Behaviour:**
+1. Call PhonePe Order Status API with `orderId`.
+2. `COMPLETED` → confirm booking (idempotent) → redirect to `/booking/success?orderId=...`
+3. `FAILED` → rollback wallet credits → redirect to `/booking/failed?orderId=...`
+4. `PENDING` → redirect to `/booking/pending?orderId=...` (webhook will deliver terminal state)
+
+**Response:** `302 Redirect` — never returns a JSON body.
+
+---
+
+### `GET /api/payment/status/:merchantOrderId`
+
+*Protected.* Polls the backend for the current payment state. Used by the frontend during the PENDING polling loop (max 5 polls, 5-second interval) and after the iFrame `CONCLUDED` callback.
 
 **Response `200`:**
 ```json
 {
-  "gateway_order_id": "PHONEPE_ORD_123456",
-  "payment_url": "https://api.phonepe.com/pay/...",
-  "amount": 689.50,
-  "currency": "INR"
+  "merchant_order_id": "PP-abc123",
+  "booking_id": "<uuid>",
+  "state": "COMPLETED",
+  "booking_status": "confirmed"
 }
 ```
 
+**`state` values:** `COMPLETED`, `FAILED`, `PENDING`, `CREATED`
+
 ---
 
-### `POST /webhooks/phonepe`
+### `POST /api/webhooks/phonepe`
 
-*Public (verified by PhonePe signature header).* Receives payment status callbacks. Idempotent.
+*Public (verified by PhonePe SHA256 auth header).* Receives server-to-server payment event callbacks. This is the **primary** confirmation mechanism — the redirect handler is the secondary. Both are idempotent.
 
-**Headers:** `x-verify: <phonepe-checksum>`
+**Headers:** `Authorization: SHA256(username:password)` — verified against `PHONEPE_WEBHOOK_USERNAME:PHONEPE_WEBHOOK_PASSWORD` before any processing.
 
-**Body:** PhonePe webhook payload.
+**Events handled:**
 
-**Internal Logic:**
-1. Verify checksum signature.
-2. Extract `gateway_order_id` and status.
-3. Check `payments.idempotency_key` — if already processed, return `200` and stop.
-4. If success and booking is `pending_payment`: update to `confirmed`, send confirmation WhatsApp.
-5. If success and booking is `expired`: trigger stale payment exception handling.
-6. If failed: update payment status, release slot (if still in pending_payment).
+| Event | `payload.state` | Action |
+|---|---|---|
+| `checkout.order.completed` | `COMPLETED` | Confirm booking; finalize wallet deduction; send WhatsApp |
+| `checkout.order.failed` | `FAILED` | Rollback wallet credits; update payment to failed |
+| `pg.refund.accepted` | — | Update payment to `refund_pending` |
+| `pg.refund.completed` | — | Update payment to `refunded`; notify user via WhatsApp |
+| `pg.refund.failed` | — | Alert admin; consider wallet credit fallback |
 
-**Response:** Always `200 OK` (PhonePe requires this to stop retrying).
+**Critical rules:**
+- Always respond `200 OK` **before** async processing — never let processing errors prevent the 200 response.
+- Use `payload.state` for the terminal state, not solely the event name.
+- Check `payments.idempotency_key` before processing — skip silently if already in `success` state.
+- `expireAt` and `timestamp` are epoch **milliseconds**.
+
+**Response:** Always `200 OK`.
 
 ---
 
@@ -469,8 +550,26 @@ All admin endpoints require a valid JWT with the corresponding permission.
 |---|---|---|---|
 | `GET` | `/admin/users` | `manage_bookings` | Search users by phone |
 | `GET` | `/admin/users/:id/bookings` | `manage_bookings` | View user's full booking history |
-| `GET` | `/admin/users/:id/wallet` | `issue_credits` | View wallet balance and transactions |
-| `POST` | `/admin/users/:id/credits` | `issue_credits` | Manually issue credits |
+| `GET` | `/admin/users/:id/wallet` | `issue_credits` | View monetary wallet balance and transactions |
+| `POST` | `/admin/users/:id/credits` | `issue_credits` | Manually issue monetary wallet credits |
+| `GET` | `/admin/users/:id/points` | `manage_bookings` | View loyalty point balance and transaction history |
+| `POST` | `/admin/users/:id/points/adjust` | `issue_credits` | Manually grant or deduct loyalty points |
+
+**Point adjustment body:**
+```json
+{ "points": 5, "note": "Compensation for app error during booking" }
+```
+A negative `points` value deducts from the balance. The `note` field is required for admin adjustments.
+
+### Loyalty Rewards Management
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `GET` | `/admin/loyalty/rewards` | `edit_pricing` | List all rewards (active and inactive) |
+| `POST` | `/admin/loyalty/rewards` | `edit_pricing` | Create a new reward |
+| `PATCH` | `/admin/loyalty/rewards/:id` | `edit_pricing` | Edit name, cost, stock, metadata, active state |
+| `GET` | `/admin/loyalty/redemptions` | `manage_bookings` | List all redemptions with filters (status, type) |
+| `PATCH` | `/admin/loyalty/redemptions/:id/fulfill` | `manage_bookings` | Mark a physical item redemption as fulfilled |
 
 ### Analytics
 
@@ -479,10 +578,114 @@ All admin endpoints require a valid JWT with the corresponding permission.
 | `GET` | `/admin/venues/:id/analytics/utilization` | `view_analytics` | Court utilization by hour and day |
 | `GET` | `/admin/venues/:id/analytics/revenue` | `view_analytics` | Revenue by court, date range |
 | `GET` | `/admin/venues/:id/analytics/reviews` | `view_analytics` | Average ratings, recent reviews |
+| `GET` | `/admin/venues/:id/analytics/loyalty` | `view_analytics` | Points issued, redeemed, outstanding; top earners |
 
 ---
 
-## 9. Error Response Format
+## 9. Loyalty Points Endpoints
+
+### `GET /users/me/points`
+
+*Protected.* Returns the authenticated user's current point balance and recent transaction history.
+
+**Response `200`:**
+```json
+{
+  "balance": 7,
+  "transactions": [
+    {
+      "id": "<uuid>",
+      "type": "earned",
+      "points": 1,
+      "balance_after": 7,
+      "source": "booking_confirmed",
+      "booking_id": "<uuid>",
+      "created_at": "2025-05-17T10:00:00Z"
+    },
+    {
+      "id": "<uuid>",
+      "type": "redeemed",
+      "points": -3,
+      "balance_after": 4,
+      "source": "game_spin",
+      "reference_id": "<redemption_uuid>",
+      "created_at": "2025-05-15T14:22:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### `GET /loyalty/rewards`
+
+*Public (authenticated).* Returns the active rewards catalogue available for redemption.
+
+**Response `200`:**
+```json
+{
+  "data": [
+    {
+      "id": "<uuid>",
+      "name": "Spinner Game Entry",
+      "description": "Spin the wheel for a chance to win court credits, discounts, or prizes.",
+      "type": "game",
+      "points_cost": 3,
+      "stock": null,
+      "is_active": true
+    },
+    {
+      "id": "<uuid>",
+      "name": "Free Grip Tape",
+      "description": "Redeem for one free grip tape from the Pro Shop.",
+      "type": "physical_item",
+      "points_cost": 5,
+      "stock": 20,
+      "is_active": true
+    }
+  ]
+}
+```
+
+Note: The `metadata.prizes` field for game-type rewards is **not exposed** to the frontend to prevent prize manipulation.
+
+---
+
+### `POST /loyalty/rewards/:rewardId/redeem`
+
+*Protected.* Redeems the user's loyalty points for a reward. All pre-redemption checks, point deduction, and fulfillment happen atomically server-side.
+
+**Body:** *(none)*
+
+**Response `200`:**
+```json
+{
+  "redemption_id": "<uuid>",
+  "reward": { "id": "<uuid>", "name": "Spinner Game Entry", "type": "game" },
+  "points_spent": 3,
+  "new_balance": 4,
+  "status": "fulfilled",
+  "outcome": {
+    "prize_label": "10% Off Next Booking",
+    "reward_type": "coupon",
+    "coupon_code": "SPIN10"
+  }
+}
+```
+
+For `physical_item` rewards, `status` will be `pending` and `outcome` will be `null` until admin fulfills.
+
+**Errors:**
+
+| Code | HTTP Status | Description |
+|---|---|---|
+| `INSUFFICIENT_POINTS` | 400 | User balance below `points_cost` |
+| `REWARD_OUT_OF_STOCK` | 400 | `stock` has reached zero |
+| `REWARD_NOT_ACTIVE` | 400 | Reward is inactive or outside valid date range |
+
+---
+
+## 10. Error Response Format
 
 All errors follow a consistent structure:
 
@@ -510,6 +713,9 @@ All errors follow a consistent structure:
 | `BOOKING_EXPIRED` | 410 | 10-minute hold expired before payment |
 | `WAIVER_REQUIRED` | 422 | Payment attempted without waiver acceptance |
 | `DUPLICATE_REVIEW` | 409 | A review already exists for this booking |
+| `INSUFFICIENT_POINTS` | 400 | Loyalty point balance too low to redeem |
+| `REWARD_OUT_OF_STOCK` | 400 | Reward stock exhausted |
+| `REWARD_NOT_ACTIVE` | 400 | Reward inactive or outside valid window |
 | `UNAUTHORIZED` | 401 | Missing or invalid token |
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |

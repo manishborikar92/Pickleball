@@ -29,7 +29,7 @@ A **headless, multi-tenant, event-driven** Pickleball Court Booking Platform des
 | Auth | JWT (short-lived) + Redis Denylist | 15-minute access tokens; instant revocation for admins |
 | OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP (Authentication templates), booking notifications (Utility templates), promotional campaigns (Marketing templates). No BSP middleman — billed directly by Meta in INR |
 | Chat Support | Meta WhatsApp Cloud API (direct) | Inbound user-initiated messages; service replies are free with no monthly cap |
-| Payments | PhonePe Payment Gateway | Webhook-driven confirmation; idempotent handling |
+| Payments | PhonePe Payment Gateway v2 (UPI only) | Web Standard Checkout — redirect/iFrame pay page. Direct API integration via `pg-sdk-node`. UPI_INTENT, UPI_COLLECT, UPI_QR only. See `08-PAYMENT-INTEGRATION.md` |
 | File Storage | Cloudflare R2 | Court images, court selfie uploads from reviews |
 | Background Jobs | Yet to be decided | Slot expiry sweeper, notification scheduler (options: BullMQ, pg-boss) |
 | Real-time Sync | Yet to be decided | Slot state broadcast to all connected clients (options: Socket.io, SSE) |
