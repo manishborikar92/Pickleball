@@ -2,19 +2,29 @@ import { SectionHeader } from "@/components/shared";
 
 const FAQS = [
   {
-    question: "Do I need my own equipment?",
+    question: "Do I need my own equipment to play?",
     answer:
-      "Bring your own paddle if you prefer. Rental paddles and balls are available on-site.",
+      "Bring your own paddle if you prefer playing with familiar gear. However, paddles and balls are available on-site for free.",
   },
   {
-    question: "How far ahead can I book?",
+    question: "How early can I book a court?",
     answer:
-      "The venue opens slots for the configured advance booking window after the daily rollover time.",
+      "You can book in advance within our available booking window. Slots open daily after rollover time, so we recommend booking early to secure your preferred time.",
   },
   {
-    question: "What is the cancellation policy?",
+    question: "Can I cancel or get a refund after booking?",
     answer:
-      "Confirmed bookings are non-refundable. Business-initiated cancellations are handled with wallet credits.",
+      "All confirmed bookings are non-refundable. If a cancellation is initiated from our side, you will receive full credits directly to your wallet for future use.",
+  },
+  {
+    question: "Can I bring friends or family who are not playing?",
+    answer:
+      "Yes, spectators are always welcome. We have seating available courtside so your friends and family can comfortably watch and cheer you on.",
+  },
+    {
+    question: "Can I book a court for a group or private event?",
+    answer:
+      "Yes, our courts are available for group sessions, corporate events, and private bookings. Contact us directly to discuss availability and arrangements.",
   },
 ];
 
