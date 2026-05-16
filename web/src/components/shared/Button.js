@@ -20,6 +20,16 @@ export function Button({
   const classes = `${base} ${variants[variant]} ${className}`;
   
   if (href) {
+    const isExternal = href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:") || href.startsWith("maps:");
+    
+    if (isExternal) {
+      return (
+        <a className={classes} href={href} {...props}>
+          {children}
+        </a>
+      );
+    }
+
     return (
       <Link className={classes} href={href} {...props}>
         {children}
