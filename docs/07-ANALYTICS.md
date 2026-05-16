@@ -267,8 +267,9 @@ These events form the primary conversion funnel. Every drop-off between steps is
 |---|---|---|
 | `review_opened` | User opens review screen via link | `booking_id` |
 | `review_submitted` | User submits a review | `rating`, `has_comment`, `has_photo` |
-| `loyalty_points_viewed` | User opens points balance screen | `current_balance` |
-| `reward_redeemed` | User redeems a loyalty reward | `reward_type`, `points_spent` |
+| `reward_screen_opened` | User opens a scratch card / reward screen | `instance_id`, `mechanism_type`, `days_until_expiry` |
+| `reward_revealed` | User completes scratch interaction; reveal API called | `instance_id`, `mechanism_type`, `prize_type`, `prize_value` |
+| `reward_expired_on_open` | User opens a reward screen after expiry | `instance_id`, `mechanism_type` |
 
 ### 5.3 Infrastructure Events (Backend Only)
 

@@ -346,79 +346,102 @@ One review is permitted per booking. Admin can suppress a review from public dis
 
 ---
 
-## 11. Loyalty Points System
+## 11. Reward Engine
 
-> **Terminology:** Loyalty points are non-monetary engagement points — distinct from `wallet_credits`, which are monetary INR credits issued only on business-initiated cancellations. The two systems are independent and must never be conflated in code or UI.
+> **Design principle:** The reward system is a pluggable engine decoupled from any specific experience (scratch card, spinner, etc.). No points currency exists. Each confirmed booking directly triggers the active mechanism(s). Switching experiences, running multiple simultaneously, or disabling them entirely is an admin configuration action — not a code change.
 
-### 11.1 Earning Rules
+### 11.1 Core Concepts
 
-Points are awarded automatically by the backend. The user takes no action to earn them.
-
-| Event | Points Awarded | Condition |
-|---|---|---|
-| Booking confirmed (online) | **1 point** | Status transitions to `confirmed` via payment webhook |
-| Booking confirmed (walk-in) | **1 point** | Admin creates a walk-in entry |
-| Admin block | 0 points | No user is associated |
-
-Points are **never awarded** for:
-- Bookings in `pending_payment` or `expired` state.
-- Cancelled bookings (force-majeure or otherwise).
-- Duplicate webhook signals for an already-confirmed booking.
-
-The award happens atomically inside the same database transaction that confirms the booking, ensuring no booking is confirmed without its point being issued, and no orphaned points exist without a confirmed booking.
-
-### 11.2 Point Transaction Integrity
-
-Every change to a user's point balance — positive or negative — is recorded as an immutable row in `loyalty_point_transactions` before `users.loyalty_points` is updated. The `balance_after` column on each transaction row is a snapshot that allows auditing the full history and detecting any inconsistencies.
-
-**Balance update sequence (atomic):**
-1. Insert row into `loyalty_point_transactions` with `balance_after = current_balance + delta`.
-2. Update `users.loyalty_points` to the new balance.
-3. Both operations occur within the same database transaction; if either fails, both roll back.
-
-### 11.3 Redemption Rules
-
-Users spend points by selecting a reward from the rewards catalogue.
-
-**Pre-redemption checks (all must pass):**
-1. `loyalty_rewards.is_active = true`.
-2. Current date is within `valid_from` and `valid_until` (if set).
-3. `loyalty_rewards.stock > 0` (if stock is finite). Stock is decremented atomically.
-4. `users.loyalty_points >= loyalty_rewards.points_cost`.
-
-**On successful redemption:**
-1. Deduct points: insert a `loyalty_point_transactions` row with `type = 'redeemed'` and negative `points`.
-2. Update `users.loyalty_points`.
-3. Insert a `loyalty_redemptions` row with `status = 'pending'`.
-4. Execute the reward fulfillment logic based on `loyalty_rewards.type`:
-   - `game` — run the prize draw using probabilities in `metadata.prizes`; store the outcome in `loyalty_redemptions.outcome`; if the prize is a coupon or wallet credit, issue it immediately.
-   - `discount_voucher` — generate and activate a one-time coupon record; store the code in `loyalty_redemptions.outcome`.
-   - `physical_item` — mark `status = 'pending'` for admin to fulfill manually; notify admin.
-   - `experience` — Yet to be decided.
-5. Update `loyalty_redemptions.status` to `fulfilled` (or `failed` if fulfillment errors).
-
-**On failed fulfillment:** Points are reinstated by inserting a correcting `loyalty_point_transactions` row with `type = 'admin_adjustment'` and a positive value, and the `loyalty_redemptions.status` is set to `failed`.
-
-### 11.4 Spinner Game Logic
-
-The spinner is a `loyalty_rewards` entry of `type = 'game'`. The prize pool and probabilities are stored in `metadata.prizes`. Each prize has:
-- `label` — display name shown on the spinner wheel.
-- `probability` — a decimal between 0 and 1; all probabilities in the array must sum to exactly 1.0.
-- `reward_type` — what is issued: `court_credit` (monetary wallet credit), `coupon`, `none` (no prize).
-- `value` or `coupon_code` — the specific reward issued on win.
-
-The backend determines the winning prize server-side using a seeded random draw against the probability distribution. The client animates the spinner to land on the server-determined outcome. **The result is never computed on the frontend.**
-
-### 11.5 Point Expiry
-
-Point expiry policy: **Yet to be decided.** Options: no expiry, expiry after N months of inactivity, expiry after a fixed date. When implemented, expired points are recorded as a `loyalty_point_transactions` row with `type = 'expired'`.
-
-### 11.6 Admin Controls
-
-| Action | Permission Required |
+| Concept | Description |
 |---|---|
-| View any user's point balance and history | `manage_bookings` |
-| Manually grant or deduct points (with a note) | `issue_credits` |
-| Create / edit / deactivate loyalty rewards | `edit_pricing` |
-| Fulfill pending physical item redemptions | `manage_bookings` |
-| Edit spinner prize probabilities | `edit_pricing` |
+| **Mechanism** | A configured reward experience. Defined in `reward_mechanisms`. Examples: "Post-Booking Scratch Card", "Weekend Spinner". |
+| **Trigger Event** | What causes a mechanism to fire. Only `booking_confirmed` is active at launch. |
+| **Instance** | A single user's reward generated by a trigger. One instance is created per booking per active mechanism. Stored in `reward_instances`. |
+| **Outcome** | The specific prize the user receives. Pre-computed server-side at issuance. Never exposed until the user reveals. |
+| **Reveal** | The user interaction that exchanges the pending instance for its outcome and triggers prize fulfillment. |
+
+### 11.2 Instance Issuance
+
+When a booking is confirmed (status → `confirmed`), the backend queries all `reward_mechanisms` where:
+- `venue_id` matches the booking's venue
+- `trigger_event = 'booking_confirmed'`
+- `is_active = true`
+- `NOW()` is within `valid_from` and `valid_until` (if set)
+
+For each matching mechanism, one `reward_instances` row is inserted atomically inside the same database transaction that confirms the booking. This guarantees:
+- No booking is confirmed without its reward instance(s).
+- No orphaned instances exist without a confirmed booking.
+- Duplicate webhook signals (idempotent confirm) do not create duplicate instances — the `UNIQUE (booking_id, mechanism_id)` constraint silently prevents re-insertion.
+
+**Issuance also applies to walk-in bookings** confirmed by an admin.
+**Instances are never created for** expired, cancelled, or admin-block bookings.
+
+### 11.3 Outcome Pre-computation
+
+At issuance time, the backend runs a server-side weighted random draw against `config.prizes` and selects a winning prize. The result is stored in `reward_instances.outcome` as JSONB.
+
+```
+outcome example:
+{ "prize_id": "p2", "label": "₹50 Court Credit", "type": "wallet_credit", "value": 50 }
+```
+
+The draw is performed server-side every time. The frontend receives only the mechanism type and a token representing the instance — never the outcome. The outcome is revealed only when the user calls the reveal endpoint.
+
+**Probability validation:** Before any `reward_mechanisms` record is saved (create or update), the backend validates that all prize probabilities sum to exactly 1.0. Rejected with a `400` error if they do not.
+
+**Prize pool isolation:** Each instance stores a `config_snapshot` — a frozen copy of the mechanism's `config` at issuance time. If an admin later edits the prize pool (e.g., increases win probability), existing unrevealed instances retain their original outcome. The edit affects only future issuances.
+
+### 11.4 Reveal Flow
+
+1. User opens the reward screen and sees a pending instance (scratch card, spinner segment, etc.).
+2. User interacts with the UI (scratches the card / taps spin).
+3. Frontend calls `POST /rewards/instances/:id/reveal`.
+4. Backend verifies:
+   - Instance belongs to the authenticated user.
+   - `status = 'pending'`.
+   - `expires_at > NOW()` (not expired).
+5. Backend marks `status = 'revealed'`, sets `revealed_at`.
+6. Backend executes prize fulfillment (Section 11.5).
+7. Backend returns the `outcome` in the response — this is the first time the client sees it.
+8. Frontend animates the reveal to land on the returned outcome (scratch reveals the prize; spinner lands on the segment). The animation is purely cosmetic — it does not affect the result.
+
+### 11.5 Prize Fulfillment
+
+Fulfillment is executed atomically in the same transaction as the reveal status update.
+
+| Prize Type | Fulfillment Action |
+|---|---|
+| `no_prize` | No action. Mark `fulfillment_status = 'not_applicable'`. |
+| `wallet_credit` | Increment `users.wallet_credits` by `value`. Insert `wallet_transactions` row (type: `credit_issued`, reason: reward prize). Mark `fulfillment_status = 'fulfilled'`. |
+| `coupon` | Generate a new one-time `coupons` record from the template (`coupon_template_id`). Set `max_uses_total = 1`, `max_uses_per_phone = 1`, assign to the user's phone. Return the coupon code in the outcome. Mark `fulfillment_status = 'fulfilled'`. |
+| `free_booking` | Yet to be designed in detail. Mark `fulfillment_status = 'pending'` for admin follow-up. |
+
+**On fulfillment failure:** The reveal transaction rolls back. The instance remains in `pending` state. The user can retry. The error is logged for admin visibility.
+
+### 11.6 Instance Expiry
+
+Unrevealed instances with `expires_at < NOW()` are swept by the background job. The sweeper updates `status = 'expired'`. Expired instances are never fulfillable and are removed from the user's active rewards screen.
+
+The `instance_expiry_days` is configured per mechanism (default: 7 days). A shorter window creates urgency; a longer window reduces churn.
+
+### 11.7 Adding or Switching Mechanisms
+
+| Change | Required Action |
+|---|---|
+| Activate scratch cards | Create/enable a `reward_mechanisms` row with `type = 'scratch_card'` |
+| Disable scratch cards | Set `reward_mechanisms.is_active = false` |
+| Switch to spinner | Deactivate scratch card mechanism; activate a `spinner` mechanism |
+| Run both simultaneously | Have both mechanisms `is_active = true`; each booking generates two instances |
+| Disable all rewards | Set all mechanisms to `is_active = false`; no instances generated |
+| Add a new mechanism type | Add enum value; write frontend component; no schema or table changes |
+
+### 11.8 Admin Controls
+
+| Action | Permission |
+|---|---|
+| Create / edit / deactivate mechanisms | `edit_pricing` |
+| Edit prize probabilities (config JSONB) | `edit_pricing` |
+| View a user's reward instance history | `manage_bookings` |
+| Manually expire an instance | `manage_bookings` |
+| Fulfill pending `free_booking` prizes | `manage_bookings` |
+| View reward analytics (win rates, prize distribution) | `view_analytics` |

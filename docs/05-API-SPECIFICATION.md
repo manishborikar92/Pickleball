@@ -552,24 +552,40 @@ All admin endpoints require a valid JWT with the corresponding permission.
 | `GET` | `/admin/users/:id/bookings` | `manage_bookings` | View user's full booking history |
 | `GET` | `/admin/users/:id/wallet` | `issue_credits` | View monetary wallet balance and transactions |
 | `POST` | `/admin/users/:id/credits` | `issue_credits` | Manually issue monetary wallet credits |
-| `GET` | `/admin/users/:id/points` | `manage_bookings` | View loyalty point balance and transaction history |
-| `POST` | `/admin/users/:id/points/adjust` | `issue_credits` | Manually grant or deduct loyalty points |
+| `GET` | `/admin/users/:id/rewards` | `manage_bookings` | View a user's reward instance history |
 
-**Point adjustment body:**
-```json
-{ "points": 5, "note": "Compensation for app error during booking" }
-```
-A negative `points` value deducts from the balance. The `note` field is required for admin adjustments.
-
-### Loyalty Rewards Management
+### Reward Engine Management
 
 | Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `GET` | `/admin/loyalty/rewards` | `edit_pricing` | List all rewards (active and inactive) |
-| `POST` | `/admin/loyalty/rewards` | `edit_pricing` | Create a new reward |
-| `PATCH` | `/admin/loyalty/rewards/:id` | `edit_pricing` | Edit name, cost, stock, metadata, active state |
-| `GET` | `/admin/loyalty/redemptions` | `manage_bookings` | List all redemptions with filters (status, type) |
-| `PATCH` | `/admin/loyalty/redemptions/:id/fulfill` | `manage_bookings` | Mark a physical item redemption as fulfilled |
+| `GET` | `/admin/venues/:id/reward-mechanisms` | `edit_pricing` | List all mechanisms (active and inactive) |
+| `POST` | `/admin/venues/:id/reward-mechanisms` | `edit_pricing` | Create a new mechanism |
+| `PATCH` | `/admin/reward-mechanisms/:id` | `edit_pricing` | Edit name, type, config (prize pool), active state, validity window |
+| `GET` | `/admin/reward-instances` | `manage_bookings` | List instances with filters (status, mechanism_type, date range) |
+| `PATCH` | `/admin/reward-instances/:id/expire` | `manage_bookings` | Manually expire an unrevealed instance |
+| `PATCH` | `/admin/reward-instances/:id/fulfill` | `manage_bookings` | Mark a `free_booking` prize as manually fulfilled |
+
+**Create/update mechanism body example (scratch card):**
+```json
+{
+  "name": "Post-Booking Scratch Card",
+  "type": "scratch_card",
+  "trigger_event": "booking_confirmed",
+  "instance_expiry_days": 7,
+  "is_active": true,
+  "config": {
+    "card_theme": "court_green",
+    "prizes": [
+      { "id": "p1", "label": "Better luck next time!", "type": "no_prize",      "probability": 0.60 },
+      { "id": "p2", "label": "₹50 Court Credit",       "type": "wallet_credit", "value": 50,   "probability": 0.25 },
+      { "id": "p3", "label": "10% Off Next Booking",   "type": "coupon", "coupon_template_id": "<uuid>", "probability": 0.12 },
+      { "id": "p4", "label": "Free 1-Hour Session!",   "type": "free_booking",  "duration_mins": 60, "probability": 0.03 }
+    ]
+  }
+}
+```
+
+Prize `probability` values must sum to exactly 1.0 — validated server-side on save.
 
 ### Analytics
 
@@ -578,48 +594,17 @@ A negative `points` value deducts from the balance. The `note` field is required
 | `GET` | `/admin/venues/:id/analytics/utilization` | `view_analytics` | Court utilization by hour and day |
 | `GET` | `/admin/venues/:id/analytics/revenue` | `view_analytics` | Revenue by court, date range |
 | `GET` | `/admin/venues/:id/analytics/reviews` | `view_analytics` | Average ratings, recent reviews |
-| `GET` | `/admin/venues/:id/analytics/loyalty` | `view_analytics` | Points issued, redeemed, outstanding; top earners |
+| `GET` | `/admin/venues/:id/analytics/rewards` | `view_analytics` | Instances issued, reveal rate, prize distribution, fulfillment status |
 
 ---
 
-## 9. Loyalty Points Endpoints
+## 9. Reward Engine Endpoints
 
-### `GET /users/me/points`
+### `GET /rewards/instances`
 
-*Protected.* Returns the authenticated user's current point balance and recent transaction history.
+*Protected.* Returns all reward instances for the authenticated user. The `outcome` field is **omitted** for `status = 'pending'` instances — only returned after reveal.
 
-**Response `200`:**
-```json
-{
-  "balance": 7,
-  "transactions": [
-    {
-      "id": "<uuid>",
-      "type": "earned",
-      "points": 1,
-      "balance_after": 7,
-      "source": "booking_confirmed",
-      "booking_id": "<uuid>",
-      "created_at": "2025-05-17T10:00:00Z"
-    },
-    {
-      "id": "<uuid>",
-      "type": "redeemed",
-      "points": -3,
-      "balance_after": 4,
-      "source": "game_spin",
-      "reference_id": "<redemption_uuid>",
-      "created_at": "2025-05-15T14:22:00Z"
-    }
-  ]
-}
-```
-
----
-
-### `GET /loyalty/rewards`
-
-*Public (authenticated).* Returns the active rewards catalogue available for redemption.
+**Query params:** `status` (pending, revealed, expired)
 
 **Response `200`:**
 ```json
@@ -627,61 +612,78 @@ A negative `points` value deducts from the balance. The `note` field is required
   "data": [
     {
       "id": "<uuid>",
-      "name": "Spinner Game Entry",
-      "description": "Spin the wheel for a chance to win court credits, discounts, or prizes.",
-      "type": "game",
-      "points_cost": 3,
-      "stock": null,
-      "is_active": true
+      "mechanism_type": "scratch_card",
+      "status": "pending",
+      "booking_id": "<uuid>",
+      "expires_at": "2025-05-24T10:00:00Z",
+      "created_at": "2025-05-17T10:00:00Z"
     },
     {
       "id": "<uuid>",
-      "name": "Free Grip Tape",
-      "description": "Redeem for one free grip tape from the Pro Shop.",
-      "type": "physical_item",
-      "points_cost": 5,
-      "stock": 20,
-      "is_active": true
+      "mechanism_type": "scratch_card",
+      "status": "revealed",
+      "booking_id": "<uuid>",
+      "revealed_at": "2025-05-16T15:30:00Z",
+      "outcome": {
+        "prize_id": "p2",
+        "label": "₹50 Court Credit",
+        "type": "wallet_credit",
+        "value": 50
+      },
+      "fulfillment_status": "fulfilled",
+      "created_at": "2025-05-10T09:00:00Z"
     }
   ]
 }
 ```
 
-Note: The `metadata.prizes` field for game-type rewards is **not exposed** to the frontend to prevent prize manipulation.
-
 ---
 
-### `POST /loyalty/rewards/:rewardId/redeem`
+### `POST /rewards/instances/:instanceId/reveal`
 
-*Protected.* Redeems the user's loyalty points for a reward. All pre-redemption checks, point deduction, and fulfillment happen atomically server-side.
+*Protected.* Reveals a pending reward instance. Validates ownership, `pending` status, and non-expiry. Executes prize fulfillment atomically. Returns the outcome for the first time.
 
 **Body:** *(none)*
 
 **Response `200`:**
 ```json
 {
-  "redemption_id": "<uuid>",
-  "reward": { "id": "<uuid>", "name": "Spinner Game Entry", "type": "game" },
-  "points_spent": 3,
-  "new_balance": 4,
-  "status": "fulfilled",
+  "instance_id": "<uuid>",
+  "mechanism_type": "scratch_card",
+  "status": "revealed",
+  "revealed_at": "2025-05-17T11:22:00Z",
   "outcome": {
-    "prize_label": "10% Off Next Booking",
-    "reward_type": "coupon",
-    "coupon_code": "SPIN10"
+    "prize_id": "p2",
+    "label": "₹50 Court Credit",
+    "type": "wallet_credit",
+    "value": 50
+  },
+  "fulfillment_status": "fulfilled",
+  "fulfillment_detail": {
+    "wallet_credit_added": 50,
+    "new_wallet_balance": 250.00
   }
 }
 ```
 
-For `physical_item` rewards, `status` will be `pending` and `outcome` will be `null` until admin fulfills.
+**Response `200` — no prize:**
+```json
+{
+  "instance_id": "<uuid>",
+  "mechanism_type": "scratch_card",
+  "status": "revealed",
+  "outcome": { "prize_id": "p1", "label": "Better luck next time!", "type": "no_prize" },
+  "fulfillment_status": "not_applicable"
+}
+```
 
 **Errors:**
 
 | Code | HTTP Status | Description |
 |---|---|---|
-| `INSUFFICIENT_POINTS` | 400 | User balance below `points_cost` |
-| `REWARD_OUT_OF_STOCK` | 400 | `stock` has reached zero |
-| `REWARD_NOT_ACTIVE` | 400 | Reward is inactive or outside valid date range |
+| `REWARD_ALREADY_REVEALED` | 409 | Instance is not in `pending` state |
+| `REWARD_EXPIRED` | 410 | Instance expiry has passed |
+| `REWARD_NOT_FOUND` | 404 | Instance does not exist or does not belong to the user |
 
 ---
 
@@ -713,9 +715,9 @@ All errors follow a consistent structure:
 | `BOOKING_EXPIRED` | 410 | 10-minute hold expired before payment |
 | `WAIVER_REQUIRED` | 422 | Payment attempted without waiver acceptance |
 | `DUPLICATE_REVIEW` | 409 | A review already exists for this booking |
-| `INSUFFICIENT_POINTS` | 400 | Loyalty point balance too low to redeem |
-| `REWARD_OUT_OF_STOCK` | 400 | Reward stock exhausted |
-| `REWARD_NOT_ACTIVE` | 400 | Reward inactive or outside valid window |
+| `REWARD_ALREADY_REVEALED` | 409 | Reward instance already revealed |
+| `REWARD_EXPIRED` | 410 | Reward instance past its expiry date |
+| `REWARD_NOT_FOUND` | 404 | Instance not found or not owned by user |
 | `UNAUTHORIZED` | 401 | Missing or invalid token |
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |

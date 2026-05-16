@@ -215,9 +215,50 @@ Lists all bookings for the verified phone number, grouped by: Upcoming, Past, Ca
 
 Each booking card shows: court name, date/time, status badge, total paid, and (for past bookings) a "Rate Session" button if no review exists.
 
+If the booking has an associated unrevealed reward instance, an accent badge ("🎁 Scratch Card waiting!") appears on the booking card and tapping it navigates to the scratch card screen.
+
 ### 3.2 Wallet & Credits
 
 Shows current `wallet_credits` balance and a list of `wallet_transactions` (credits issued, credits redeemed) with dates and reasons.
+
+### 3.3 My Rewards
+
+Lists all reward instances for the user, grouped by: **Pending** (unrevealed, not expired) and **Past** (revealed or expired).
+
+**Pending card (scratch card):** Shows a scratch card graphic with an unscratched surface, the booking it was earned from, and an expiry countdown ("Expires in 5 days"). Tapping navigates to the Scratch Card screen.
+
+**Past card (revealed):** Shows the scratch card in revealed state with the prize label. A "won" badge in accent green for prizes; a subtle grey tone for `no_prize`.
+
+**Past card (expired):** Greyed out, "Expired" badge. No interaction.
+
+---
+
+### 3.4 Scratch Card Screen
+
+**Route:** `/rewards/[instanceId]`
+
+**Trigger:** User taps a pending reward instance from My Bookings or My Rewards.
+
+**Layout:**
+
+1. **Header** — "Your Reward" heading, subtitle "From your booking on [date]". Close button top-right.
+2. **Card Area** — Full-width dark card with a scratch surface rendered using an HTML5 Canvas or CSS mask animation. The scratch surface uses the `card_theme` from `config_snapshot`.
+3. **Instruction** — "Scratch to reveal your prize!" shown before interaction begins.
+4. **Interaction** — User drags finger/mouse across the card to erase the scratch layer. At ~70% coverage, the card calls `POST /rewards/instances/:id/reveal` and receives the outcome.
+5. **Reveal State** — The scratch layer fully clears to reveal the prize:
+   - `no_prize`: Muted text, "Better luck next time!" No accent color.
+   - `wallet_credit`: Bold accent headline "₹50 Added to Your Wallet!". Wallet balance shown updating.
+   - `coupon`: Coupon code displayed in a tappable chip. "Copied!" on tap.
+   - `free_booking`: "Free session on us!" message with an instruction to contact the facility.
+6. **CTA** — "View My Wallet" (for credit prizes) or "Book Again" (for all others).
+
+**Frontend rules:**
+- The scratch interaction is cosmetic. The reveal API is called server-side; the frontend animates to display whatever the server returns.
+- If the user partially scratches and leaves the page, the instance remains `pending`. On return, the screen shows a "Continue Scratching" state.
+- If `expires_at` has passed when the user opens the screen, show an "Expired" state with no scratch interaction.
+- The screen is not accessible for `revealed` instances — redirect to My Rewards.
+
+**The `mechanism_type` field drives which frontend component renders.** If the mechanism type is `spinner`, the same route would render a spinner wheel instead. The backend response shape is identical; only the UI component changes.
 
 ---
 
@@ -248,6 +289,7 @@ The admin dashboard is a separate authenticated web application (accessible via 
 | **Pricing Manager** | Create/edit/deactivate pricing rules; manage coupons |
 | **Bookings** | List and filter all bookings; create walk-ins; trigger admin-block; initiate force-cancellation + credit issuance |
 | **Courts** | Edit court details, status (active/maintenance/offline), cover images |
-| **Users** | Look up user by phone; view booking history, wallet balance, credit activity |
-| **Analytics** | Utilization heatmaps, revenue by court/period, coupon usage, review summaries |
+| **Users** | Look up user by phone; view booking history, wallet balance, reward instance history |
+| **Reward Engine** | Create/edit/activate/deactivate reward mechanisms; edit prize pool config; view instance list; manually expire or fulfill instances |
+| **Analytics** | Utilization heatmaps, revenue by court/period, coupon usage, review summaries, reward reveal rates and prize distribution |
 | **Settings** | Venue-level settings (rollover time, advance window, tax rate, notification templates) |
