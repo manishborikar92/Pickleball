@@ -40,13 +40,14 @@ export function MapWrapper({ className = "", ...props }) {
 
   const apiKey = process.env.NEXT_PUBLIC_MAPTILER_KEY || "";
   
-  // Sizing classes that match the placeholder to prevent CLS
-  const sizingClasses = "min-h-64 sm:min-h-80 h-full w-full";
+  // Sizing and aspect ratio classes for production-grade stability
+  // Uses absolute-fill to occupy whatever space the parent provides (LocationSection container)
+  const sizingClasses = "absolute inset-0 w-full h-full";
 
   // Defensive validation for missing API key
   if (hasHydrated && !apiKey) {
     return (
-      <div className={`${sizingClasses} ${className}`}>
+      <div className={`${sizingClasses} ${className}`} aria-label="Map loading error">
         <MapFallback 
           error="Missing API Key" 
           onRetry={handleRetry} 
@@ -58,7 +59,12 @@ export function MapWrapper({ className = "", ...props }) {
   // Show placeholder until in view or during loading
   if (!hasHydrated && !loadError) {
     return (
-      <div ref={ref} className={`${sizingClasses} ${className}`}>
+      <div 
+        ref={ref} 
+        className={`${sizingClasses} ${className}`}
+        role="region"
+        aria-label="Map placeholder"
+      >
         <MapPlaceholder />
       </div>
     );
@@ -67,14 +73,19 @@ export function MapWrapper({ className = "", ...props }) {
   // Show fallback if loading fails
   if (loadError) {
     return (
-      <div className={`${sizingClasses} ${className}`}>
+      <div className={`${sizingClasses} ${className}`} aria-label="Map error state">
         <MapFallback error={loadError} onRetry={handleRetry} />
       </div>
     );
   }
 
   return (
-    <div ref={ref} className={`${sizingClasses} ${className}`}>
+    <div 
+      ref={ref} 
+      className={`${sizingClasses} ${className}`}
+      role="region"
+      aria-label={`Interactive map of ${props.name || 'venue'}`}
+    >
       <MapCore 
         {...props} 
         apiKey={apiKey} 

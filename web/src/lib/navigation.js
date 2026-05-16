@@ -13,9 +13,11 @@ export const getMapDirectionsUrl = (lat, lng, label = '') => {
   }
 
   // Google Maps deep link (Android and Web)
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&destination_place_id=${encodedLabel}`;
+  // Using query for label support and destination for exact coordinates
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
 };
 
-export const getGoogleMapsBrowserUrl = (lat, lng) => {
-  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+export const getGoogleMapsBrowserUrl = (lat, lng, label = '') => {
+  const encodedLabel = encodeURIComponent(label);
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}${label ? `&query_place_id=${encodedLabel}` : ''}`;
 };

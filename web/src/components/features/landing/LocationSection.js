@@ -6,13 +6,26 @@ export function LocationSection() {
   return (
     <section className="border-t border-line bg-surface px-4 py-16 sm:px-6 md:py-24 lg:px-8">
       <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-2 md:gap-12 lg:items-center lg:gap-16">
-        <div className="lg:order-last">
-          <Map 
-            lat={venue.location.lat}
-            lng={venue.location.lng}
-            name={venue.name}
-            address={venue.address}
-          />
+        <div className="lg:order-last w-full">
+          {/* 
+            Premium Responsive Map Architecture
+            - Uses 'aspect-video' (16/9) globally to maintain a cinematic, premium look.
+            - Implements a 'max-height' constraint using CSS clamp to prevent vertical overflow on small/landscape mobile.
+            - The map will be 16:9 as long as it doesn't exceed 60% of the viewport height.
+          */}
+          <div 
+            className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl bg-surface-variant border border-line/10"
+            style={{ 
+              maxHeight: 'clamp(300px, 60vh, 600px)' 
+            }}
+          >
+            <Map 
+              lat={venue.location.lat}
+              lng={venue.location.lng}
+              name={venue.name}
+              address={venue.address}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col justify-center">
