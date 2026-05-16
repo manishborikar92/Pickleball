@@ -2,7 +2,7 @@ import { Badge, Button } from "@/components/shared";
 
 export function HeroSection() {
   return (
-    <section className="court-hero flex min-h-[100svh] items-end px-4 pb-12 pt-24 sm:px-6 sm:pb-16 md:min-h-[calc(100svh-4rem)] lg:px-8">
+    <section className="court-hero flex min-h-[calc(100svh-4rem)] items-end px-4 pb-12 pt-24 sm:px-6 sm:pb-16 lg:px-8">
       <div className="mx-auto w-full max-w-7xl">
         <div className="max-w-2xl">
           <Badge tone="neutral" className="mb-5 inline-flex items-center gap-2.5 shadow-sm sm:mb-6">
