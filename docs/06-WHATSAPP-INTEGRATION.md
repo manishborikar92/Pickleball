@@ -112,18 +112,25 @@ All business-initiated messages (outbound) must use **pre-approved templates**. 
 
 ### 4.1 Template Category Reference
 
+**Built and submitted for approval at launch:**
+
 | Template | Category | Reason |
 |---|---|---|
 | OTP (booking verification) | **Authentication** | One-time passcode for identity verification |
 | Booking confirmation + receipt | **Utility** | Post-purchase transactional notification |
-| T−24h reminder ("playing tomorrow") | **Utility** | Scheduled transactional reminder for an existing booking |
-| T−2h reminder (final + rules) | **Utility** | Scheduled transactional reminder |
 | Force majeure cancellation + credit notice | **Utility** | Account status update for an existing transaction |
 | Phantom booking apology + refund notice | **Utility** | Account status update for an existing transaction |
 | Wallet credit issued | **Utility** | Account balance update |
-| Review request (post-session) | **Utility** | Post-service engagement tied to a specific transaction |
-| Flash sale announcement | **Marketing** | Promotional; not tied to an existing transaction |
-| Loyalty reward / spinner notification | **Marketing** | Promotional engagement |
+
+**Deferred — not submitted for approval at launch:**
+
+| Template | Category | Depends On |
+|---|---|---|
+| T−24h reminder ("playing tomorrow") | **Utility** | Job scheduler |
+| T−2h reminder (final + rules) | **Utility** | Job scheduler |
+| Review request (post-session) | **Utility** | Job scheduler |
+| Flash sale announcement | **Marketing** | Reward engine + marketing activation |
+| Loyalty reward / scratch card notification | **Marketing** | Reward engine |
 
 > Meta's template category guidelines are strict. Utility templates must be clearly transactional. If a template contains promotional language (discounts, offers, upsells) unrelated to an existing transaction, Meta will recategorize it as Marketing, which charges at the higher rate. Do not add promotional copy to utility or authentication templates.
 
@@ -160,12 +167,15 @@ Isolate all WhatsApp logic under `src/features/whatsapp/`:
 ```
 src/features/whatsapp/
 ├── whatsapp.service.js    ← All outbound API calls
-├── whatsapp.webhook.js    ← Inbound webhook handler
 └── templates/
-    ├── authentication.js  ← OTP template payload builder
-    ├── utility.js         ← Booking notification payload builders
-    └── marketing.js       ← Campaign payload builders
+    ├── authentication.js  ← OTP template payload builder  [LAUNCH]
+    └── utility.js         ← Booking confirmation, cancellation, credit payloads  [LAUNCH]
 ```
+
+> **Deferred — Not built at launch:**
+> - `whatsapp.webhook.js` — Inbound support webhook handler. The route is registered but returns 200 and logs only. Activate when support inbox is needed.
+> - `templates/marketing.js` — Flash sale and reward campaign templates. Added when the reward engine and marketing campaigns are activated.
+> - Scheduled reminder templates (T−24h, T−2h, review request) — Added when a job scheduler is in place.
 
 ### 5.2 Outbound API Call Structure
 
@@ -228,19 +238,11 @@ Content-Type: application/json
 }
 ```
 
-### 5.3 Inbound Webhook Handler
+### 5.3 Inbound Webhook Handler — Deferred
 
-**Route:** `POST /api/v1/webhooks/whatsapp` and `GET /api/v1/webhooks/whatsapp`
+> **Deferred Implementation.** The inbound webhook route (`POST /api/v1/webhooks/whatsapp`) is registered at launch and responds `200 OK` to pass Meta's verification, but does not process inbound messages. When support volume justifies a structured inbox, the handler is activated to extract sender phone and message text, log it, and route it to an admin notification channel. No new routes or schema changes are required at that point — only the handler logic is filled in.
 
-The GET route handles Meta's initial verification handshake:
-- Meta sends `hub.mode`, `hub.verify_token`, and `hub.challenge` as query parameters.
-- The endpoint must verify `hub.verify_token` matches the value stored in `.env`, then respond with `hub.challenge` as plain text and status 200.
-
-The POST route handles inbound events:
-- Extract the sender's phone number and message text from the payload.
-- Verify the request using Meta's **X-Hub-Signature-256 header** (HMAC-SHA256 of the raw request body using your App Secret). Reject any webhook request where the signature does not match.
-- Always respond with HTTP `200 OK` immediately. If your server returns non-200, Meta will retry delivery, causing duplicate processing.
-- Process asynchronously: acknowledge first, then enqueue for processing.
+The GET verification handshake (for Meta's initial setup) must still be implemented at launch to register the webhook URL in the Meta dashboard.
 
 ### 5.4 Environment Variables
 
@@ -253,9 +255,9 @@ WHATSAPP_APP_SECRET=
 GRAPH_API_VERSION=
 ```
 
-### 5.5 SMS Fallback
+### 5.5 SMS Fallback — Deferred
 
-For OTPs, if the WhatsApp delivery status webhook returns a failure or no `delivered` status is received within 30 seconds, the backend triggers an SMS fallback via a secondary provider (TRAI DLT-registered SMS route). This ensures OTP delivery even for users who do not have WhatsApp installed.
+> **Deferred Implementation.** WhatsApp penetration is very high among Indian smartphone users, and OTP delivery failures are expected to be rare. SMS fallback via a TRAI DLT-registered route is added if OTP delivery failures are reported in production. No architectural changes are required — the OTP service is extended with a secondary delivery attempt triggered on a WhatsApp delivery failure webhook.
 
 ---
 

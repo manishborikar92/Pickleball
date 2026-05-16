@@ -270,11 +270,11 @@ On desktop, the layout switches to a two-column arrangement: date/slot selection
 
 ---
 
-## 5. Real-Time Slot State Sync
+## 5. Real-Time Slot State Sync — Deferred
 
-When a user has the booking page open and another user locks a slot, the just-locked slot must visually transition to "Unavailable" without requiring a page refresh.
+> **Deferred Implementation.** At low concurrent user volume, the "slot was just taken" error returned when a user tries to lock an already-held slot is an acceptable experience. Real-time sync is added when concurrent booking contention becomes a noticeable problem.
 
-**Implementation:** Yet to be decided (Socket.io WebSockets or Server-Sent Events). The backend broadcasts a slot-state-change event whenever a booking enters `pending_payment`, `confirmed`, or `expired` state. The frontend subscribes to the current venue/date channel and updates the slot chip state on receiving the event.
+**When implemented:** The backend broadcasts a slot-state-change event whenever a booking enters `pending_payment`, `confirmed`, or `expired` state. The frontend subscribes to the current venue/date channel and updates the slot chip state without a page refresh. Implementation options: Socket.io WebSockets or Server-Sent Events.
 
 ---
 
@@ -282,14 +282,14 @@ When a user has the booking page open and another user locks a slot, the just-lo
 
 The admin dashboard is a separate authenticated web application (accessible via `/admin`). It is not part of the customer-facing Next.js pages.
 
-| Screen | Key Functions |
-|---|---|
-| **Overview / Home** | Live slot grid for today across all courts, pending bookings count, today's revenue |
-| **Schedule Manager** | Edit standard operating hours, create/edit/delete schedule exceptions |
-| **Pricing Manager** | Create/edit/deactivate pricing rules; manage coupons |
-| **Bookings** | List and filter all bookings; create walk-ins; trigger admin-block; initiate force-cancellation + credit issuance |
-| **Courts** | Edit court details, status (active/maintenance/offline), cover images |
-| **Users** | Look up user by phone; view booking history, wallet balance, reward instance history |
-| **Reward Engine** | Create/edit/activate/deactivate reward mechanisms; edit prize pool config; view instance list; manually expire or fulfill instances |
-| **Analytics** | Utilization heatmaps, revenue by court/period, coupon usage, review summaries, reward reveal rates and prize distribution |
-| **Settings** | Venue-level settings (rollover time, advance window, tax rate, notification templates) |
+| Screen | Status | Key Functions |
+|---|---|---|
+| **Overview / Home** | Launch | Live slot grid for today across all courts, pending bookings count, today's revenue |
+| **Bookings** | Launch | List and filter all bookings; create walk-ins; trigger admin-block; initiate force-cancellation + credit issuance |
+| **Schedule Manager** | Launch | Edit standard operating hours, create/edit/delete schedule exceptions |
+| **Pricing Manager** | Launch | Create/edit/deactivate pricing rules; manage coupons |
+| **Courts** | Launch | Edit court details, status (active/maintenance/offline), cover images |
+| **Users** | Launch | Look up user by phone; view booking history, wallet balance, reward instance history |
+| **Settings** | Launch | Venue-level settings (rollover time, advance window, tax rate) |
+| **Reward Engine** | **Deferred** | Create/edit/activate reward mechanisms; edit prize pool config; view instances — activate when reward engine is enabled |
+| **Analytics — Advanced** | **Deferred** | Utilization heatmaps, revenue trends, coupon usage, CLV reporting — built after 3+ months of data |

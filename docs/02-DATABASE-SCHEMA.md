@@ -66,8 +66,10 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `name` | VARCHAR(50) | UNIQUE, NOT NULL | e.g., "super_admin", "manager", "customer" |
+| `name` | VARCHAR(50) | UNIQUE, NOT NULL | Enum: `super_admin`, `manager`, `staff`, `customer` |
 | `description` | TEXT | | |
+
+**Seed roles at launch:** `super_admin` and `customer`. `manager` and `staff` are seeded but unused until the team grows.
 
 ---
 
@@ -76,8 +78,10 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `key` | VARCHAR(100) | UNIQUE, NOT NULL | e.g., "edit_pricing", "manage_bookings" |
+| `key` | VARCHAR(100) | UNIQUE, NOT NULL | e.g., `edit_pricing`, `manage_bookings` |
 | `description` | TEXT | | |
+
+**Seed permissions at launch:** `manage_courts`, `edit_pricing`, `edit_schedule`, `manage_bookings`, `issue_credits`, `view_analytics`, `walk_in_entry`, `view_own_bookings`.
 
 ---
 
@@ -89,19 +93,35 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `permission_id` | UUID | FK → permissions.id |
 | PK | | (role_id, permission_id) |
 
+**Seed assignments at launch:**
+
+| Permission | super_admin | manager | staff | customer |
+|---|:---:|:---:|:---:|:---:|
+| `manage_courts` | ✓ | | | |
+| `edit_pricing` | ✓ | ✓ | | |
+| `edit_schedule` | ✓ | ✓ | | |
+| `manage_bookings` | ✓ | ✓ | ✓ | |
+| `issue_credits` | ✓ | ✓ | | |
+| `view_analytics` | ✓ | ✓ | | |
+| `walk_in_entry` | ✓ | ✓ | ✓ | |
+| `view_own_bookings` | ✓ | ✓ | ✓ | ✓ |
+
 ---
 
 ### `venue_user_roles`
 
-Maps a user to a role within a specific venue. A user may have different roles at different venues.
+Maps a user to a role within a specific venue. A user may hold different roles at different venues, enabling contextual access control without duplicating user records.
 
-| Column | Type | Constraints |
-|---|---|---|
-| `user_id` | UUID | FK → users.id |
-| `venue_id` | UUID | FK → venues.id |
-| `role_id` | UUID | FK → roles.id |
-| `assigned_at` | TIMESTAMPTZ | NOT NULL, default now() |
-| PK | | (user_id, venue_id) |
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `user_id` | UUID | FK → users.id, NOT NULL | |
+| `venue_id` | UUID | FK → venues.id, NOT NULL | |
+| `role_id` | UUID | FK → roles.id, NOT NULL | |
+| `assigned_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `assigned_by` | UUID | FK → users.id | Super admin who made the assignment |
+| PK | | (user_id, venue_id) | One role per user per venue |
+
+> At launch with a single venue and a small operator team, all admin users are assigned `super_admin` at the single venue. The multi-venue operational UI for managing cross-venue assignments is deferred, but the schema supports it from day one.
 
 ---
 
@@ -237,7 +257,6 @@ Default hourly rate per court.
 | `discount_value` | NUMERIC(10,2) | NOT NULL | |
 | `max_uses_total` | INTEGER | | NULL = unlimited |
 | `max_uses_per_phone` | SMALLINT | default 1 | |
-| `is_stackable` | BOOLEAN | NOT NULL, default false | If false, overrides time modifiers instead of stacking |
 | `valid_from` | TIMESTAMPTZ | | |
 | `valid_until` | TIMESTAMPTZ | | |
 | `is_active` | BOOLEAN | NOT NULL, default true | |
@@ -489,3 +508,5 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 | `reward_mechanisms` | (venue_id, is_active, trigger_event) | B-tree | Fetch active mechanisms on booking confirmation |
 | `reward_instances` | (booking_id, mechanism_id) | Unique | Prevent duplicate issuance |
 | `reward_instances` | (user_id, status, expires_at) | B-tree | User's pending/revealed cards; expiry sweeper |
+
+> **Venue-Aware Architecture Note:** All core tables include a `venue_id` column. The single active venue is resolved server-side at launch — no multi-venue routing headers or UI are required. When a second venue is added, indexing and query scoping already support it without schema changes.

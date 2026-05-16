@@ -8,14 +8,15 @@ This document defines all business rules, state transitions, edge cases, and ope
 
 ### 1.1 Permission Model
 
-Routes are guarded by **permissions**, not role names. The backend checks `hasPermission('edit_pricing')`, not `isAdmin`. This allows roles to be reconfigured without touching code.
+Routes are guarded by **specific permissions**, not role names. The backend checks `requirePermission('edit_pricing')`, not `isAdmin`. This keeps the access control layer stable — roles can be reconfigured and new roles added without touching any route-level code.
 
-### 1.2 Default Permission Sets
+### 1.2 Roles & Permission Matrix
 
-| Permission Key | Super Admin | Manager | Staff | Customer |
+Four roles are seeded at launch. `super_admin` and `customer` are actively used from day one. `manager` and `staff` are seeded but unassigned until the team grows.
+
+| Permission | super_admin | manager | staff | customer |
 |---|:---:|:---:|:---:|:---:|
-| `manage_venues` | ✓ | | | |
-| `manage_courts` | ✓ | ✓ | | |
+| `manage_courts` | ✓ | | | |
 | `edit_pricing` | ✓ | ✓ | | |
 | `edit_schedule` | ✓ | ✓ | | |
 | `manage_bookings` | ✓ | ✓ | ✓ | |
@@ -24,15 +25,18 @@ Routes are guarded by **permissions**, not role names. The backend checks `hasPe
 | `walk_in_entry` | ✓ | ✓ | ✓ | |
 | `view_own_bookings` | ✓ | ✓ | ✓ | ✓ |
 
-### 1.3 Contextual Scoping
+### 1.3 Contextual Venue Scoping
 
-Roles are assigned per venue via the `venue_user_roles` table. A user can be a Manager at Venue A and only a Customer at Venue B. All API responses and admin queries are automatically filtered to the requesting user's venue scope.
+Roles are assigned per venue via `venue_user_roles`. At launch with a single venue, all operator accounts are assigned `super_admin` at that venue. The table structure is identical whether the platform has one venue or fifty — no schema change is needed when expanding.
+
+All admin API queries are filtered to the venue(s) the requesting user has a role assignment for. A user with no role assignment at a venue sees it as if it does not exist.
 
 ### 1.4 Session Security
 
-- Access tokens are JWTs with a **15-minute expiry**.
-- On admin revocation or logout, the token signature is written to a **Redis Denylist**.
-- Every sensitive API request checks the Denylist before processing. A listed token is immediately rejected regardless of its expiry time.
+- Access tokens are **JWTs with a 24-hour expiry** at launch.
+- On logout, the client discards the token. There is no server-side denylist at launch.
+
+> **Future Enhancement — Redis JWT Denylist:** When staff account management requires instant revocation (e.g., a departing employee), a Redis denylist is added. The token expiry returns to 15 minutes. Only the `requirePermission` middleware is updated — no route changes required.
 
 ---
 
@@ -80,8 +84,8 @@ The following steps are applied in strict order:
 3. **Court Modifiers** — Apply active `pricing_rules` of type `court_modifier`. Example: Indoor courts +10%.
 4. **Coupon Application** — If a valid coupon code is provided:
    - Check code is active, within valid date range, has not exceeded `max_uses_total`, and has not exceeded `max_uses_per_phone` for the user's phone.
-   - If `is_stackable = false`: replace all modifiers above with the coupon value (coupon discount is applied directly to base price).
-   - If `is_stackable = true`: apply coupon discount on top of the modified price.
+   - Coupon discount is applied on top of any time/court modifiers already applied.
+   - Only one coupon may be applied per booking.
 5. **Wallet Credits** — Deduct up to the available `users.wallet_credits` balance. Credits cannot exceed the total payable amount.
 6. **Tax** — Applied as a percentage on the final discounted amount. Stored in the booking as `tax_amount`.
 
@@ -272,26 +276,33 @@ When the **business** must cancel (flood, power outage, court damage), the Admin
 
 ## 7. Automated Notification Matrix
 
-All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. An SMS fallback is triggered if the WhatsApp message is not delivered within a configurable timeout (e.g., 30 seconds for OTPs). All outbound messages use pre-approved Meta templates. Inbound support replies are free-form messages sent within the 24-hour Customer Service Window (CSW).
+All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. All outbound messages use pre-approved Meta templates. See `06-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
 
-See `06-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
+**Built at launch:**
 
-| Trigger | Recipient | WhatsApp Template Category | Charged? | Notes |
-|---|---|---|---|---|
-| OTP Request | User | **Authentication** | Yes, ~₹0.115–0.145 | Must use Meta's authentication template format |
-| Booking Confirmed (T=0) | User | **Utility** | Free if within CSW; else ~₹0.16 | Triggered after payment webhook; user likely active |
-| Reminder (T−24 hours) | User | **Utility** | Yes, ~₹0.16 | Outside CSW; charged per message |
-| Reminder (T−2 hours) | User | **Utility** | Yes, ~₹0.16 | Outside CSW; charged per message |
-| Phantom Booking Apology | User | **Utility** | Free if within CSW; else ~₹0.16 | Transactional/account update |
-| Force Majeure Cancellation | User | **Utility** | Free if within CSW; else ~₹0.16 | Transactional/account update |
-| Wallet Credit Issued | User | **Utility** | Free if within CSW; else ~₹0.16 | Account notification |
-| Review Request (post-session) | User | **Utility** | Yes, ~₹0.16 | Sent after slot end time; always outside CSW |
-| Flash Sale / Loyalty Promo | User | **Marketing** | Yes, ~₹0.86 | Requires explicit opt-in from user |
-| Stale Payment Alert | Admin | Internal (email/dashboard) | N/A | Not sent via WhatsApp |
-| New Walk-in Entry | Admin | Internal (dashboard) | N/A | Not sent via WhatsApp |
+| Trigger | Recipient | WhatsApp Template Category | Charged? |
+|---|---|---|---|
+| OTP Request | User | **Authentication** | Yes, ~₹0.115–0.145 |
+| Booking Confirmed (T=0) | User | **Utility** | Free if within CSW; else ~₹0.16 |
+| Force Majeure Cancellation | User | **Utility** | Free if within CSW; else ~₹0.16 |
+| Phantom Booking Apology | User | **Utility** | Free if within CSW; else ~₹0.16 |
+| Wallet Credit Issued | User | **Utility** | Free if within CSW; else ~₹0.16 |
 
 > **18% GST** applies on top of all WhatsApp template message charges billed in India.
-> All rupee rates above are Meta's Tier 1 base rates for India (per message, as of Jan 2026). Rates reset monthly; check Meta's official rate card for the latest figures.
+
+**Deferred — not built at launch:**
+
+| Trigger | Status | Notes |
+|---|---|---|
+| Reminder (T−24 hours) | **Deferred** | Requires a reliable job scheduler with per-booking scheduled jobs |
+| Reminder (T−2 hours) | **Deferred** | Same dependency as T−24h |
+| Review Request (post-session) | **Deferred** | Triggered after slot end time; same scheduler dependency |
+| Inbound support messages | **Deferred** | Webhook handler and support inbox not built at launch |
+| Flash Sale / Loyalty Promo | **Deferred** | No active reward engine or marketing campaigns at launch |
+
+> **Future Enhancement — Scheduled Reminders:** When a job scheduler (BullMQ or pg-boss) is introduced for the slot expiry sweeper's notification needs, T−24h and T−2h reminders are added as the first scheduled notification jobs. No schema changes are needed — `bookings.slot_date` and `bookings.slot_start_time` provide all the timing data required.
+
+> **Future Enhancement — Inbound Support:** When support volume justifies a structured inbox, the WhatsApp inbound webhook handler is activated and routed to an admin notification channel. The webhook route already exists in the architecture and only needs to be enabled in the Meta dashboard.
 
 ---
 
@@ -323,28 +334,38 @@ Admins can:
 
 Admins can add, edit, deactivate, or reorder `pricing_rules` and `coupons` through the dashboard. Changes take effect on the next booking attempt (not retroactively for confirmed bookings).
 
-### 9.3 Business Intelligence (Future)
+### 9.3 Basic Admin Reporting (Launch)
 
-The relational structure supports future reporting:
+The admin dashboard surfaces the following at launch:
 
-- **Utilization rate** per court per hour block — identifies consistently empty slots to prompt Flash Sale pricing rules.
-- **Peak demand signals** — if a specific slot is booked within 5 minutes of opening for 4 consecutive weeks, the system flags it for price increase recommendation.
-- **Customer Lifetime Value** — ranked by total confirmed booking value per verified phone number; enables early-access booking windows for top-5% players.
+- Bookings list: filterable by date, court, status.
+- Today's revenue total and booking count.
+- User lookup by phone: booking history, wallet balance.
+
+### 9.4 Business Intelligence — Deferred
+
+> **Future Enhancement — Advanced Analytics:** The relational schema is structured to support the following once sufficient booking history exists (typically 3+ months):
+> - Court utilization rate by hour and day — identifying empty slots for targeted Flash Sale pricing rules.
+> - Peak demand signals — flagging slots booked within minutes of opening consistently, prompting a price increase recommendation.
+> - Customer Lifetime Value (CLV) — ranked by confirmed booking value per verified phone number, enabling early-access booking windows for top players.
+>
+> This reporting layer is built on top of the existing schema with no structural changes. PostHog analytics already captures the event data needed to begin identifying patterns from day one.
 
 ---
 
 ## 10. Review System
 
-A review request is triggered automatically via WhatsApp **after a booking's slot end time has passed** (i.e., the session is over). The user taps a link to open the review screen.
-
 The review screen allows:
 - Star rating (1–5), required.
-- Free-text comment (optional).
-- Court selfie photo upload to Cloudflare R2 (optional).
+- Free-text comment, optional.
+- Court selfie photo upload, **deferred** — the `photo_url` column exists in the schema; the upload feature and Cloudflare R2 integration for reviews is added post-launch.
 
 One review is permitted per booking. Admin can suppress a review from public display (`is_published = false`) but cannot edit the content.
 
+> **Note on review triggers:** At launch, review links are sent manually or surfaced in the My Bookings screen after a session ends. Automated WhatsApp review request messages are deferred along with the scheduled notification system.
+
 ---
+
 
 ## 11. Reward Engine
 

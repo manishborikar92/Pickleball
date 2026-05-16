@@ -11,21 +11,25 @@ All endpoints are served under `/api/v1`. The backend is the single authority on
 | Header | Required On | Value |
 |---|---|---|
 | `Authorization` | Protected routes | `Bearer <access_token>` |
-| `x-venue-id` | All venue-scoped routes | UUID of the venue |
 | `Content-Type` | POST/PATCH/PUT | `application/json` |
 
 ### Token Lifecycle
 
-- Access token expires in **15 minutes**.
-- On expiry, the client uses a refresh token to obtain a new access token.
-- On admin logout or revocation, the access token is added to the Redis Denylist and immediately invalidated.
+- Access token expires in **24 hours** at launch.
+- On logout, the client discards the token locally. No server-side denylist at launch.
+
+> **Future Enhancement — Redis JWT Denylist:** When staff accounts require instant revocation, a Redis denylist is introduced and JWT expiry returns to 15 minutes. Only the auth middleware changes — no route updates required.
+
+### Permission Guards
+
+All protected routes use a `requirePermission('capability_key')` middleware that resolves the requesting user's role at the current venue via `venue_user_roles`, then checks `role_permissions` for the required capability.
 
 ### Permission Errors
 
 | Status | Meaning |
 |---|---|
 | `401 Unauthorized` | Missing or invalid token |
-| `403 Forbidden` | Valid token but insufficient permissions for this action |
+| `403 Forbidden` | Valid token but the user's role does not have the required permission |
 
 ---
 
@@ -87,7 +91,7 @@ Verifies the OTP and returns a JWT pair.
 
 ### `POST /auth/logout`
 
-*Protected.* Adds the current access token to the Redis Denylist.
+*Protected.* Client discards the token. At launch this is a client-side operation only — no server-side token invalidation. When the Redis denylist is added, this endpoint writes the token to Redis.
 
 **Response `204 No Content`**
 
@@ -491,7 +495,7 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ## 8. Admin Endpoints
 
-All admin endpoints require a valid JWT with the corresponding permission.
+All admin endpoints require a valid JWT. The `Permission` column specifies the exact capability checked by `requirePermission()` middleware, which resolves through `venue_user_roles` → `roles` → `role_permissions` at request time.
 
 ### Schedule Management
 

@@ -147,8 +147,8 @@ posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
   api_host: '/ingest',
   defaults: '2025-05-24',
   persistence: 'memory',
-  session_recording: { maskAllInputs: true },
   autocapture: true,
+  // Session replay is deferred — enable when traffic warrants it
 })
 ```
 
@@ -324,13 +324,16 @@ Using PostHog's built-in web analytics:
 - City and device breakdown
 - Bounce rate on the booking page
 
-### 6.3 Slot & Revenue Intelligence Dashboard
+### 6.3 Slot & Revenue Intelligence Dashboard — Deferred
 
-- Most-selected courts and time slots
-- Average booking value over time
-- Coupon usage rate and redemption breakdown
-- Wallet credit issuance frequency (indicator of operational issues)
-- `phantom_booking_detected` frequency (indicator of payment gateway latency)
+> **Deferred Implementation.** Build this dashboard once 3+ months of booking data exists to make the signals meaningful. At launch, the basic booking list and daily revenue in the admin panel is sufficient.
+
+When built:
+- Most-selected courts and time slots.
+- Average booking value over time.
+- Coupon usage rate and redemption breakdown.
+- Wallet credit issuance frequency (indicator of operational issues).
+- `phantom_booking_detected` frequency (indicator of payment gateway latency).
 
 ### 6.4 Error & Reliability Dashboard
 
@@ -341,28 +344,26 @@ Using PostHog's built-in web analytics:
 
 ---
 
-## 7. Session Replay Strategy
+## 7. Session Replay — Deferred
 
-Session replay is the most powerful tool for understanding *why* users drop off at a funnel step. Use it deliberately, not exhaustively.
+> **Deferred Implementation.** Session replay is not configured at launch. At low traffic volumes there are not enough sessions to make replay review a productive use of time, and the masking configuration requires careful setup to avoid capturing PII. Enable session replay when weekly booking sessions consistently exceed ~100, and when there is dedicated time to review recordings and act on the findings.
 
-**Sampling rule:** Record 30–50% of sessions by default. Increase to 100% for the booking page specifically, as this is the highest-value flow.
+**When session replay is activated**, configure sampling and masking as follows:
 
 ```javascript
 posthog.init(key, {
   session_recording: {
     maskAllInputs: true,
-    sampleRate: 0.4,                          // 40% of all sessions
+    sampleRate: 0.4,
   }
 })
 ```
 
-**Most valuable replay use cases for this platform:**
+**Most valuable replay use cases when enabled:**
 - Sessions where `slot_selected` fired but `booking_confirmed` did not — understanding abandonment.
 - Sessions where `otp_failed` fired — understanding OTP UX friction.
-- Sessions containing a JavaScript error — seeing exactly what the user experienced.
-- Mobile sessions where the date/slot selector is used — validating touch interaction quality.
-
-**Review schedule:** Watch 5 targeted session replays each week, filtered by funnel drop-offs. This is more valuable than reviewing arbitrary sessions.
+- Sessions containing a JavaScript error.
+- Mobile sessions with the date/slot selector — validating touch interaction.
 
 ---
 
@@ -410,13 +411,18 @@ Before launching to production:
 
 - [ ] PostHog initialized with `persistence: 'memory'` (cookieless)
 - [ ] Reverse proxy configured in `next.config.js`
-- [ ] All input fields masked in session replay config
 - [ ] `posthog.identify()` called after OTP verification
 - [ ] `posthog.reset()` called on logout
 - [ ] All 14 funnel events listed in Section 5.1 instrumented and tested in staging
 - [ ] Billing caps set to $0 per product (alert only)
-- [ ] Booking funnel dashboard created
+- [ ] Booking funnel dashboard created (Section 6.1)
+- [ ] Traffic & acquisition dashboard created (Section 6.2)
+- [ ] Error autocapture enabled in PostHog project settings
 - [ ] Privacy Policy updated to disclose PostHog usage
 - [ ] Development and staging PostHog projects are separate from production
 - [ ] Server-side PostHog client (`posthog-node`) initialized in Express.js for webhook events
-- [ ] Error autocapture enabled in PostHog project settings
+
+**Deferred — not required at launch:**
+- [ ] ~~Session replay configuration and masking~~ → Enable when weekly sessions exceed ~100
+- [ ] ~~Slot & Revenue Intelligence dashboard~~ → Build after 3+ months of booking data
+- [ ] ~~All input fields masked in session replay config~~ → Part of session replay activation
