@@ -4,7 +4,7 @@
 **Platform:** Baseline Arena — Pickleball Booking & Management
 **Max Capacity:** 900 bookings / month
 **Last Updated:** May 2026
-**Note:** Hetzner revised its pricing on 1 April 2026. All figures below reflect the updated rates. EUR/INR rate used: ₹112 per €1.
+**Note:** Hetzner revised its pricing on 1 April 2026. All figures reflect updated rates. EUR/INR rate used: ₹112 per €1.
 
 ---
 
@@ -12,12 +12,12 @@
 
 | Cost Type | Monthly Cost |
 |---|---|
-| One-time Setup | ₹2,617 – ₹3,117 *(paid at launch)* |
-| VM Hosting (CX23 + backup) | ~₹536/month |
+| One-time Setup | ₹10,117 *(paid at launch)* |
+| VM Hosting (CX23 + backup) | ~₹537/month |
 | WhatsApp API (base) | ~₹305/month |
 | WhatsApp API (with marketing) | ~₹407/month |
-| **Total (without marketing)** | **~₹841/month** |
-| **Total (with marketing, 100 users)** | **~₹943/month** |
+| **Total (without marketing)** | **~₹842/month** |
+| **Total (with marketing, 100 users)** | **~₹944/month** |
 
 ---
 
@@ -28,11 +28,11 @@
 | Item | Cost | Notes |
 |---|---|---|
 | Domain Name | ₹117 | GoDaddy — ₹99 + 18% GST (Year 1 rate) |
-| Development Fee | ₹2,500 – ₹3,000 | Agentic AI |
+| Development Fee | ₹10,000 | Agentic AI |
 | Meta Business Verification | ₹0 | Requires GST / Udyam documents |
 | Payment Gateway (PhonePe) | ₹0 | UPI-only promotional offer |
 | SSL Certificate | ₹0 | Free via Let's Encrypt + Certbot |
-| **Total** | **₹2,617 – ₹3,117** | Paid once at launch |
+| **Total** | **₹10,117** | Paid once at launch |
 
 ---
 
@@ -50,20 +50,17 @@
 | Automated Backups (+20%) | €0.80/month ≈ **₹90/month** |
 | **Total Hosting** | **~₹537/month** |
 
-> Backend (Node.js) and PostgreSQL database run on the **same VM**. No separate database cost.
-> x86 architecture ensures full compatibility with all Node.js packages, PostgreSQL, PM2, and Nginx.
+> Backend (Node.js) and PostgreSQL database run on the **same VM** via Dokploy. No separate database cost.
 
 **All other infrastructure services are free:**
 
 | Service | Provider | Cost |
 |---|---|---|
-| Frontend Hosting | Vercel (free tier) | ₹0 |
+| Frontend Hosting | Cloudflare Pages (free, served from Indian edge) | ₹0 |
 | File & Image Storage | Cloudflare R2 (free: 10 GB / 10M reads) | ₹0 |
 | DNS + CDN + DDoS Protection | Cloudflare (free tier) | ₹0 |
 | Analytics & Error Monitoring | PostHog / Sentry (free tier) | ₹0 |
-| SSL Certificate | Let's Encrypt via Certbot | ₹0 |
-| Process Manager | PM2 | ₹0 |
-| Reverse Proxy | Nginx | ₹0 |
+| Deployment & Server Management | Dokploy (free, self-hosted) | ₹0 |
 
 ---
 
@@ -135,12 +132,12 @@ All rates include **18% GST**. Estimates based on **900 bookings/month (maximum 
 
 | Component | Cost |
 |---|---|
-| One-time Setup | ₹3,117 |
+| One-time Setup | ₹10,117 |
 | Hosting + Backups — 12 months (~₹537 × 12) | ~₹6,444 |
 | WhatsApp Base — 12 months (~₹305 × 12) | ~₹3,660 |
-| **Year 1 Total (without marketing)** | **~₹13,221** |
+| **Year 1 Total (without marketing)** | **~₹20,221** |
 | Marketing (100 users/month × 12) | +~₹1,224 |
-| **Year 1 Total (with marketing)** | **~₹14,445** |
+| **Year 1 Total (with marketing)** | **~₹21,445** |
 
 ---
 
@@ -157,17 +154,44 @@ All rates include **18% GST**. Estimates based on **900 bookings/month (maximum 
 
 ---
 
+## Part D — Revenue & ROI Projections
+
+Assuming a **booking price of ₹400 per session**.
+
+### D1. Annual Revenue vs. Platform Cost
+
+| Bookings / Month | Monthly Revenue | Annual Revenue | Year 1 Platform Cost | Year 1 Net Profit | Cost as % of Revenue |
+|---|---|---|---|---|---|
+| **200** | ₹80,000 | ₹9,60,000 | ~₹20,221 | **~₹9,39,779** | **2.1%** |
+| **500** | ₹2,00,000 | ₹24,00,000 | ~₹20,221 | **~₹23,79,779** | **0.8%** |
+| **900** | ₹3,60,000 | ₹43,20,000 | ~₹20,221 | **~₹42,99,779** | **0.5%** |
+
+> From Year 2 onwards, platform cost drops to ~₹11,165/year, making the net profit even higher.
+
+---
+
+### D2. Key Takeaways
+
+- At just **200 bookings/month** — the conservative starting point — the platform generates **₹9.6 lakhs annually** against a total platform cost of ~₹20,221. The entire platform pays for itself in under **8 days of revenue**.
+- At **900 bookings/month** — maximum capacity — annual revenue exceeds **₹43 lakhs**, with the platform cost representing just **0.5% of total revenue**.
+- The **development fee of ₹10,000** is recovered in full within the **first 3 days** of operation at 200 bookings/month.
+- Even the highest possible annual cost scenario (~₹21,445 with marketing) is less than **3 days of revenue** at full capacity.
+
+---
+
 ## Key Assumptions
 
 | Parameter | Value |
 |---|---|
 | Max bookings per month | 900 |
+| Booking price (for ROI projections) | ₹400 per session |
 | OTP messages per booking | ~1.5 (includes re-sends) |
 | Confirmation messages per booking | 1 |
 | Server | Hetzner CX23 — 2 vCPU, 4 GB RAM, 40 GB SSD |
 | Hosting cost | €3.99/month (post April 2026 pricing) |
 | EUR to INR rate | ₹112 per €1 (May 2026) |
 | Backups | Hetzner automated backups (+20% = ~₹90/month) |
-| Backend + Database | Hosted on the same VM |
+| Backend + Database | Hosted on the same VM via Dokploy |
+| Frontend | Cloudflare Pages — free, Indian edge delivery |
 | Payment gateway fee | ₹0 (PhonePe UPI promo) |
 | Domain renewal (Year 2+) | ~₹1,061/year |

@@ -1,8 +1,9 @@
 # Baseline Arena — Infrastructure Setup Guide
 
-**Prepared by:** Manish Borikar (Agentic AI)
+**Prepared by:** Manish Borikar
 **Purpose:** Step-by-step guide to purchase and configure all services for the Baseline Arena platform.
-**Total estimated time:** 3–4 hours (first-time setup)
+**Deployment tool:** Dokploy (server management) + Cloudflare Pages (frontend)
+**Total estimated time:** 2–3 hours (first-time setup)
 
 ---
 
@@ -11,11 +12,30 @@
 | Service | Purpose | Cost | Official Link |
 |---|---|---|---|
 | GoDaddy | Domain name | ₹117/year | https://www.godaddy.com |
-| Hetzner Cloud | VM (backend + database) | ~₹537/month | https://www.hetzner.com/cloud |
-| Cloudflare | DNS, CDN, DDoS, R2 storage | Free | https://www.cloudflare.com |
-| Vercel | Frontend hosting | Free | https://vercel.com |
+| Hetzner Cloud | VM — backend + database only | ~₹537/month | https://www.hetzner.com/cloud |
+| Dokploy | Server deployment & management | Free | https://dokploy.com |
+| Cloudflare | DNS, CDN, DDoS, R2 storage, frontend hosting | Free | https://www.cloudflare.com |
 | Meta Cloud API | WhatsApp messaging | Pay-per-use | https://developers.facebook.com/docs/whatsapp/cloud-api |
 | PhonePe PG | Payment gateway | Free (UPI promo) | https://developer.phonepe.com |
+
+> **Frontend note:** The frontend is hosted on **Cloudflare Pages** — not on the Hetzner server. This serves assets from Cloudflare's Indian edge nodes (Mumbai, Chennai), making the frontend near-instant for Indian users, while keeping the server fully dedicated to the API and database.
+
+---
+
+## Architecture Overview
+
+```
+User (India)
+    │
+    ├──► Cloudflare Pages (Frontend — served from Indian edge)
+    │
+    └──► Cloudflare CDN/Proxy
+              │
+              └──► Hetzner CX23, Germany
+                        ├── Dokploy
+                        ├── Node.js API
+                        └── PostgreSQL
+```
 
 ---
 
@@ -25,11 +45,10 @@
 **Cost:** ₹117 (₹99 + 18% GST) — Year 1 promotional rate
 
 1. Go to https://www.godaddy.com
-2. Search for your domain name (e.g., `baselinearena.in` or `.com`)
-3. Add to cart and proceed to checkout
-4. Create a GoDaddy account or log in
-5. Complete payment — **do not purchase any extras** (email, privacy protection, etc. — not needed)
-6. Once purchased, go to **My Products → DNS** — you will update DNS records here in Step 3
+2. Search for your domain (e.g., `baselinearena.in` or `.com`)
+3. Add to cart → checkout — **skip all extras** (email, privacy, etc.)
+4. Complete payment
+5. After purchase, go to **My Products → DNS** — you'll update nameservers in Step 3
 
 > **Tip:** `.in` domains are cheaper and work well for an India-based platform.
 
@@ -43,9 +62,8 @@
 
 ### 2.1 Create Account
 1. Go to https://www.hetzner.com/cloud and click **Get Started**
-2. Sign up with your email address
-3. Verify your email
-4. Add a payment method (credit/debit card — Hetzner accepts international cards)
+2. Sign up and verify your email
+3. Add a payment method (international credit/debit card accepted)
 
 ### 2.2 Create a Project
 1. In the Hetzner Cloud Console, click **+ New Project**
@@ -57,28 +75,29 @@
 
 | Setting | Selection |
 |---|---|
-| **Location** | Nuremberg or Helsinki (Germany/Finland) |
+| **Location** | Nuremberg or Helsinki (Germany / Finland) |
 | **Image** | Ubuntu 24.04 LTS |
-| **Type** | Shared vCPU → **x86** → **CX23** (€3.99/month) |
-| **Networking** | Enable both IPv4 and IPv6 |
-| **SSH Keys** | Add your SSH public key (recommended) |
-| **Backups** | ✅ Enable Automated Backups (+20% = ~₹90/month) |
+| **Type** | Shared vCPU → x86 → **CX23** (€3.99/month) |
+| **Networking** | Enable IPv4 and IPv6 |
+| **SSH Keys** | Add your SSH public key |
+| **Backups** | ✅ Enable Automated Backups (+20% ≈ ₹90/month) |
 | **Name** | `baseline-arena-server` |
 
 3. Click **Create & Buy Now**
-4. Note down the **server's public IP address** — you will need it in the next steps
+4. Note down the server's **public IP address**
 
 > **Docs:** https://docs.hetzner.com/cloud/servers/getting-started/creating-a-server
 
 ### 2.4 Set Up a Firewall
-1. In the left panel, go to **Firewalls → Create Firewall**
-2. Allow the following inbound rules:
+1. Go to **Firewalls → Create Firewall** in the left panel
+2. Add the following inbound rules:
 
-| Protocol | Port | Description |
+| Protocol | Port | Purpose |
 |---|---|---|
 | TCP | 22 | SSH |
 | TCP | 80 | HTTP |
 | TCP | 443 | HTTPS |
+| TCP | 3000 | Dokploy dashboard (restrict after setup) |
 
 3. Apply the firewall to your server
 
@@ -86,7 +105,7 @@
 
 ---
 
-## Step 3 — Set Up Cloudflare (DNS, CDN & Storage)
+## Step 3 — Set Up Cloudflare (DNS, CDN, Storage & Frontend)
 
 **Link:** https://www.cloudflare.com
 **Cost:** Free
@@ -97,185 +116,182 @@
 
 ### 3.2 Add Your Domain to Cloudflare
 1. In the Cloudflare dashboard, click **Add a Site**
-2. Enter your domain name (e.g., `baselinearena.in`)
-3. Select the **Free plan**
-4. Cloudflare will scan existing DNS records automatically
-5. Add an **A record** pointing to your Hetzner server IP:
+2. Enter your domain and select the **Free plan**
+3. Add the following DNS records:
 
-| Type | Name | Content | Proxy |
-|---|---|---|---|
-| A | `@` | `<your Hetzner IP>` | Proxied (orange cloud) |
-| A | `www` | `<your Hetzner IP>` | Proxied (orange cloud) |
-| A | `api` | `<your Hetzner IP>` | Proxied (orange cloud) |
+| Type | Name | Content | Proxy | Purpose |
+|---|---|---|---|---|
+| A | `api` | `<your Hetzner IP>` | Proxied ☁️ | Backend API |
 
-6. Cloudflare will give you **two nameservers** (e.g., `ns1.cloudflare.com`, `ns2.cloudflare.com`)
-7. Go back to GoDaddy → **My Products → DNS → Nameservers → Change**
-8. Enter Cloudflare's nameservers and save
-9. DNS propagation takes **5–30 minutes**
+> The root domain (`@`) and `www` will be handled by Cloudflare Pages in Step 6 — do not add A records for them here.
+
+4. Cloudflare will give you **two nameservers**
+5. Go to GoDaddy → **My Products → DNS → Nameservers → Change** → enter Cloudflare's nameservers
+6. DNS propagation takes 5–30 minutes
 
 > **Docs:** https://developers.cloudflare.com/dns/zone-setups/full-setup/setup
 
 ### 3.3 Set Up Cloudflare R2 (File Storage)
 1. In Cloudflare dashboard, go to **R2 Object Storage → Create bucket**
-2. Name the bucket `baseline-arena-uploads`
+2. Name it `baseline-arena-uploads`
 3. Go to **R2 → Manage R2 API Tokens → Create API Token**
-4. Save the **Access Key ID** and **Secret Access Key** — you will add them to your app's environment variables
+4. Save the **Access Key ID** and **Secret Access Key** for environment variables
 
 > **Docs:** https://developers.cloudflare.com/r2/get-started
 
 ---
 
-## Step 4 — Configure the Server
+## Step 4 — Install Dokploy on Your Server
 
-SSH into your server:
+**Docs:** https://docs.dokploy.com/docs/core
+**Cost:** Free
+
+### 4.1 SSH Into Your Server
 ```bash
 ssh root@<your-hetzner-ip>
 ```
 
-### 4.1 Install Node.js (via NodeSource)
+### 4.2 Run the Dokploy Installer
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt-get install -y nodejs
-node -v   # should show v20.x
-```
-> **Docs:** https://github.com/nodesource/distributions
-
-### 4.2 Install PostgreSQL
-```bash
-apt install -y postgresql postgresql-contrib
-systemctl enable postgresql
-systemctl start postgresql
+curl -sSL https://dokploy.com/install.sh | sh
 ```
 
-Create the database and user:
-```bash
-sudo -u postgres psql
-CREATE DATABASE baseline_arena;
-CREATE USER arena_user WITH PASSWORD 'your_strong_password';
-GRANT ALL PRIVILEGES ON DATABASE baseline_arena TO arena_user;
-\q
-```
-> **Docs:** https://www.postgresql.org/docs/current/tutorial-install.html
+This single command automatically:
+- Installs Docker
+- Sets up Traefik (reverse proxy + automatic SSL)
+- Starts the Dokploy dashboard on port 3000
 
-### 4.3 Install Nginx (Reverse Proxy)
-```bash
-apt install -y nginx
-systemctl enable nginx
-systemctl start nginx
-```
+### 4.3 Access the Dashboard
+1. Open: `http://<your-hetzner-ip>:3000`
+2. Create your **admin account** (email + password)
+3. Save these credentials securely
 
-Create a config file for your app:
-```bash
-nano /etc/nginx/sites-available/baseline-arena
-```
-
-Paste the following:
-```nginx
-server {
-    listen 80;
-    server_name api.baselinearena.in;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-Enable and reload:
-```bash
-ln -s /etc/nginx/sites-available/baseline-arena /etc/nginx/sites-enabled/
-nginx -t
-systemctl reload nginx
-```
-> **Docs:** https://nginx.org/en/docs/beginners_guide.html
-
-### 4.4 Install SSL Certificate (Let's Encrypt)
-```bash
-apt install -y certbot python3-certbot-nginx
-certbot --nginx -d api.baselinearena.in
-```
-Follow the prompts. Certbot auto-renews the certificate every 90 days.
-
-> **Docs:** https://certbot.eff.org/instructions
-
-### 4.5 Install PM2 (Process Manager)
-```bash
-npm install -g pm2
-pm2 start app.js --name "baseline-arena"
-pm2 save
-pm2 startup   # follow the command it outputs to auto-start on reboot
-```
-> **Docs:** https://pm2.keymetrics.io/docs/usage/quick-start
+> **Docs:** https://docs.dokploy.com/docs/core/get-started/installation
 
 ---
 
-## Step 5 — Deploy Frontend on Vercel
+## Step 5 — Deploy Backend & Database via Dokploy
 
-**Link:** https://vercel.com
-**Cost:** Free
+### 5.1 Connect GitHub
+1. In Dokploy, go to **Settings → Git Providers → Add GitHub**
+2. Complete the OAuth flow to connect your GitHub account
 
-1. Go to https://vercel.com and sign up with your GitHub account
-2. Click **Add New → Project**
-3. Import your frontend repository from GitHub
-4. Set your **Environment Variables** (API URL, etc.) under **Project Settings → Environment Variables**
-5. Click **Deploy**
-6. Go to **Project Settings → Domains** and add your custom domain (e.g., `baselinearena.in`)
-7. Vercel will provide DNS records — add them in Cloudflare
+> **Docs:** https://docs.dokploy.com/docs/core/git-providers/github
 
-> **Docs:** https://vercel.com/docs/getting-started-with-vercel
+### 5.2 Create a Project
+1. Go to **Projects → Create Project**
+2. Name it `Baseline Arena`
+
+### 5.3 Deploy the Backend (Node.js API)
+1. Inside the project, click **Create Service → Application**
+2. Select **GitHub** and pick your backend repository
+3. Dokploy auto-detects Node.js — confirm build settings
+4. Set the **port** your app listens on (e.g., `3000`)
+5. Under **Environment Variables**, add all required variables (see checklist below)
+6. Under **Domains**, add `api.baselinearena.in` — SSL is issued automatically
+7. Click **Deploy**
+
+> **Docs:** https://docs.dokploy.com/docs/core/applications/overview
+
+### 5.4 Create the PostgreSQL Database
+1. Inside the project, click **Create Service → Database → PostgreSQL**
+2. Set a database name, username, and strong password
+3. Click **Create**
+4. Copy the **internal connection string** and add it as `DATABASE_URL` in your app's environment variables
+
+> **Docs:** https://docs.dokploy.com/docs/core/databases/postgresql
+
+### 5.5 Enable Database Backups
+1. In the database service, go to **Backups**
+2. Enable and schedule daily backups (e.g., 2 AM)
+3. Optionally connect Cloudflare R2 as the backup destination
+
+> **Docs:** https://docs.dokploy.com/docs/core/databases/backups
+
+### 5.6 Set Up Auto-Deploy from GitHub
+1. In your app service, go to **Deployments → Webhooks** and copy the webhook URL
+2. In GitHub, go to your repo → **Settings → Webhooks → Add webhook** → paste the URL
+3. Every push to your main branch now triggers an automatic deployment
 
 ---
 
-## Step 6 — Set Up WhatsApp Cloud API (Meta)
+## Step 6 — Deploy Frontend on Cloudflare Pages
+
+**Link:** https://pages.cloudflare.com
+**Docs:** https://developers.cloudflare.com/pages
+**Cost:** Free (unlimited bandwidth, global CDN including Indian edge nodes)
+
+### 6.1 Connect Your Repository
+1. In Cloudflare dashboard, go to **Workers & Pages → Create → Pages**
+2. Click **Connect to Git** and authorize Cloudflare to access your GitHub account
+3. Select your **frontend repository**
+
+### 6.2 Configure Build Settings
+Set the following based on your frontend framework:
+
+| Framework | Build Command | Output Directory |
+|---|---|---|
+| React (Vite) | `npm run build` | `dist` |
+| Next.js (static) | `npm run build` | `out` |
+| React (CRA) | `npm run build` | `build` |
+
+### 6.3 Add Environment Variables
+1. Under **Environment Variables**, add your API URL and any other required variables:
+   - `VITE_API_URL=https://api.baselinearena.in` (or equivalent for your framework)
+2. Click **Save and Deploy**
+
+### 6.4 Connect Your Custom Domain
+1. After deployment, go to **Custom Domains → Set up a custom domain**
+2. Enter your domain (e.g., `baselinearena.in`)
+3. Cloudflare Pages automatically configures the DNS — no manual records needed since your domain is already on Cloudflare
+4. SSL is issued and managed automatically
+
+> **Docs:** https://developers.cloudflare.com/pages/configuration/custom-domains
+
+---
+
+## Step 7 — Set Up WhatsApp Cloud API (Meta)
 
 **Link:** https://developers.facebook.com/docs/whatsapp/cloud-api/get-started
 **Cost:** Pay-per-message (see Costing Analysis)
 
-1. Go to https://developers.facebook.com and log in with your Facebook/Meta account
-2. Click **My Apps → Create App → Business**
-3. Add the **WhatsApp** product to your app
-4. Go to **WhatsApp → Getting Started** — Meta provides a free test number to start
-5. For production, complete **Meta Business Verification:**
+1. Go to https://developers.facebook.com → **My Apps → Create App → Business**
+2. Add the **WhatsApp** product to your app
+3. Use the free test number under **WhatsApp → Getting Started** for development
+4. For production, complete **Meta Business Verification:**
    - Go to https://business.facebook.com → **Business Settings → Security Centre**
    - Submit GST certificate or Udyam registration document
-6. Once verified, add a real phone number under **WhatsApp → Phone Numbers → Add phone number**
-7. Set up a **Meta Pay / billing account** to add a prepaid balance for message charges
-8. Note your **Phone Number ID** and **Access Token** — add these to your app's environment variables
+5. Once verified, go to **WhatsApp → Phone Numbers → Add phone number**
+6. Set up a **Meta billing account** with a prepaid balance
+7. Note your **Phone Number ID** and **Access Token** — add to Dokploy environment variables
 
-> **Docs:** https://developers.facebook.com/docs/whatsapp/cloud-api/get-started
 > **Pricing:** https://developers.facebook.com/docs/whatsapp/pricing
 
 ---
 
-## Step 7 — Set Up PhonePe Payment Gateway
+## Step 8 — Set Up PhonePe Payment Gateway
 
 **Link:** https://developer.phonepe.com
 **Cost:** ₹0 (UPI-only promotional offer)
 
 1. Go to https://developer.phonepe.com and register as a merchant
-2. Complete KYC with your business documents (GST / Udyam)
+2. Complete KYC with your GST / Udyam documents
 3. Get your **Merchant ID** and **API Key** from the dashboard
-4. Use the **sandbox environment** for testing before going live
-5. Once approved for production, update your app's environment variables with live credentials
+4. Test in the sandbox environment before going live
+5. Add live credentials to Dokploy environment variables
 
 > **Docs:** https://developer.phonepe.com/v1/docs
 
 ---
 
-## Step 8 — Set Up PostHog (Analytics)
+## Step 9 — Set Up PostHog (Analytics)
 
 **Link:** https://posthog.com
 **Cost:** Free (up to 1M events/month)
 
-1. Go to https://posthog.com and sign up
-2. Create a new project — name it `Baseline Arena`
-3. Copy your **Project API Key**
-4. Add the PostHog SDK to your frontend and backend as per the docs
+1. Go to https://posthog.com → sign up → create a project named `Baseline Arena`
+2. Copy your **Project API Key**
+3. Add the PostHog SDK to your frontend (Cloudflare Pages) and backend (Dokploy)
 
 > **Docs:** https://posthog.com/docs
 
@@ -283,10 +299,9 @@ pm2 startup   # follow the command it outputs to auto-start on reboot
 
 ## Environment Variables Checklist
 
-Once everything is set up, your app needs the following environment variables on the server:
-
+**Backend — add in Dokploy → Application → Environment Variables:**
 ```
-# Database
+# Database (from Dokploy PostgreSQL service)
 DATABASE_URL=postgresql://arena_user:your_password@localhost:5432/baseline_arena
 
 # WhatsApp (Meta Cloud API)
@@ -311,27 +326,53 @@ NODE_ENV=production
 PORT=3000
 ```
 
+**Frontend — add in Cloudflare Pages → Settings → Environment Variables:**
+```
+VITE_API_URL=https://api.baselinearena.in
+VITE_POSTHOG_API_KEY=
+```
+
 ---
 
-## Setup Checklist
+## Full Setup Checklist
 
+**Domain & DNS**
 - [ ] Domain purchased on GoDaddy
-- [ ] Hetzner account created and CX23 server launched
-- [ ] Hetzner firewall configured (ports 22, 80, 443)
-- [ ] Automated backups enabled on Hetzner
 - [ ] Cloudflare account created and domain added
-- [ ] DNS A records pointing to Hetzner server IP
 - [ ] GoDaddy nameservers updated to Cloudflare
+- [ ] DNS A record for `api` pointing to Hetzner IP (Cloudflare proxied)
+
+**Server**
+- [ ] Hetzner account created and CX23 server launched (Ubuntu 24.04)
+- [ ] Hetzner firewall configured (ports 22, 80, 443, 3000)
+- [ ] Automated backups enabled on Hetzner
+- [ ] Dokploy installed via install script
+- [ ] Dokploy admin account created
+
+**Backend (via Dokploy)**
+- [ ] GitHub connected in Dokploy
+- [ ] Project created in Dokploy
+- [ ] Node.js backend deployed and running
+- [ ] `api.baselinearena.in` domain added with SSL auto-issued
+- [ ] PostgreSQL database created
+- [ ] Database backups scheduled
+- [ ] GitHub webhook configured for auto-deploy
+- [ ] All backend environment variables added
+
+**Frontend (via Cloudflare Pages)**
+- [ ] Frontend repository connected to Cloudflare Pages
+- [ ] Build settings configured
+- [ ] Frontend environment variables added
+- [ ] Custom domain connected and SSL issued
+
+**Storage**
 - [ ] Cloudflare R2 bucket created
-- [ ] Node.js installed on server
-- [ ] PostgreSQL installed and database created
-- [ ] Nginx installed and configured as reverse proxy
-- [ ] SSL certificate issued via Let's Encrypt
-- [ ] PM2 installed and app running
-- [ ] Frontend deployed on Vercel
-- [ ] Custom domain connected on Vercel
+- [ ] R2 API token generated and saved
+
+**Payments & Messaging**
 - [ ] Meta Business Verification completed
-- [ ] WhatsApp Cloud API phone number added
-- [ ] PhonePe merchant account approved
-- [ ] All environment variables set on server
-- [ ] PostHog analytics connected
+- [ ] WhatsApp Cloud API phone number added and billing configured
+- [ ] PhonePe merchant account approved (KYC done)
+
+**Analytics**
+- [ ] PostHog project created and SDK integrated in frontend and backend
