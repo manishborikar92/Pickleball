@@ -3,23 +3,27 @@
 **Prepared by:** Manish Borikar
 **Platform:** Baseline Arena — Pickleball Booking & Management
 **Max Capacity:** 900 bookings / month
+**Last Updated:** May 2026
+**Note:** Hetzner revised its pricing on 1 April 2026. All figures below reflect the updated rates. EUR/INR rate used: ₹112 per €1.
 
 ---
 
 ## At a Glance
 
-| Period | Monthly Cost | What's Included |
-|---|---|---|
-| **Months 1 – 4** | ~₹305 – ₹407 | WhatsApp only (hosting is free) |
-| **Month 5 onwards** | ~₹1,105 – ₹1,207 | Hosting (≤ ₹800) + WhatsApp |
-| **Year 1 Total** | ~₹13,177 – ₹14,401 | Setup + 12 months of operations |
-| **Year 2 Total** | ~₹14,321 – ₹15,545 | Domain renewal + 12 months |
-
-> Marketing broadcast costs are **optional** and charged per campaign. The higher end of each range above assumes one marketing broadcast to ~100 users/month.
+| Cost Type | Monthly Cost |
+|---|---|
+| One-time Setup | ₹2,617 – ₹3,117 *(paid at launch)* |
+| VM Hosting (CX23 + backup) | ~₹536/month |
+| WhatsApp API (base) | ~₹305/month |
+| WhatsApp API (with marketing) | ~₹407/month |
+| **Total (without marketing)** | **~₹841/month** |
+| **Total (with marketing, 100 users)** | **~₹943/month** |
 
 ---
 
-## 1. One-time Setup Costs
+## Part A — Infrastructure & Hosting Costs
+
+### A1. One-time Setup Costs
 
 | Item | Cost | Notes |
 |---|---|---|
@@ -27,56 +31,70 @@
 | Development Fee | ₹2,500 – ₹3,000 | Agentic AI |
 | Meta Business Verification | ₹0 | Requires GST / Udyam documents |
 | Payment Gateway (PhonePe) | ₹0 | UPI-only promotional offer |
-| SSL / Security | ₹0 | Free via Vercel / Cloudflare |
+| SSL Certificate | ₹0 | Free via Let's Encrypt + Certbot |
 | **Total** | **₹2,617 – ₹3,117** | Paid once at launch |
 
 ---
 
-## 2. Monthly Hosting Costs
+### A2. Monthly Hosting Costs
 
-- **Months 1 – 4:** ₹0 — Hosting provided **free** by Agentic AI
-- **Month 5 onwards:** ≤ ₹800/month *(exact amount TBD; will not exceed ₹800)*
+**Recommended server:** Hetzner Cloud **CX23** (Germany/Finland region)
 
-| Service | Cost | Provider |
+| Spec | Value |
+|---|---|
+| vCPUs | 2 (x86 — Intel/AMD) |
+| RAM | 4 GB |
+| Storage | 40 GB NVMe SSD |
+| Included Traffic | 20 TB/month |
+| Price (post April 2026) | €3.99/month ≈ **₹447/month** |
+| Automated Backups (+20%) | €0.80/month ≈ **₹90/month** |
+| **Total Hosting** | **~₹537/month** |
+
+> Backend (Node.js) and PostgreSQL database run on the **same VM**. No separate database cost.
+> x86 architecture ensures full compatibility with all Node.js packages, PostgreSQL, PM2, and Nginx.
+
+**All other infrastructure services are free:**
+
+| Service | Provider | Cost |
 |---|---|---|
-| Backend Server | ₹0 → ≤ ₹800/month | TBD (likely Fly.io, Mumbai region) |
-| Frontend Hosting | ₹0 | Vercel (Hobby tier) |
-| Database (PostgreSQL) | ₹0 | Supabase / Neon (free up to 500 MB) |
-| File & Image Storage | ₹0 | Cloudflare R2 (free up to 10 GB) |
-| Analytics & Error Monitoring | ₹0 | PostHog / Sentry (free tier) |
+| Frontend Hosting | Vercel (free tier) | ₹0 |
+| File & Image Storage | Cloudflare R2 (free: 10 GB / 10M reads) | ₹0 |
+| DNS + CDN + DDoS Protection | Cloudflare (free tier) | ₹0 |
+| Analytics & Error Monitoring | PostHog / Sentry (free tier) | ₹0 |
+| SSL Certificate | Let's Encrypt via Certbot | ₹0 |
+| Process Manager | PM2 | ₹0 |
+| Reverse Proxy | Nginx | ₹0 |
 
 ---
 
-## 3. WhatsApp API Costs (Meta Cloud API)
+## Part B — WhatsApp API Costs (Meta Cloud API)
 
 All rates include **18% GST**. Estimates based on **900 bookings/month (maximum capacity)**.
 
-### 3.1 Per-Message Rates
+### B1. Per-Message Rates
 
-| Message Type | Rate (incl. GST) | Pre-GST Rate |
-|---|---|---|
-| Authentication (OTP) | ₹0.1357 / message | ₹0.1150 |
-| Utility (Confirmations, Reminders) | ₹0.1357 / message | ₹0.1150 |
-| Marketing / Promotional | ₹1.0185 / message | ₹0.8631 |
-| Service (User-initiated Replies) | **Free** | — |
+| Message Type | Rate (incl. GST) | Pre-GST Rate | Used For |
+|---|---|---|---|
+| Authentication | ₹0.1357 / msg | ₹0.1150 | OTP / login verification |
+| Utility | ₹0.1357 / msg | ₹0.1150 | Booking confirmations, reminders |
+| Marketing / Promotional | ₹1.0185 / msg | ₹0.8631 | Offers, broadcasts, re-engagement |
+| Service (Inbound) | **Free** | — | User-initiated replies |
 
-> **Cost-saving tip:** Utility messages sent within a **24-hour Customer Service Window (CSW)** — when the user messages first — are charged at **₹0**. Using CSW where possible reduces costs significantly.
+> **Cost tip:** Utility messages sent within a **24-hour Customer Service Window (CSW)** — when the user messages first — are charged at **₹0**.
 
 ---
 
-### 3.2 Monthly WhatsApp Cost Estimate (at 900 bookings/month)
+### B2. Monthly Base Cost (Auth + Utility only)
 
-| Message Type | Volume / Month | Rate | Estimated Cost |
+| Message Type | Volume / Month | Rate | Cost |
 |---|---|---|---|
 | Authentication (OTP) | ~1,350 | ₹0.1357 | ~₹183 |
 | Utility (Confirmations) | ~900 | ₹0.1357 | ~₹122 |
-| **Subtotal (base)** | **2,250 messages** | | **~₹305 / month** |
+| **Monthly Base Total** | **2,250 messages** | | **~₹305/month** |
 
 ---
 
-### 3.3 Marketing / Promotional Message Costs
-
-Charged separately, per campaign. Only sent when needed.
+### B3. Marketing / Promotional Costs *(Optional, per campaign)*
 
 | Audience Size | Cost per Campaign |
 |---|---|
@@ -85,74 +103,71 @@ Charged separately, per campaign. Only sent when needed.
 | 500 users | ~₹509 |
 | 1,000 users | ~₹1,019 |
 
-**Template creation and storage is free** — no limit on the number of templates.
+- Template creation and storage is **free** — unlimited templates at no cost
+- Templates are typically approved by Meta within a few minutes
+- This is not a fixed monthly cost — only charged when a campaign is sent
 
-Common templates to maintain:
+**Recommended template types:**
 - Festival offers (Diwali, Holi, etc.)
-- Weekend / seasonal discounts
+- Weekend or seasonal discounts
 - Re-engagement for inactive players
-- New court or facility announcements
+- New court / facility announcements
 - Membership renewal reminders
 
-> Templates are usually approved by Meta within a few minutes.
+---
+
+## Part C — Combined Total Cost
+
+### C1. Monthly Cost Breakdown
+
+| Component | Cost |
+|---|---|
+| **A — VM Hosting (CX23)** | ~₹447 |
+| **A — Automated Backups** | ~₹90 |
+| **B — WhatsApp (base)** | ~₹305 |
+| **Total (without marketing)** | **~₹842/month** |
+| **B — WhatsApp (with marketing, 100 users)** | +₹102 |
+| **Total (with marketing)** | **~₹944/month** |
 
 ---
 
-## 4. Monthly Cost Summary
-
-| Component | Months 1–4 | Month 5+ |
-|---|---|---|
-| Hosting | ₹0 | ≤ ₹800 |
-| WhatsApp (Auth + Utility) | ~₹305 | ~₹305 |
-| **Total (without marketing)** | **~₹305** | **~₹1,105** |
-| **Total (with marketing, 100 users)** | **~₹407** | **~₹1,207** |
-
----
-
-## 5. Annual Cost Projections
-
-### Year 1
+### C2. Year 1 Projection
 
 | Component | Cost |
 |---|---|
 | One-time Setup | ₹3,117 |
-| Months 1–4 (free hosting + WhatsApp only) | ~₹1,220 |
-| Months 5–12 (hosting + WhatsApp) | ~₹8,840 |
-| **Total (without marketing)** | **~₹13,177** |
-| **Total (with monthly marketing, 100 users)** | **~₹14,401** |
-
-### Year 2 Onwards
-
-| Component | Cost |
-|---|---|
-| Domain Renewal | ~₹1,061 |
-| Monthly Operations × 12 (without marketing) | ~₹13,260 |
-| Monthly Operations × 12 (with marketing) | ~₹14,484 |
-| **Total (without marketing)** | **~₹14,321** |
-| **Total (with marketing)** | **~₹15,545** |
+| Hosting + Backups — 12 months (~₹537 × 12) | ~₹6,444 |
+| WhatsApp Base — 12 months (~₹305 × 12) | ~₹3,660 |
+| **Year 1 Total (without marketing)** | **~₹13,221** |
+| Marketing (100 users/month × 12) | +~₹1,224 |
+| **Year 1 Total (with marketing)** | **~₹14,445** |
 
 ---
 
-## 6. Key Assumptions
+### C3. Year 2 Onwards
+
+| Component | Cost |
+|---|---|
+| Domain Renewal (GoDaddy) | ~₹1,061 |
+| Hosting + Backups — 12 months (~₹537 × 12) | ~₹6,444 |
+| WhatsApp Base — 12 months (~₹305 × 12) | ~₹3,660 |
+| **Year 2 Total (without marketing)** | **~₹11,165** |
+| Marketing (100 users/month × 12) | +~₹1,224 |
+| **Year 2 Total (with marketing)** | **~₹12,389** |
+
+---
+
+## Key Assumptions
 
 | Parameter | Value |
 |---|---|
 | Max bookings per month | 900 |
 | OTP messages per booking | ~1.5 (includes re-sends) |
 | Confirmation messages per booking | 1 |
-| Hosting — Months 1 to 4 | ₹0 (free period) |
-| Hosting — Month 5 onwards | ≤ ₹800/month (TBD) |
+| Server | Hetzner CX23 — 2 vCPU, 4 GB RAM, 40 GB SSD |
+| Hosting cost | €3.99/month (post April 2026 pricing) |
+| EUR to INR rate | ₹112 per €1 (May 2026) |
+| Backups | Hetzner automated backups (+20% = ~₹90/month) |
+| Backend + Database | Hosted on the same VM |
 | Payment gateway fee | ₹0 (PhonePe UPI promo) |
 | Domain renewal (Year 2+) | ~₹1,061/year |
-
----
-
-## 7. Why Costs Are Low
-
-| Decision | Saving |
-|---|---|
-| Direct Meta API (no BSP like Twilio/Interakt) | Saves ₹0.50–₹1.50 per message in third-party markup |
-| PhonePe UPI-only (₹0 transaction fee) | Saves ~₹12,000+/year vs. standard 2% gateway fee |
-| Free-tier services (Vercel, Supabase, Cloudflare, PostHog) | ₹0 for frontend, database, storage, and analytics |
-| 4-month free hosting period | Saves up to ₹3,200 upfront |
-| CSW (Customer Service Window) messaging | Reduces effective WhatsApp cost as user engagement grows |
