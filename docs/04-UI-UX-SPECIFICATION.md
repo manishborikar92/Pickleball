@@ -69,36 +69,46 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 
 **Route:** `/book` or `/venues/[slug]/book`
 
-**Purpose:** The primary booking interface. Users select a date, time slot, review the price summary, and initiate the auth+payment flow.
+**Purpose:** The primary booking interface. Users select a date, one or both courts, one or more consecutive time slots, review the live price, and initiate the auth + payment flow.
 
 **Layout (single scrollable page, no bottom navigation bar):**
 
-**Section 1 — Court Hero**
-- Full-width court image at the top.
-- "Premium Court" badge overlaid on the image.
-- Court/venue name in large bold text below.
-- Location address with pin icon.
+**Section 1 — Venue Hero**
+- Full-width court image.
+- Venue name in large bold text, location address with pin icon.
 
-**Section 2 — Select Date & Time**
-- Horizontal scrollable date strip showing short-format day labels (FRI 8 MAY, SAT 9 MAY, SUN 10 MAY…). Selected date is highlighted in accent color.
-- A calendar icon at the end of the strip opens a full calendar picker for dates beyond the visible strip.
-- Below the date strip, courts are listed vertically (Court 1, Court 2, etc.).
-- Under each court, slot chips are arranged in a 2-column grid.
-- **Slot chip states:** Available → tap to select (turns accent green). Booked → strikethrough, non-interactive. Currently selected → accent background.
-- Only one slot can be selected at a time across all courts (selecting a new slot deselects the previous).
-- The date strip respects the advance booking window and rollover time (dates beyond the window are hidden or non-interactive).
+**Section 2 — Select Date**
+- Horizontal scrollable date strip. Selected date highlighted in accent colour.
+- Calendar icon at the end opens a full-date picker for dates further out.
+- Only dates within the advance booking window are interactive.
 
-**Section 3 — Summary**
-- "Summary" heading with a receipt icon.
-- Line items: Court Fee (X mins) / Equipment Rental (if applicable) / Service Fee.
-- Promo code input field with "Apply" button (accent).
-- Divider line.
-- Total amount in large bold text with the currency symbol.
+**Section 3 — Select Courts**
+- Row of court cards (one per court), each with a checkbox or toggle.
+- Default: no court selected. User must select at least one.
+- Each card shows: court name, environment (Indoor), and a brief tag.
+- Selecting/deselecting a court immediately refreshes the slot grid below and triggers a `price-preview` API call to update the total.
+
+**Section 4 — Select Time Slots**
+- One slot grid per selected court, rendered side-by-side on tablet/desktop, stacked on mobile.
+- Slots are displayed as chips: `09:00 – 10:00`.
+- **Multi-select rule:** The user can tap any available slot to start a selection. Tapping an adjacent slot extends the range. Tapping a non-adjacent slot shows an inline warning: "Slots must be consecutive. Tap an adjoining slot to extend your selection."
+- Slots that are booked, pending, or blocked are greyed out and non-interactive.
+- When both courts are selected, the slot grids must show the **intersection of available slots** highlighted — slots that are available on at least one court show normally, but the price-preview reflects both courts' pricing.
+- Selected slots are highlighted in accent colour. The range is visualised as a connected bar across the selected chips.
+- Deselecting a slot in the middle of a range clears the entire selection (no gaps allowed).
+
+**Section 5 — Live Summary**
+- Updates in real-time as courts and slots are selected/deselected.
+- Shows: "Court 1 + Court 2 · Sunday 11 May · 9:00 AM – 12:00 PM (3 hrs)"
+- Price table: per-unit breakdown (collapsible) + subtotal + tax + total.
+- Price data comes from the `/bookings/price-preview` endpoint, triggered on every selection change (debounced 300ms).
+- Promo code input with "Apply" button — applying a coupon re-calls price-preview with `coupon_code`.
+- Wallet credit toggle (if user is authenticated and has a balance).
 
 **Sticky Bottom CTA**
-- "Confirm & Pay" pill button (full width, accent color).
+- "Confirm & Pay" pill button — disabled until at least one court and one slot are selected.
 - "🔒 Secure checkout" micro-label beneath.
-- Tapping this button triggers the Auth Gate flow if the user is not verified.
+- Tapping triggers the auth gate (if not verified), then the hold API call.
 
 ---
 

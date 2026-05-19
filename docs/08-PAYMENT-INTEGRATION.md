@@ -219,8 +219,11 @@ Also record the `credits_applied` amount and lock it (deduct from `users.wallet_
 ```json
 {
   "type": "phonepe",
-  "redirect_url": "https://mercury-uat.phonepe.com/transact/uat_v2?token=...",
   "merchant_order_id": "PP-abc123",
+  "redirect_url": "https://mercury-uat.phonepe.com/transact/uat_v2?token=...",
+  "credits_applied": 200.00,
+  "phonepe_amount": 4260.40,
+  "total_amount": 4460.40,
   "expires_at": "2025-05-17T09:20:00Z"
 }
 ```

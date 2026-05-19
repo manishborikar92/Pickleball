@@ -73,146 +73,168 @@ To prevent a "midnight rush," a **Rollover Trigger Time** is set per venue (e.g.
 
 ## 3. Pricing Engine (Waterfall Logic)
 
-All pricing is calculated server-side at the moment a slot is selected. The backend generates a price quote that is locked into the booking record and passed directly to the payment gateway. The user always pays exactly the quoted amount.
+All pricing is calculated server-side. The backend generates a price quote that is locked into the booking record and passed directly to the payment gateway. The user always pays exactly the quoted amount.
 
-### 3.1 Calculation Sequence
+### 3.1 Unit-Based Calculation
 
-The following steps are applied in strict order:
+A booking consists of one or more **slot units** where each unit = one court × one time slot. The total price is the sum of all unit prices after applying the waterfall logic to each unit individually, then applying the coupon to the total.
+
+**Example:** Court 1 + Court 2, 9 AM–11 AM on a Sunday (2 courts × 2 slots = 4 units):
+
+```
+Court 1 / 9:00–10:00  → base ₹500 + weekend +20%              = ₹600
+Court 1 / 10:00–11:00 → base ₹500 + weekend +20%              = ₹600
+Court 2 / 9:00–10:00  → base ₹500 + indoor +10% + weekend +20% = ₹660
+Court 2 / 10:00–11:00 → base ₹500 + indoor +10% + weekend +20% = ₹660
+                                                  Subtotal       = ₹2,520
+Coupon (-10%)                                                    = −₹252
+                                                  Discounted     = ₹2,268
+Tax (18%)                                                        = ₹408.24
+                                                  Total          = ₹2,676.24
+```
+
+Each unit's price is stored as `booking_slots.unit_price` for display in receipts.
+
+### 3.2 Calculation Sequence Per Unit
+
+For each (court_id, slot_start_time) combination:
 
 1. **Base Price** — Fetch `base_prices.amount` for the court.
-2. **Time/Day Modifiers** — Query active `pricing_rules` of type `time_modifier`. Apply matching rules ordered by `priority` (descending). Example: Weekend +20%, or Early Morning −50%.
-3. **Court Modifiers** — Apply active `pricing_rules` of type `court_modifier`. Example: Indoor courts +10%.
-4. **Coupon Application** — If a valid coupon code is provided:
-   - Check code is active, within valid date range, has not exceeded `max_uses_total`, and has not exceeded `max_uses_per_phone` for the user's phone.
-   - Coupon discount is applied on top of any time/court modifiers already applied.
-   - Only one coupon may be applied per booking.
-5. **Wallet Credits** — Deduct up to the available `users.wallet_credits` balance. Credits cannot exceed the total payable amount.
-6. **Tax** — Applied as a percentage on the final discounted amount. Stored in the booking as `tax_amount`.
+2. **Time/Day Modifiers** — Query active `pricing_rules` of type `time_modifier`. Apply matching rules ordered by `priority` descending.
+3. **Court Modifiers** — Apply active `pricing_rules` of type `court_modifier`.
+4. Store result as `unit_price` for this slot unit.
 
-### 3.2 Quote Validity
+After all units are priced:
 
-The generated price quote is valid only for the duration of the 10-minute slot hold. If the lock expires, any new attempt re-triggers a fresh price calculation.
+5. **Coupon Application** — If a valid coupon is provided, apply flat or percentage discount to the sum of all unit prices. One coupon per booking.
+6. **Wallet Credits** — Deduct up to the user's available `wallet_credits` balance.
+7. **Tax** — Applied as a percentage on `(subtotal − coupon_discount)`.
+
+### 3.3 Price Preview
+
+A lightweight `POST /bookings/price-preview` endpoint accepts the full selection (court IDs + slot times) and returns the complete price breakdown without creating any database hold. The frontend calls this to display live pricing as the user adjusts their selection. The quote from this endpoint is informational — the authoritative quote is generated again at hold time.
+
+### 3.4 Quote Validity
+
+The price quote is recalculated at hold time (Step 2 of the booking flow). The hold quote is locked into `bookings.total_amount` and passed to PhonePe. The preview endpoint quote is advisory only.
 
 ---
 
 ## 4. Booking Flow & State Machine
 
-### 4.1 Full Booking Sequence
+### 4.1 Selection Model
+
+A booking is a **session**: one date, one contiguous time range, covering one or more courts. The constraints are:
+
+- All selected courts share the same date, start time, and end time.
+- Selected time slots must be consecutive with no gaps. The backend validates this before any lock is attempted.
+- At launch: 1 or 2 courts, 1 to N consecutive slots (N limited by venue operating hours).
+- Asymmetric selection (Court 1 for 9–11 AM, Court 2 for 10–12 PM) is not supported — all courts must cover the same time range.
+
+**Valid combinations:**
+- 1 court × 1 slot (e.g., Court 1, 9:00–10:00)
+- 1 court × 3 consecutive slots (e.g., Court 1, 9:00–12:00)
+- 2 courts × 1 slot (e.g., Court 1 + Court 2, 9:00–10:00)
+- 2 courts × 3 consecutive slots (e.g., Court 1 + Court 2, 9:00–12:00)
+
+### 4.2 Full Booking Sequence
 
 ```
 Step 1 — Browse (Unauthenticated)
-  User views the schedule page. Available slots rendered from live slot
-  generation. No authentication required to browse.
+  User views the booking page. Per-court slot grids are rendered.
+  User selects one or both courts using court selector checkboxes.
+  User taps time slots to build a consecutive range. The UI prevents
+  non-consecutive selection and shows a live price preview (from the
+  price-preview endpoint) that updates as courts and slots are toggled.
 
-Step 2 — Select & Lock
-  User taps a slot. Backend immediately:
-    a. Opens a database transaction.
-    b. Checks slot availability with SELECT ... FOR UPDATE (row-level lock).
-    c. If available: inserts a booking record with status = 'pending_payment',
-       expires_at = NOW() + 10 minutes, and session_id from the client.
-    d. Commits. Slot is now invisible to all other users.
-  If two users click simultaneously, the database forces one to wait;
-  the second request fails because the slot is already locked.
+Step 2 — Confirm Selection → All-or-Nothing Lock
+  User clicks "Confirm & Pay".
+  Frontend sends the complete selection:
+    { court_ids: [...], slot_date: "...", slot_start_times: [...] }
+
+  Backend pre-validation (before touching the database):
+    a. Verify all court_ids belong to the venue.
+    b. Verify slot_start_times are consecutive with no gaps (using the
+       venue's slot_duration_mins from the active schedule).
+    c. Verify each slot exists in the generated slot array for that date.
+    d. Velocity check: requesting user/session holds fewer than 2
+       pending bookings.
+
+  Backend lock phase (single database transaction):
+    e. Compute all N × M slot units (court_ids × slot_start_times).
+    f. Sort units by (court_id, slot_start_time) — deterministic order
+       to prevent deadlocks.
+    g. SELECT id FROM booking_slots WHERE (court_id, slot_date,
+       slot_start_time) IN (...) AND status IN (active statuses)
+       FOR UPDATE — attempts to lock all units atomically.
+    h. Count locked rows. If count > 0 (any unit already held), the
+       transaction rolls back. Return 409 with the list of unavailable
+       (court_id, slot_start_time) pairs so the UI can highlight them.
+    i. If all units are free: INSERT one bookings row + N×M
+       booking_slots rows, all with status = 'pending_payment' and
+       expires_at = NOW() + 10 minutes.
+    j. Commit transaction.
+
+  All N×M slot units are now locked and invisible to other users.
 
 Step 3 — Auth Gate (Name → Phone → OTP)
-  Bottom-sheet modal sequence:
-    a. Name entry.
-    b. Phone entry (+91 prefix).
-    c. 6-digit OTP entry.
-  The booking record is linked to the verified phone number.
-  Existing users: booking attached to their profile.
-  New users: profile created from name + phone.
-  Velocity check: if the phone already holds 2 pending bookings, block.
+  Bottom-sheet modal sequence — unchanged from single-slot flow.
+  On OTP verification the booking record is linked to the user's profile.
 
 Step 4 — Checkout Summary & Waiver
-  User reviews Order Summary (court, date, full time string, price breakdown).
-  Wallet credit balance is displayed if > 0; user can toggle credit application.
-  User must check both:
-    a. Time acknowledgment (exact date and time, AM/PM explicit).
-    b. No-cancellation / no-refund policy (digital waiver).
-  Both logged with server-side timestamp, IP address, and verified phone.
+  Order Summary shows:
+    - Court(s): "Court 1 + Court 2"
+    - Date: "Sunday, 11 May 2025"
+    - Time: "9:00 AM – 12:00 PM (3 hours)"
+    - Price breakdown: per-unit table + coupon + tax + total
+  User must acknowledge the full session time and no-refund policy.
 
-Step 5 — Payment Initiation
-  User clicks "Confirm & Pay".
-  Backend computes final price quote with wallet credits applied:
+Step 5 — Payment
+  Identical to single-slot flow. PhonePe amount =
+  total_amount − credits_applied.
+  Wallet-only path applies when total_amount ≤ wallet_credits.
 
-    total_payable  = base + modifiers - coupon + tax
-    credits_applied = min(wallet_credits, total_payable)
-    phonepe_amount  = total_payable - credits_applied
-
-  PATH A — Wallet-Only (phonepe_amount == 0):
-    a. Deduct credits_applied from users.wallet_credits (in DB transaction).
-    b. Insert wallet_transactions record (credit_redeemed).
-    c. Update booking status → 'confirmed' immediately.
-    d. Insert payments record (gateway='wallet', status='success', amount=0).
-    e. Return { type: 'wallet_only' } to frontend.
-    f. Trigger WhatsApp confirmation + PostHog event.
-
-  PATH B — PhonePe UPI Required (phonepe_amount > 0):
-    a. Optimistically deduct credits_applied from users.wallet_credits.
-    b. Insert wallet_transactions record (credit_redeemed).
-    c. Create PhonePe order with phonepe_amount (in paisa) via API v2.
-    d. paymentModeConfig restricts to UPI_INTENT, UPI_COLLECT, UPI_QR only.
-    e. Return { type: 'phonepe', redirect_url, merchant_order_id } to frontend.
-
-Step 6 — PhonePe Pay Page (PATH B only)
-  Frontend loads PhonePe JS bundle and calls:
-    PhonePeCheckout.transact({ tokenUrl: redirect_url, callback, type: 'IFRAME' })
-  User completes UPI payment on PhonePe's hosted pay page.
-  On completion PhonePe fires both a browser redirect (Step 7) and a
-  server-to-server webhook (Step 8).
-
-Step 7 — Browser Redirect (Secondary Verification, PATH B)
-  PhonePe redirects browser to:
-    GET /api/payment/redirect?orderId={merchant_order_id}
-  Backend calls PhonePe Order Status API:
-    COMPLETED → confirm booking (idempotent) → redirect to /booking/success
-    FAILED    → rollback wallet credits → redirect to /booking/failed
-    PENDING   → redirect to /booking/pending (webhook will settle it)
-
-Step 8 — Webhook (Primary Confirmation, PATH B)
-  PhonePe sends S2S webhook to POST /api/webhooks/phonepe.
-  Backend verifies SHA256 auth header. Responds 200 immediately.
-  Processes asynchronously:
-    checkout.order.completed + state=COMPLETED:
-      Check idempotency_key — if already confirmed, exit silently.
-      DB transaction: confirm booking, finalize wallet deduction,
-      update payment record, send WhatsApp confirmation.
-    checkout.order.failed:
-      Rollback wallet credits. Update payment to 'failed'.
-    pg.refund.completed:
-      Update payment to 'refunded'. Send WhatsApp to user.
+Step 6 — Confirmation
+  On COMPLETED webhook or redirect verification:
+    - bookings.status → 'confirmed'
+    - All booking_slots.status → 'confirmed' (same transaction)
+    - expires_at cleared
+    - WhatsApp confirmation sent with full session summary
+    - Reward instances issued (one per active mechanism)
 ```
 
-### 4.2 Payment Failure & Retry
+### 4.3 Unavailability Reporting
 
-When `state === 'FAILED'` is received from either the redirect handler or the webhook:
-- Rollback the optimistically deducted wallet credits.
-- Do **not** expire the booking hold — give the user a chance to retry within the remaining hold time.
-- Frontend shows a "Try Again" button.
-- On retry: generate a **new** `merchantOrderId` (never reuse the failed order ID).
-- If the booking hold has already expired by the time the user retries: inform the user, redirect to the booking page.
+When the lock phase fails because one or more slot units are taken, the backend returns the specific unavailable units so the frontend can:
+- Keep the user's valid selections intact.
+- Visually mark unavailable slots as "Just taken" in the grid.
+- Allow the user to adjust their selection and retry without starting over.
 
-### 4.3 PENDING State Handling
-
-If Order Status API returns `PENDING` after the browser redirect:
-- Frontend polls `GET /api/payment/status/:merchantOrderId` (every 5 seconds, max 5 polls).
-- If terminal state reached during polling: process accordingly.
-- After 5 polls without a terminal state: stop polling, show "Payment processing — you will be notified via WhatsApp."
-- Webhook delivers the terminal state eventually. Do **not** cancel or rollback while PENDING.
-- Do **not** release wallet credits while PENDING.
+```json
+{
+  "error": {
+    "code": "SLOTS_UNAVAILABLE",
+    "message": "Some of your selected slots were just taken.",
+    "unavailable": [
+      { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "10:00" },
+      { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "11:00" }
+    ]
+  }
+}
+```
 
 ### 4.4 Anti-Hoarding — Velocity Check
 
-A single phone number or session ID cannot hold more than **2 slots in `pending_payment` state simultaneously**. Attempts beyond this limit return an error: "You already have 2 pending bookings. Complete or wait for them to expire before selecting another slot."
+A single phone number or session ID cannot hold more than **2 bookings in `pending_payment` state simultaneously**, regardless of how many slot units each booking contains. Attempts beyond this limit are rejected before the lock phase begins.
 
 ### 4.5 Slot Expiry (Background Sweeper)
 
-A background job continuously monitors the `bookings` table. Any record where `status = 'pending_payment'` AND `expires_at < NOW()` is updated to `status = 'expired'`. The slot immediately re-enters the available pool.
+The sweeper finds bookings where `status = 'pending_payment'` AND `expires_at < NOW()`. For each:
 
-Before expiring each booking, the sweeper calls `rollbackWalletCredits(bookingId)` to return any optimistically deducted credits.
+1. Call `rollbackWalletCredits(bookingId)` if any credits were applied.
+2. Update `bookings.status → 'expired'` and all child `booking_slots.status → 'expired'` in one transaction.
 
-The sweeper runs every **30 seconds**.
+All slot units are released simultaneously, re-entering the available pool for all courts covered.
 
 ---
 
@@ -220,34 +242,34 @@ The sweeper runs every **30 seconds**.
 
 ### 5.1 Stale Payment (Phantom Booking)
 
-**Scenario:** User pays at minute 9. The bank takes 3 minutes to process. By minute 10, the sweeper expires the slot. At minute 12, PhonePe sends the "Success" webhook, but the slot has since been booked by another user.
+**Scenario:** User pays at minute 9. The bank takes 3 minutes to process. By minute 10, the sweeper expires all slot units. At minute 12, PhonePe sends the "Success" webhook, but one or more slot units have since been rebooked by another user.
 
 **Resolution Sequence:**
 1. Backend receives the webhook and finds the booking in `expired` state.
-2. Backend cannot confirm the booking — flags the conflict.
-3. Automatically notifies the Admin with booking details.
-4. Immediately initiates a refund via PhonePe API OR issues equivalent wallet credits.
-5. Sends a WhatsApp message to the user: "Your payment was processed, but the slot timed out and was taken. A refund/credit is being processed."
+2. Query `booking_slots` for this booking. Check for conflicts in any `(court_id, slot_date, slot_start_time)` unit against active bookings.
+3. If conflict exists: cannot confirm. Automatically notifies the Admin.
+4. Immediately initiates a PhonePe refund OR issues equivalent wallet credits.
+5. Sends a WhatsApp apology to the user.
 
 ### 5.2 Duplicate Webhook
 
 **Scenario:** PhonePe sends the "Success" signal three times for the same transaction.
 
-**Resolution:** The webhook endpoint checks `payments.idempotency_key` before processing. If the key already exists with `status = 'success'`, the duplicate signals are gracefully ignored with a 200 OK response. No duplicate records are created.
+**Resolution:** The webhook endpoint checks `payments.idempotency_key` before processing. If the key already exists with `status = 'success'`, duplicate signals are gracefully ignored. No duplicate records are created.
 
 ### 5.3 AM/PM Booking Error Prevention
 
-The checkout screen displays the full booking time in an unambiguous format (e.g., "Tomorrow, Saturday 17 May — 07:00 PM to 08:00 PM") and requires a mandatory acknowledgment checkbox before the Pay button activates.
+The checkout screen displays the full session time in an unambiguous format (e.g., "Sunday, 11 May — 9:00 AM to 12:00 PM, 3 hours") and requires a mandatory acknowledgment checkbox before the Pay button activates.
 
 ### 5.4 Manual Admin Block
 
-Admin can mark any slot or range of slots as `admin_block` without a payment record. Use cases: VIP reservations, court maintenance, photography sessions. These appear as "Unavailable" to users with no further explanation.
+Admin can mark any combination of courts and slots as `admin_block` without a payment record. The admin selects one or both courts and one or more consecutive slots. All selected `booking_slots` rows are inserted with `status = 'admin_block'` under one `bookings` parent record. These appear as "Unavailable" to users.
 
 ### 5.5 Walk-in Entry
 
-Admin enters the player's Name and Phone. The system:
-1. Creates or matches an existing user record.
-2. Inserts a booking with `status = 'walk_in'` and `booking_type = 'walk_in'`.
+Admin selects courts, date, and consecutive time slots for the walk-in player. The system:
+1. Creates or matches an existing user record by phone.
+2. Inserts one `bookings` row + all N×M `booking_slots` rows with `status = 'walk_in'`.
 3. Records payment as cash (outside the gateway).
 4. No OTP or payment gateway involvement.
 

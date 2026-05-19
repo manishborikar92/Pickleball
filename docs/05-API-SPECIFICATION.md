@@ -215,7 +215,7 @@ Verifies the OTP and returns a JWT pair.
 
 ### `GET /venues/:venueId/availability`
 
-*Public.* Returns available slot arrays for all courts on a given date. Slot generation accounts for operating hours, exceptions, and existing bookings.
+*Public.* Returns available slot arrays for all courts on a given date. The frontend uses this to render the per-court slot grids. Users can select multiple courts and multiple consecutive slots from this response — the selection is accumulated client-side and submitted as a batch to `/bookings/hold`.
 
 **Query params:** `date` (YYYY-MM-DD, required).
 
@@ -223,33 +223,93 @@ Verifies the OTP and returns a JWT pair.
 ```json
 {
   "date": "2025-05-17",
+  "slot_duration_mins": 60,
   "courts": [
     {
       "court_id": "<uuid>",
       "court_name": "Court 1",
+      "environment": "Indoor",
       "slots": [
-        { "start_time": "08:00", "end_time": "09:00", "status": "available", "price": 590.00 },
+        { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 500.00 },
         { "start_time": "09:00", "end_time": "10:00", "status": "booked" },
-        { "start_time": "10:00", "end_time": "11:00", "status": "available", "price": 708.00 }
+        { "start_time": "10:00", "end_time": "11:00", "status": "available", "unit_price": 600.00 },
+        { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 600.00 }
+      ]
+    },
+    {
+      "court_id": "<uuid>",
+      "court_name": "Court 2",
+      "environment": "Indoor",
+      "slots": [
+        { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 550.00 },
+        { "start_time": "09:00", "end_time": "10:00", "status": "available", "unit_price": 660.00 },
+        { "start_time": "10:00", "end_time": "11:00", "status": "pending" },
+        { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 660.00 }
       ]
     }
   ]
 }
 ```
 
-**Status values:** `available`, `booked` (confirmed/walk-in), `pending` (locked by another user), `blocked` (admin block).
+**`unit_price`** is the per-slot price for that specific court at that time (base + modifiers), pre-calculated. Only present when `status = 'available'`. The frontend uses these to show live price totals as selections are made, while `/bookings/price-preview` provides the authoritative server-side total before holding.
+
+**`status` values:** `available`, `booked` (confirmed/walk-in), `pending` (locked by another user's 10-minute hold), `blocked` (admin block).
 
 **Notes:**
-- Only dates within the advance booking window are returned with slot data. Dates beyond the window return `{ "status": "not_yet_open" }`.
-- Prices are pre-calculated applying time modifiers and court modifiers. Coupons are not applied here.
+- Only dates within the advance booking window are returned with slot data.
+- `slot_duration_mins` is included so the frontend can enforce the consecutive-slots-only selection rule.
 
 ---
 
 ## 6. Booking Endpoints
 
+### `POST /bookings/price-preview`
+
+*Public (session-based).* Returns a full price breakdown for a given selection without creating any database record or lock. Called by the frontend as the user adjusts court and slot selections to show live pricing.
+
+**Body:**
+```json
+{
+  "venue_id": "<uuid>",
+  "court_ids": ["<uuid1>", "<uuid2>"],
+  "slot_date": "2025-05-17",
+  "slot_start_times": ["09:00", "10:00", "11:00"]
+}
+```
+
+**Response `200`:**
+```json
+{
+  "court_count": 2,
+  "slot_count": 3,
+  "slot_unit_count": 6,
+  "session_start_time": "09:00",
+  "session_end_time": "12:00",
+  "session_duration_mins": 180,
+  "price_breakdown": {
+    "units": [
+      { "court_name": "Court 1", "slot_start_time": "09:00", "unit_price": 600.00 },
+      { "court_name": "Court 1", "slot_start_time": "10:00", "unit_price": 600.00 },
+      { "court_name": "Court 1", "slot_start_time": "11:00", "unit_price": 600.00 },
+      { "court_name": "Court 2", "slot_start_time": "09:00", "unit_price": 660.00 },
+      { "court_name": "Court 2", "slot_start_time": "10:00", "unit_price": 660.00 },
+      { "court_name": "Court 2", "slot_start_time": "11:00", "unit_price": 660.00 }
+    ],
+    "subtotal": 3780.00,
+    "coupon_discount": 0.00,
+    "tax": 680.40,
+    "total": 4460.40
+  }
+}
+```
+
+**Errors:** `400` if slots are non-consecutive, court_ids are invalid, or the date is outside the booking window.
+
+---
+
 ### `POST /bookings/hold`
 
-Attempts to place a 10-minute lock on a slot. This is the most critical endpoint — it uses `SELECT ... FOR UPDATE` internally.
+Validates the selection, attempts to lock all N×M slot units atomically, and returns the authoritative price quote. This is an all-or-nothing operation — if any single slot unit is taken, the entire request fails.
 
 *Public (session-based). No auth token required at this step.*
 
@@ -257,38 +317,61 @@ Attempts to place a 10-minute lock on a slot. This is the most critical endpoint
 ```json
 {
   "venue_id": "<uuid>",
-  "court_id": "<uuid>",
+  "court_ids": ["<uuid1>", "<uuid2>"],
   "slot_date": "2025-05-17",
-  "slot_start_time": "09:00",
+  "slot_start_times": ["09:00", "10:00", "11:00"],
   "session_id": "<client-generated-uuid>"
 }
 ```
 
-**Response `201`:**
+**Pre-lock validation (before any database write):**
+- All `court_ids` belong to the venue and are `status = 'active'`.
+- `slot_start_times` are consecutive with no gaps (validated against venue `slot_duration_mins`).
+- Each slot exists in the generated slot array for that date.
+- Velocity check: session/phone holds fewer than 2 pending bookings.
+
+**Response `201` — All units successfully locked:**
 ```json
 {
   "booking_id": "<uuid>",
   "status": "pending_payment",
   "expires_at": "2025-05-17T04:19:00Z",
+  "court_count": 2,
+  "slot_unit_count": 6,
+  "session_start_time": "09:00",
+  "session_end_time": "12:00",
+  "session_duration_mins": 180,
   "price_quote": {
-    "base_amount": 500.00,
-    "modifier_amount": 100.00,
-    "discount_amount": 0.00,
-    "tax_amount": 89.50,
-    "total_amount": 689.50,
-    "breakdown": [
-      { "label": "Court Fee (60 mins)", "amount": 500.00 },
-      { "label": "Weekend Peak (+20%)", "amount": 100.00 },
-      { "label": "Service Fee", "amount": 0.00 },
-      { "label": "Tax (18%)", "amount": 89.50 }
+    "units": [
+      { "court_name": "Court 1", "slot_start_time": "09:00", "unit_price": 600.00 },
+      { "court_name": "Court 2", "slot_start_time": "09:00", "unit_price": 660.00 }
+    ],
+    "subtotal": 3780.00,
+    "coupon_discount": 0.00,
+    "tax": 680.40,
+    "total": 4460.40
+  }
+}
+```
+
+**Response `409` — One or more units unavailable:**
+```json
+{
+  "error": {
+    "code": "SLOTS_UNAVAILABLE",
+    "message": "Some of your selected slots were just taken.",
+    "unavailable": [
+      { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "10:00" },
+      { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "11:00" }
     ]
   }
 }
 ```
 
 **Errors:**
-- `409 Conflict` — slot already taken.
-- `429 Too Many Requests` — velocity check failed (2 pending bookings already held by this session/phone).
+- `400 Bad Request` — non-consecutive slots, invalid court_ids, or slot outside the booking window.
+- `409 Conflict` — one or more slot units are taken (see above).
+- `429 Too Many Requests` — velocity check: 2 pending bookings already held.
 
 ---
 
@@ -530,13 +613,13 @@ All admin endpoints require a valid JWT. The `Permission` column specifies the e
 **Walk-in body:**
 ```json
 {
-  "court_id": "<uuid>",
+  "court_ids": ["<uuid1>", "<uuid2>"],
   "slot_date": "2025-05-17",
-  "slot_start_time": "09:00",
+  "slot_start_times": ["09:00", "10:00"],
   "player_name": "Raj Kumar",
   "player_phone": "+919876543210",
   "payment_method": "cash",
-  "amount_paid": 500.00
+  "amount_paid": 2640.00
 }
 ```
 
@@ -709,7 +792,9 @@ All errors follow a consistent structure:
 
 | Code | HTTP Status | Description |
 |---|---|---|
-| `SLOT_ALREADY_BOOKED` | 409 | Slot taken during lock attempt |
+| `SLOT_ALREADY_BOOKED` | 409 | Single slot taken during lock attempt (legacy alias) |
+| `SLOTS_UNAVAILABLE` | 409 | One or more slot units taken during multi-slot hold attempt; returns list of unavailable units |
+| `SLOTS_NOT_CONSECUTIVE` | 400 | Selected slot_start_times are not consecutive |
 | `HOLD_LIMIT_EXCEEDED` | 429 | Velocity check: 2 pending holds already active |
 | `OTP_INVALID` | 400 | Wrong OTP entered |
 | `OTP_EXPIRED` | 410 | OTP TTL has passed |

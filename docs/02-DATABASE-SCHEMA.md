@@ -262,6 +262,8 @@ Default hourly rate per court.
 | `is_active` | BOOLEAN | NOT NULL, default true | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
+> **Future Enhancement — Stackable Coupons:** An `is_stackable` boolean column can be added when pricing rules become complex enough to require coupon-modifier interaction logic. At launch, one coupon per booking applies after all time/court modifiers.
+
 ---
 
 ### `coupon_usages`
@@ -281,23 +283,24 @@ Default hourly rate per court.
 
 ### `bookings`
 
-The central transaction record. Every booking passes through a defined state machine.
+The parent transaction record. One booking covers a contiguous time session across one or more courts. All slot-level detail (which court, which slot unit) lives in `booking_slots`. Financial columns remain on this table.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `venue_id` | UUID | FK → venues.id, NOT NULL | |
-| `court_id` | UUID | FK → courts.id, NOT NULL | |
 | `user_id` | UUID | FK → users.id | NULL until OTP verified |
 | `session_id` | VARCHAR(255) | | Anonymous session ID used before verification |
-| `slot_date` | DATE | NOT NULL | |
-| `slot_start_time` | TIME | NOT NULL | |
-| `slot_end_time` | TIME | NOT NULL | |
-| `duration_mins` | SMALLINT | NOT NULL | |
-| `status` | VARCHAR(30) | NOT NULL, default 'pending_payment' | Enum: pending_payment, confirmed, expired, cancelled, walk_in |
+| `slot_date` | DATE | NOT NULL | All booking_slots in this booking share this date |
+| `session_start_time` | TIME | NOT NULL | Earliest slot start across all courts |
+| `session_end_time` | TIME | NOT NULL | Latest slot end across all courts |
+| `session_duration_mins` | SMALLINT | NOT NULL | Total time span in minutes (e.g., 9 AM–12 PM = 180) |
+| `court_count` | SMALLINT | NOT NULL | Number of distinct courts in this booking |
+| `slot_unit_count` | SMALLINT | NOT NULL | Total court×time_slot units (court_count × time slots selected) |
+| `status` | VARCHAR(30) | NOT NULL, default 'pending_payment' | Enum: pending_payment, confirmed, expired, cancelled, walk_in, admin_block |
 | `booking_type` | VARCHAR(20) | NOT NULL, default 'online' | Enum: online, walk_in, admin_block |
-| `base_amount` | NUMERIC(10,2) | NOT NULL | Before modifiers |
-| `discount_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | |
+| `base_amount` | NUMERIC(10,2) | NOT NULL | Sum of all unit base prices before modifiers |
+| `discount_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | Coupon + modifier reductions |
 | `tax_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | |
 | `total_amount` | NUMERIC(10,2) | NOT NULL | Final amount charged |
 | `credits_applied` | NUMERIC(10,2) | NOT NULL, default 0.00 | |
@@ -306,7 +309,7 @@ The central transaction record. Every booking passes through a defined state mac
 | `waiver_accepted` | BOOLEAN | NOT NULL, default false | |
 | `waiver_accepted_at` | TIMESTAMPTZ | | |
 | `waiver_ip_address` | INET | | |
-| `access_pin` | CHAR(4) | | For future smart lock integration |
+| `access_pin` | CHAR(4) | | Single PIN grants access to all courts in this booking |
 | `notes` | TEXT | | Admin notes for walk-ins/blocks |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
@@ -315,7 +318,7 @@ The central transaction record. Every booking passes through a defined state mac
 
 ```
 AVAILABLE
-    │ (user selects slot)
+    │ (user confirms full selection)
     ▼
 PENDING_PAYMENT  ──── (10 min timeout + wallet rollback) ────► EXPIRED
     │
@@ -328,7 +331,34 @@ CONFIRMED
 CANCELLED
 ```
 
-**Unique Constraint:** `(court_id, slot_date, slot_start_time)` WHERE `status IN ('pending_payment', 'confirmed', 'walk_in', 'admin_block')` — enforced via a partial unique index to prevent double-booking.
+Status changes on `bookings` are always propagated to all child `booking_slots` rows in the same transaction.
+
+---
+
+### `booking_slots`
+
+One row per court per time slot unit within a booking. This is where double-booking prevention is enforced. The partial unique index covers all active statuses.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK | |
+| `booking_id` | UUID | FK → bookings.id, NOT NULL | |
+| `court_id` | UUID | FK → courts.id, NOT NULL | |
+| `slot_date` | DATE | NOT NULL | |
+| `slot_start_time` | TIME | NOT NULL | |
+| `slot_end_time` | TIME | NOT NULL | |
+| `status` | VARCHAR(30) | NOT NULL | Denormalized from `bookings.status`. Updated in the same transaction as the parent. Used for the partial unique index. |
+| `unit_price` | NUMERIC(10,2) | NOT NULL | Pre-tax price for this specific court × slot unit after all modifiers. Stored for receipt breakdown. |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+**Double-booking prevention:**
+```sql
+CREATE UNIQUE INDEX booking_slots_no_double_book
+ON booking_slots (court_id, slot_date, slot_start_time)
+WHERE status IN ('pending_payment', 'confirmed', 'walk_in', 'admin_block');
+```
+
+**Lock acquisition order:** Always sorted by `(court_id, slot_date, slot_start_time)` before acquiring `SELECT ... FOR UPDATE` locks. This deterministic order prevents deadlocks when two users are simultaneously trying to book overlapping slot sets.
 
 ---
 
@@ -388,10 +418,9 @@ Audit trail for all platform credit movements.
 | `booking_id` | UUID | FK → bookings.id, UNIQUE, NOT NULL | One review per booking |
 | `user_id` | UUID | FK → users.id, NOT NULL | |
 | `venue_id` | UUID | FK → venues.id, NOT NULL | |
-| `court_id` | UUID | FK → courts.id, NOT NULL | |
-| `rating` | SMALLINT | NOT NULL, CHECK (1–5) | |
+| `rating` | SMALLINT | NOT NULL, CHECK (1–5) | Covers the overall session experience |
 | `comment` | TEXT | | Optional free-text |
-| `photo_url` | VARCHAR(500) | | Cloudflare R2 URL |
+| `photo_url` | VARCHAR(500) | | Cloudflare R2 URL — deferred |
 | `is_published` | BOOLEAN | NOT NULL, default true | Admin can suppress |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 
@@ -492,10 +521,12 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 
 | Table | Index | Type | Purpose |
 |---|---|---|---|
-| `bookings` | (court_id, slot_date, slot_start_time) WHERE active | Partial Unique | Prevent double-booking |
 | `bookings` | (status, expires_at) | B-tree | Background expiry sweeper |
 | `bookings` | (user_id, status) | B-tree | User booking history |
 | `bookings` | (session_id) | B-tree | Anonymous session lookup |
+| `booking_slots` | (court_id, slot_date, slot_start_time) WHERE active | Partial Unique | **Core double-booking prevention** |
+| `booking_slots` | (booking_id) | B-tree | Fetch all slot units for a booking |
+| `booking_slots` | (court_id, slot_date) | B-tree | Availability query per court per date |
 | `payments` | (idempotency_key) | Unique | Webhook deduplication |
 | `payments` | (merchant_order_id) | Unique | Order status lookups and retries |
 | `payments` | (booking_id) | B-tree | All payment attempts for a booking |
