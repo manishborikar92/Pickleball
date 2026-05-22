@@ -9,15 +9,15 @@ const geistSans = Geist({
 
 
 export const metadata = {
-  metadataBase: new URL("https://protechcourts.example"),
+  metadataBase: new URL("https://baselinearena.in"),
   title: {
-    default: "Pro-Tech Courts | Pickleball Booking in Besa, Nagpur",
-    template: "%s | Pro-Tech Courts",
+    default: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
+    template: "%s | Baseline Arena",
   },
   description:
     "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
   openGraph: {
-    title: "Pro-Tech Courts",
+    title: "Baseline Arena",
     description: "Premium pickleball court booking for Besa, Nagpur.",
     images: ["/court-3.png"],
   },

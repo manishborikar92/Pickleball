@@ -1,7 +1,7 @@
 import { Badge, Card, SectionHeader } from "@/components/shared";
 import { venue } from "@/data/platform";
 
-const COURT_TAGS = ["Outdoor", "Singles/Doubles", "Precision Lighting", "No-Refund Waiver"];
+const COURT_TAGS = ["Outdoor", "Singles/Doubles", "Precision Lighting"];
 
 export function CourtsSection() {
   return (

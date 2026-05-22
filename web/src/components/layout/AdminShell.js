@@ -35,7 +35,7 @@ function Sidebar({ session }) {
           href="/" 
           className="text-xl font-black tracking-tight text-accent transition-opacity hover:opacity-80"
         >
-          Pro-Tech Ops
+          Baseline Arena Ops
         </Link>
 
         <SessionCard session={session} />

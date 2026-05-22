@@ -22,7 +22,7 @@ export function AppSidebar({ session }) {
           href="/" 
           className="text-xl font-black tracking-tight text-accent transition-opacity hover:opacity-80"
         >
-          Pro-Tech Courts
+          Baseline Arena
         </Link>
 
         <SessionInfo session={session} />
