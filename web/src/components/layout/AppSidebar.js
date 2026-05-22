@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/shared";
 import { signOutDemo } from "@/app/actions/auth-actions";
@@ -20,9 +21,14 @@ export function AppSidebar({ session }) {
       <div className="flex h-full flex-col p-4 sm:p-6">
         <Link 
           href="/" 
-          className="text-xl font-black tracking-tight text-accent transition-opacity hover:opacity-80"
+          className="group flex items-center gap-3 outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
-          Baseline Arena
+          <div className="flex shrink-0 items-center justify-center transition-transform group-hover:scale-105">
+            <Image src="/baseline-logo.svg" alt="Baseline Arena Logo" width={48} height={48} className="h-12 w-12" />
+          </div>
+          <span className="text-xl font-black tracking-tight text-foreground transition-colors group-hover:text-accent">
+            Baseline Arena
+          </span>
         </Link>
 
         <SessionInfo session={session} />

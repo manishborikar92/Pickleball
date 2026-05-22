@@ -19,8 +19,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-muted sm:mt-6 sm:text-lg sm:leading-8">
-            Experience courts tuned for competitive play. Browse live slots,
-            verify only when ready, and book Besa, Nagpur in minutes.
+            Your dedicated space for outdoor pickleball. Enjoy reliable courts, excellent lighting, and instant booking.
           </p>
 
           <div className="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row sm:items-center">
