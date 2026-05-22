@@ -90,14 +90,14 @@ export function InterestForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-5">
       {/* Name field */}
       <label className="block">
-        <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted">
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted sm:mb-2 sm:text-xs sm:tracking-widest">
           Full Name
         </span>
         <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-4">
             <User className="h-4 w-4 text-muted" aria-hidden="true" />
           </div>
           <input
@@ -109,19 +109,19 @@ export function InterestForm() {
             placeholder="e.g. Rahul Sharma"
             autoComplete="name"
             required
-            className="w-full rounded-xl border border-line bg-surface py-3.5 pl-11 pr-4 text-base text-foreground placeholder:text-muted/70 shadow-inner transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="w-full rounded-xl border border-line bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted/70 shadow-inner transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent sm:py-3 sm:pl-11 sm:pr-4 sm:text-base"
           />
         </div>
       </label>
 
       {/* Phone field */}
       <label className="block">
-        <span className="mb-2 block text-xs font-bold uppercase tracking-widest text-muted">
+        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted sm:mb-2 sm:text-xs sm:tracking-widest">
           Phone Number
         </span>
         <div className="mt-1">
           <div className="flex overflow-hidden rounded-xl border border-line bg-surface shadow-inner transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-            <span className="flex shrink-0 items-center gap-1.5 border-r border-line bg-surface-soft px-4 text-sm font-bold text-muted">
+            <span className="flex shrink-0 items-center gap-1 border-r border-line bg-surface-soft px-3 text-sm font-bold text-muted sm:gap-1.5 sm:px-4 sm:text-base">
               🇮🇳 +91
             </span>
             <input
@@ -135,7 +135,7 @@ export function InterestForm() {
               autoComplete="tel"
               maxLength={11}
               required
-              className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-base text-foreground placeholder:text-muted/70 focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted/70 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
             />
           </div>
         </div>
@@ -155,7 +155,7 @@ export function InterestForm() {
       <Button
         type="submit"
         disabled={status === "loading"}
-        className="flex w-full items-center justify-center gap-2 py-3.5 sm:py-4 text-[15px] sm:text-base font-bold disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 py-3 text-sm font-bold transition-transform active:scale-95 disabled:opacity-60 sm:py-3.5 sm:text-base"
       >
         {status === "loading" ? (
           <>
