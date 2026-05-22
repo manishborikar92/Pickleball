@@ -71,6 +71,74 @@ export function calculateQuote({
   };
 }
 
+/**
+ * Extract a consecutive range of slots between startTime and endTime (inclusive).
+ * Returns [] if the range is invalid or has gaps.
+ */
+export function getSlotRange(slots, startTime, endTime) {
+  const startIdx = slots.findIndex((s) => s.startTime === startTime);
+  const endIdx = slots.findIndex((s) => s.endTime === endTime);
+  if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) return [];
+  return slots.slice(startIdx, endIdx + 1);
+}
+
+/**
+ * Calculate a price quote for multiple selected courts and a time range.
+ * @param {Object} params
+ * @param {Array<{courtId: string, slots: Array}>} params.selectedCourts - each entry has courtId + selected slot range
+ * @param {number} params.serviceFee
+ * @param {number} params.taxRate
+ * @param {Object|null} params.coupon
+ * @param {number} params.creditsApplied
+ */
+export function calculateMultiQuote({
+  selectedCourts = [],
+  serviceFee = 0,
+  taxRate = 0,
+  coupon = null,
+  creditsApplied = 0,
+}) {
+  // Sum all slot prices across all selected courts
+  const courtFee = selectedCourts.reduce((total, { slots }) => {
+    return total + slots.reduce((sum, slot) => sum + Number(slot.price || 0), 0);
+  }, 0);
+
+  const subtotal = courtFee + Number(serviceFee);
+  let discountAmount = 0;
+
+  if (coupon?.discountType === "flat") {
+    discountAmount = Math.min(Number(coupon.value), subtotal);
+  }
+  if (coupon?.discountType === "percentage") {
+    discountAmount = subtotal * (Number(coupon.value) / 100);
+  }
+
+  const afterDiscount = Math.max(0, subtotal - discountAmount);
+  const appliedCredits = Math.min(Number(creditsApplied || 0), afterDiscount);
+  const taxableAmount = Math.max(0, afterDiscount - appliedCredits);
+  const taxAmount = Number((taxableAmount * Number(taxRate || 0)).toFixed(2));
+  const totalAmount = Number((taxableAmount + taxAmount).toFixed(2));
+
+  const courtBreakdown = selectedCourts.map(({ courtId, courtName, slots }) => ({
+    label: courtName || courtId,
+    amount: slots.reduce((s, slot) => s + Number(slot.price || 0), 0),
+    slotCount: slots.length,
+  }));
+
+  return {
+    subtotal,
+    courtFee,
+    discountAmount: Number(discountAmount.toFixed(2)),
+    creditsApplied: Number(appliedCredits.toFixed(2)),
+    taxAmount,
+    totalAmount,
+    breakdown: [
+      ...courtBreakdown,
+      { label: "Service Fee", amount: Number(serviceFee) },
+    ],
+  };
+}
+
 export function createBookingHold({
   now = new Date(),
   venueId,
@@ -107,3 +175,4 @@ export function getCouponByCode(code) {
   }
   return null;
 }
+

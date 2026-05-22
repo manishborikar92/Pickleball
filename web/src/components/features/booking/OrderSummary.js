@@ -4,8 +4,8 @@ import { formatCurrency } from "@/lib/booking-engine";
 import { Tag, Lock } from "lucide-react";
 
 export function OrderSummary({
-  selectedCourt,
-  selected,
+  selectedCourtsData,
+  hasSelection,
   quote,
   couponCode,
   couponMessage,
@@ -17,7 +17,13 @@ export function OrderSummary({
     <Card className="flex flex-col p-5 shadow-lg sm:p-6 lg:p-7">
       <h3 className="text-xl font-black sm:text-2xl">Order Summary</h3>
 
-      <LineItems selectedCourt={selectedCourt} selected={selected} quote={quote} />
+      {!hasSelection ? (
+        <div className="mt-5 rounded-lg border border-line/50 bg-surface/30 p-4 text-center text-sm text-muted sm:mt-6">
+          Select a court and time slot to see your order summary.
+        </div>
+      ) : (
+        <LineItems selectedCourtsData={selectedCourtsData} quote={quote} />
+      )}
 
       <CouponInput
         couponCode={couponCode}
@@ -32,7 +38,8 @@ export function OrderSummary({
         <Button
           type="button"
           onClick={onCheckout}
-          className="w-full py-4 text-base font-bold shadow-md"
+          disabled={!hasSelection}
+          className="w-full py-4 text-base font-bold shadow-md disabled:opacity-50"
         >
           Confirm &amp; Pay
         </Button>
@@ -45,21 +52,48 @@ export function OrderSummary({
   );
 }
 
-function LineItems({ selectedCourt, selected, quote }) {
+function LineItems({ selectedCourtsData, quote }) {
   return (
     <div className="mt-5 space-y-3.5 text-sm sm:mt-6 sm:text-base">
-      <LineItem
-        label={`${selectedCourt?.name || "Court"} (${selected?.startTime || "--"})`}
-        value={formatCurrency(selected?.price || 0)}
-      />
-      <LineItem label="Equipment Rental" value={formatCurrency(100)} />
-      <LineItem label="Service Fee" value={formatCurrency(40)} />
-      {quote.discountAmount ? (
+      {/* Per-court line items */}
+      {selectedCourtsData.map(({ courtId, courtName, slots }) => {
+        const startTime = slots[0]?.startTime;
+        const endTime = slots[slots.length - 1]?.endTime;
+        const courtTotal = slots.reduce(
+          (sum, s) => sum + Number(s.price || 0),
+          0,
+        );
+        const slotCount = slots.length;
+
+        return (
+          <LineItem
+            key={courtId}
+            label={`${courtName} · ${startTime}–${endTime} (${slotCount} slot${slotCount > 1 ? "s" : ""})`}
+            value={formatCurrency(courtTotal)}
+          />
+        );
+      })}
+
+      {/* Service fee */}
+      {quote.breakdown
+        .filter((item) => item.label === "Service Fee")
+        .map((item) => (
+          <LineItem
+            key={item.label}
+            label={item.label}
+            value={formatCurrency(item.amount)}
+          />
+        ))}
+
+      {/* Discount */}
+      {quote.discountAmount > 0 && (
         <div className="flex items-center justify-between gap-4 font-medium text-accent">
           <span>Discount</span>
           <span>-{formatCurrency(quote.discountAmount)}</span>
         </div>
-      ) : null}
+      )}
+
+      {/* Tax */}
       <LineItem label="Tax (18%)" value={formatCurrency(quote.taxAmount)} />
     </div>
   );
@@ -100,9 +134,7 @@ function CouponInput({ couponCode, couponMessage, onChange, onApply }) {
         </Button>
       </div>
       {couponMessage && (
-        <p className="mt-2 text-sm font-medium text-accent">
-          {couponMessage}
-        </p>
+        <p className="mt-2 text-sm font-medium text-accent">{couponMessage}</p>
       )}
     </div>
   );

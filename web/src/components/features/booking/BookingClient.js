@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 import { Card } from "@/components/shared";
 import { AuthFlow } from "./AuthFlow";
 import { BookingHeader } from "./BookingHeader";
+import { CourtSelector } from "./CourtSelector";
 import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
 import {
   buildDateWindow,
-  calculateQuote,
+  calculateMultiQuote,
   createBookingHold,
   formatCurrency,
   getCouponByCode,
@@ -31,6 +32,10 @@ const INITIAL_AUTH = {
   error: "",
 };
 
+/**
+ * courtSelections: Map<courtId, { startTime, endTime }>
+ *   — null entry means court is active but no slot selected yet
+ */
 export function BookingClient({ venue, courts, availability }) {
   const dates = useMemo(
     () =>
@@ -41,20 +46,18 @@ export function BookingClient({ venue, courts, availability }) {
     [venue.advanceBookingDays],
   );
 
-  const firstSlot = availability[0].slots.find((s) => s.status === "available");
-
   const [selectedDate, setSelectedDate] = useState(
     dates[2]?.iso ?? dates[0].iso,
   );
-  
-  // Initialize with reliable identifiers
-  const [selected, setSelected] = useState({
-    courtId: availability[0].courtId,
-    startTime: firstSlot?.startTime,
-    endTime: firstSlot?.endTime,
-    price: firstSlot?.price || 0,
-  });
-  
+
+  // Set of toggled-on courtIds
+  const [activeCourts, setActiveCourts] = useState(
+    new Set([availability[0].courtId]),
+  );
+
+  // Map<courtId, {startTime, endTime} | null>
+  const [courtSelections, setCourtSelections] = useState(new Map());
+
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState(null);
   const [couponMessage, setCouponMessage] = useState("");
@@ -63,31 +66,116 @@ export function BookingClient({ venue, courts, availability }) {
   const [waiver, setWaiver] = useState({ time: false, policy: false });
   const [paid, setPaid] = useState(false);
 
-  const selectedCourt = courts.find((c) => c.id === selected.courtId);
-  const quote = calculateQuote({
-    courtFee: selected.price,
-    equipmentFee: 100,
-    serviceFee: 40,
-    taxRate: 0.18,
-    coupon,
-    creditsApplied: 0,
-  });
+  /* ── Derived state ─────────────────────────────── */
 
-  const fullTime = `${selectedDate} — ${selected.startTime} to ${selected.endTime}`;
+  // Build selectedCourts array for quote calculation
+  const selectedCourtsData = useMemo(() => {
+    const result = [];
+    for (const courtId of activeCourts) {
+      const sel = courtSelections.get(courtId);
+      if (!sel) continue;
+      const courtAvail = availability.find((ca) => ca.courtId === courtId);
+      const court = courts.find((c) => c.id === courtId);
+      if (!courtAvail || !court) continue;
+
+      const startIdx = courtAvail.slots.findIndex(
+        (s) => s.startTime === sel.startTime,
+      );
+      const endIdx = courtAvail.slots.findIndex(
+        (s) => s.endTime === sel.endTime,
+      );
+      if (startIdx === -1 || endIdx === -1) continue;
+
+      result.push({
+        courtId,
+        courtName: court.name,
+        slots: courtAvail.slots.slice(startIdx, endIdx + 1),
+      });
+    }
+    return result;
+  }, [activeCourts, courtSelections, availability, courts]);
+
+  const hasSelection = selectedCourtsData.length > 0;
+
+  const quote = useMemo(
+    () =>
+      calculateMultiQuote({
+        selectedCourts: selectedCourtsData,
+        serviceFee: 40,
+        taxRate: 0.18,
+        coupon,
+        creditsApplied: 0,
+      }),
+    [selectedCourtsData, coupon],
+  );
+
+  // Build a human-readable time string from selections
+  const fullTime = useMemo(() => {
+    if (selectedCourtsData.length === 0) return "";
+    const courtLabels = selectedCourtsData.map(({ courtName, slots }) => {
+      const start = slots[0]?.startTime;
+      const end = slots[slots.length - 1]?.endTime;
+      return `${courtName}: ${start} – ${end}`;
+    });
+    return `${selectedDate} — ${courtLabels.join(" | ")}`;
+  }, [selectedDate, selectedCourtsData]);
 
   /* ── Handlers ─────────────────────────────────── */
 
-  function handleSelectSlot(courtId, slot) {
-    if (slot.status !== "available") return;
-    setSelected({ 
-      courtId, 
-      startTime: slot.startTime, 
-      endTime: slot.endTime, 
-      price: slot.price 
+  function handleCourtToggle(courtId) {
+    setActiveCourts((prev) => {
+      const next = new Set(prev);
+      if (next.has(courtId)) {
+        // If at least one other court would remain, allow deselect
+        if (next.size > 1) {
+          next.delete(courtId);
+          // Also clear its slot selection
+          setCourtSelections((m) => {
+            const nm = new Map(m);
+            nm.delete(courtId);
+            return nm;
+          });
+        }
+      } else {
+        next.add(courtId);
+      }
+      return next;
     });
     setHold(null);
     setPaid(false);
   }
+
+  const handleSlotSelect = useCallback(
+    (courtId, slotOrAction, allSlots) => {
+      setCourtSelections((prev) => {
+        const next = new Map(prev);
+
+        if (slotOrAction === null) {
+          // Deselect
+          next.delete(courtId);
+          return next;
+        }
+
+        if (slotOrAction.startSlot && slotOrAction.endSlot) {
+          // Range extension
+          next.set(courtId, {
+            startTime: slotOrAction.startSlot.startTime,
+            endTime: slotOrAction.endSlot.endTime,
+          });
+        } else {
+          // Single slot start
+          next.set(courtId, {
+            startTime: slotOrAction.startTime,
+            endTime: slotOrAction.endTime,
+          });
+        }
+        return next;
+      });
+      setHold(null);
+      setPaid(false);
+    },
+    [],
+  );
 
   function handleApplyCoupon() {
     const validation = validateCoupon(couponCode);
@@ -102,12 +190,14 @@ export function BookingClient({ venue, courts, availability }) {
   }
 
   function handleStartCheckout() {
+    if (!hasSelection) return;
+    const firstCourt = selectedCourtsData[0];
     const nextHold = createBookingHold({
       venueId: venue.id,
-      courtId: selected.courtId,
+      courtId: firstCourt.courtId,
       slotDate: selectedDate,
-      startTime: selected.startTime,
-      endTime: selected.endTime,
+      startTime: firstCourt.slots[0]?.startTime,
+      endTime: firstCourt.slots[firstCourt.slots.length - 1]?.endTime,
       totalAmount: quote.totalAmount,
     });
     setHold(nextHold);
@@ -176,11 +266,20 @@ export function BookingClient({ venue, courts, availability }) {
                 )
               }
             />
+
+            {/* Court selector */}
+            <CourtSelector
+              courts={courts}
+              activeCourts={activeCourts}
+              onToggle={handleCourtToggle}
+            />
+
             <SlotGrid
               availability={availability}
               courts={courts}
-              selected={selected}
-              onSelectSlot={handleSelectSlot}
+              activeCourts={activeCourts}
+              courtSelections={courtSelections}
+              onSlotSelect={handleSlotSelect}
             />
           </Card>
         </div>
@@ -188,8 +287,8 @@ export function BookingClient({ venue, courts, availability }) {
         {/* Right column — sticky summary */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <OrderSummary
-            selectedCourt={selectedCourt}
-            selected={selected}
+            selectedCourtsData={selectedCourtsData}
+            hasSelection={hasSelection}
             quote={quote}
             couponCode={couponCode}
             couponMessage={couponMessage}
