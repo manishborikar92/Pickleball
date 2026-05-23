@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
 import { formatCurrency } from "@/lib/booking-engine";
@@ -198,12 +199,44 @@ function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
         <WaiverCheckbox
           checked={waiver.time}
           onChange={(v) => setWaiver((w) => ({ ...w, time: v }))}
-          label={`I confirm this booking is for ${fullTime} and understand it is non-refundable.`}
+          label={
+            <span>
+              I confirm this booking is for {fullTime} and understand it is{" "}
+              <Link
+                href="/refund"
+                target="_blank"
+                className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
+              >
+                non-refundable
+              </Link>
+              .
+            </span>
+          }
         />
         <WaiverCheckbox
           checked={waiver.policy}
           onChange={(v) => setWaiver((w) => ({ ...w, policy: v }))}
-          label="I accept the Terms & Conditions and Liability Waiver."
+          label={
+            <span>
+              I accept the{" "}
+              <Link
+                href="/terms"
+                target="_blank"
+                className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
+              >
+                Terms &amp; Conditions
+              </Link>{" "}
+              and{" "}
+              <Link
+                href="/terms#waiver"
+                target="_blank"
+                className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
+              >
+                Liability Waiver / Rules
+              </Link>
+              .
+            </span>
+          }
         />
       </div>
 

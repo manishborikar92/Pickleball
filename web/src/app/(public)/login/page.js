@@ -4,6 +4,14 @@ import { Card } from "@/components/shared";
 
 export const metadata = {
   title: "Sign In",
+  description: "Sign in to Baseline Arena to manage your pickleball court bookings, view transactions, and redeem rewards.",
+  alternates: {
+    canonical: "/login",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default async function LoginPage({ searchParams }) {
