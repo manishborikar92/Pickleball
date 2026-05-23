@@ -8,6 +8,9 @@ export const metadata = {
   title: "Coming Soon — Join the Wait List",
   description:
     "Baseline Arena is launching soon in Besa, Nagpur. Register your interest to be the first notified when courts open for booking.",
+  alternates: {
+    canonical: "/interest",
+  },
 };
 
 const PERKS = [

@@ -22,6 +22,13 @@ import {
 export const metadata = {
   title: "Booking Confirmed",
   description: "Your court booking at Baseline Arena has been successfully reserved. View booking details, location map, and player guidelines.",
+  alternates: {
+    canonical: "/booking/confirmed",
+  },
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 // Helper to format date strings nicely

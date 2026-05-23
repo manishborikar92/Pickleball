@@ -4,6 +4,9 @@ export const metadata = {
   title: "Cancellation & Refund Policy",
   description:
     "Learn about our strict cancellation policy, refund terms, and how wallet credits are handled for booking closures at Baseline Arena.",
+  alternates: {
+    canonical: "/refund",
+  },
 };
 
 export default function RefundPage() {

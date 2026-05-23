@@ -4,6 +4,9 @@ export const metadata = {
   title: "Privacy Policy",
   description:
     "Review the privacy policy for Baseline Arena, detailing how we collect, use, and protect your personal and booking information.",
+  alternates: {
+    canonical: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {

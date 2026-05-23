@@ -1,5 +1,6 @@
 import { Badge, Card, SectionHeader } from "@/components/shared";
 import { venue } from "@/data/platform";
+import Image from "next/image";
 
 const COURT_TAGS = ["Outdoor", "Singles/Doubles", "Precision Lighting"];
 
@@ -25,11 +26,14 @@ export function CourtsSection() {
         </div>
 
 <Card className="flex flex-col overflow-hidden shadow-sm transition-shadow hover:shadow-md">
-  <div className="h-72 w-full overflow-hidden sm:h-80 md:h-96 lg:h-80">
-    <img
+  <div className="relative h-72 w-full overflow-hidden sm:h-80 md:h-96 lg:h-80">
+    <Image
       src="/court-4.png"
       alt="Court preview"
-      className="h-full w-full object-center"
+      fill
+      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 600px"
+      className="object-cover object-center"
+      priority={false}
     />
   </div>
   <div className="flex flex-col p-5 sm:p-6 lg:p-8">

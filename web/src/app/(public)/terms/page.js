@@ -4,6 +4,9 @@ export const metadata = {
   title: "Terms & Conditions & Liability Waiver",
   description:
     "Review the Terms and Conditions, Liability Waiver, and Court Safety Guidelines for playing at Baseline Arena Nagpur.",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {

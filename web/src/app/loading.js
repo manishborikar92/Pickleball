@@ -29,7 +29,7 @@ export default function Loading() {
           Loading Baseline Arena
         </h3>
         <p className="mt-1.5 text-[9px] font-medium uppercase tracking-[0.2em] text-muted/50">
-          Nagpur's Premium Indoor Courts
+          Nagpur&apos;s Premium Indoor Courts
         </p>
       </div>
     </main>

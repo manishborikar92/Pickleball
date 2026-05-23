@@ -1,11 +1,25 @@
 import { InfoPageLayout } from "@/components/layout";
 import Image from "next/image";
 import { Award, Compass, Heart } from "lucide-react";
+import { JsonLd } from "@/components/seo";
 
 export const metadata = {
   title: "About Us",
   description:
     "Discover the story of Baseline Arena, Nagpur's premier indoor pickleball facility offering top-tier cushion courts and professional play conditions.",
+  alternates: {
+    canonical: "/about",
+  },
+};
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "@id": "https://baselinearena.in/#organization",
+  "name": "Baseline Arena",
+  "url": "https://baselinearena.in",
+  "logo": "https://baselinearena.in/baseline-full-logo.svg",
+  "sameAs": ["https://instagram.com/baseline.arena"],
 };
 
 const VALUE_CARDS = [
@@ -28,11 +42,13 @@ const VALUE_CARDS = [
 
 export default function AboutPage() {
   return (
-    <InfoPageLayout
-      eyebrow="Our Story"
-      title="Nagpur's Premier Indoor Pickleball Hub"
-      description="Baseline Arena is elevating the pickleball experience through cutting-edge technology and world-class sports facilities."
-    >
+    <>
+      <JsonLd data={orgSchema} />
+      <InfoPageLayout
+        eyebrow="Our Story"
+        title="Nagpur's Premier Indoor Pickleball Hub"
+        description="Baseline Arena is elevating the pickleball experience through cutting-edge technology and world-class sports facilities."
+      >
       <div className="space-y-8">
         {/* Intro Section */}
         <section className="space-y-4">
@@ -134,5 +150,6 @@ export default function AboutPage() {
         </section>
       </div>
     </InfoPageLayout>
+    </>
   );
 }
