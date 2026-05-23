@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { UserCircle } from "lucide-react";
+import { UserCircle, MapPin } from "lucide-react";
 import { Button } from "@/components/shared";
 import { venue } from "@/data/platform";
 
@@ -26,25 +26,24 @@ function BrandLogo() {
   return (
     <Link
       href="/"
-      className="group flex min-w-0 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:gap-3"
+      className="group flex flex-col justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       aria-label={`Go to ${venue.brandName} homepage`}
     >
-      <div className="flex shrink-0 items-center justify-center transition-transform group-hover:scale-105">
+      <div className="flex shrink-0 items-center justify-start transition-transform group-hover:scale-[1.01]">
         <Image
-          src="/baseline-logo.svg"
-          alt={`${venue.brandName} Logo`}
-          width={64}
-          height={64}
-          className="h-12 w-12 sm:h-14 sm:w-14"
+          src="/baseline-full-logo.svg"
+          alt={`${venue.brandName} Full Logo`}
+          width={150}
+          height={40}
+          className="h-7 w-auto sm:h-8 md:h-9"
+          priority
         />
       </div>
-      <div className="flex min-w-0 flex-col justify-center gap-0.5">
-        <span className="truncate text-base font-black leading-none text-foreground sm:text-lg lg:text-xl">
-          {venue.brandName}
-        </span>
-        <span className="truncate text-[9px] font-bold uppercase leading-none tracking-wide text-muted-foreground sm:text-[10px] sm:tracking-wider">
-          {venue.name}
-        </span>
+      
+      {/* Location sub-label directly below logo */}
+      <div className="mt-0.5 flex items-center gap-1 pl-0.5 text-[7px] font-extrabold uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-accent sm:text-[8px]">
+        <MapPin className="h-2 w-2 shrink-0 text-accent/80 sm:h-2.5 sm:w-2.5" />
+        <span>{venue.name}</span>
       </div>
     </Link>
   );
