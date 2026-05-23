@@ -138,44 +138,41 @@ export default function SupportPage() {
             contact form extremely cramped. At lg, article is ~720px, giving each
             half a comfortable ~360px — ideal for form + map layout.
         */}
-        <section className="mt-8 grid gap-8 grid-cols-1 lg:grid-cols-2 border-t border-line/45">
-
-          {/* Contact Details & Map */}
-          <div className="mt-6 space-y-6 lg:order-last">
+        <section className="mt-8 border-t border-line/45 pt-8">
+          <div className="space-y-6">
             <h2 className="text-xl font-black text-foreground sm:text-2xl">
               Location &amp; Details
             </h2>
 
             {/*
-              Contact info cards: sm:grid-cols-2 gives 2-col at 640px+.
-              lg:grid-cols-1 collapses to 1-col when this div is inside the
-              lg:grid-cols-2 parent column (~360px) — correct at that width.
+              Refactored: Now uses a responsive grid (1 col on mobile, 2 cols on tablet+)
+              to utilize the full width of the section cleanly.
             */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <Card className="flex items-start gap-4 p-4 border-line/50 bg-surface/40">
-                <MapPin className="h-5 w-5 shrink-0 text-accent mt-0.5" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Card className="flex items-start gap-4 rounded-xl border border-line/50 bg-surface/40 p-4">
+                <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Address</h4>
-                  <p className="mt-1 text-sm text-muted leading-relaxed">{venue.address}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{venue.address}</p>
                 </div>
               </Card>
 
-              <Card className="flex items-start gap-4 p-4 border-line/50 bg-surface/40">
-                <Clock className="h-5 w-5 shrink-0 text-accent mt-0.5" />
+              <Card className="flex items-start gap-4 rounded-xl border border-line/50 bg-surface/40 p-4">
+                <Clock className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Operational Hours</h4>
-                  <p className="mt-1 text-sm text-muted leading-relaxed">{venue.hours}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{venue.hours}</p>
                 </div>
               </Card>
 
-              <Card className="flex items-start gap-4 p-4 border-line/50 bg-surface/40">
-                <Phone className="h-5 w-5 shrink-0 text-accent mt-0.5" />
+              <Card className="flex items-start gap-4 rounded-xl border border-line/50 bg-surface/40 p-4">
+                <Phone className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Telephone</h4>
                   <p className="mt-1 text-sm">
                     <a
                       href={`tel:${venue.phone.replace(/\D/g, "")}`}
-                      className="text-muted hover:text-accent font-semibold transition-colors"
+                      className="font-semibold text-muted transition-colors hover:text-accent"
                     >
                       {venue.phone}
                     </a>
@@ -183,14 +180,14 @@ export default function SupportPage() {
                 </div>
               </Card>
 
-              <Card className="flex items-start gap-4 p-4 border-line/50 bg-surface/40">
-                <Mail className="h-5 w-5 shrink-0 text-accent mt-0.5" />
+              <Card className="flex items-start gap-4 rounded-xl border border-line/50 bg-surface/40 p-4">
+                <Mail className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Email Support</h4>
                   <p className="mt-1 text-sm">
                     <a
                       href={`mailto:${venue.email}`}
-                      className="text-muted hover:text-accent font-semibold transition-colors"
+                      className="font-semibold text-muted transition-colors hover:text-accent"
                     >
                       {venue.email}
                     </a>
@@ -199,8 +196,8 @@ export default function SupportPage() {
               </Card>
             </div>
 
-            {/* Embedded interactive map — aspect-video is responsive by nature */}
-            <div className="relative w-full aspect-video rounded-xl overflow-hidden border border-line bg-surface-panel shadow-md">
+            {/* Embedded interactive map — aspect-video scales perfectly full-width */}
+            <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-line bg-surface-panel shadow-md">
               <Map
                 lat={venue.location.lat}
                 lng={venue.location.lng}
@@ -209,7 +206,6 @@ export default function SupportPage() {
               />
             </div>
           </div>
-
         </section>
       </div>
     </InfoPageLayout>
