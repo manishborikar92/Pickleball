@@ -23,7 +23,7 @@ export const courts = [
     id: "court-1",
     venueId: venue.id,
     name: "Court 1",
-    environment: "Indoor",
+    environment: "Outdoor",
     surfaceType: "Pro Cushion",
     status: "active",
     price: 500,
@@ -32,7 +32,7 @@ export const courts = [
     id: "court-2",
     venueId: venue.id,
     name: "Court 2",
-    environment: "Indoor",
+    environment: "Outdoor",
     surfaceType: "Pro Cushion",
     status: "active",
     price: 550,
@@ -71,7 +71,7 @@ export const reviews = [
     label: "4.5 DUPR",
     rating: 5,
     quote:
-      "Best indoor courts in the city. The lighting is incredible and the surface grip is exactly what you want for competitive matches.",
+      "Best outdoor courts in the city. The lighting is incredible and the surface grip is exactly what you want for competitive matches.",
   },
   {
     id: "review-2",

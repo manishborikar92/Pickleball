@@ -1,13 +1,12 @@
 import { InfoPageLayout } from "@/components/layout";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Cancellation & Refund Policy",
   description:
     "Learn about our strict cancellation policy, refund terms, and how wallet credits are handled for booking closures at Baseline Arena.",
-  alternates: {
-    canonical: "/refund",
-  },
-};
+  path: "/refund",
+});
 
 export default function RefundPage() {
   return (

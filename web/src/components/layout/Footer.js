@@ -29,7 +29,7 @@ export function Footer() {
               </div>
             </Link>
             <p className="max-w-md text-xs leading-relaxed text-muted sm:text-sm">
-              Nagpur&apos;s premier indoor pickleball destination. Experience professional-grade Pro Cushion courts, expert LED lighting, and effortless digital booking.
+              Nagpur&apos;s premier outdoor pickleball destination. Experience professional-grade Pro Cushion courts, expert LED lighting, and effortless digital booking.
             </p>
             {/* Instagram Social Handle */}
             <div className="mt-2 flex flex-col gap-2">

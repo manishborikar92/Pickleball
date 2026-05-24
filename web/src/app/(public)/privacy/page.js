@@ -1,13 +1,12 @@
 import { InfoPageLayout } from "@/components/layout";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Privacy Policy",
   description:
     "Review the privacy policy for Baseline Arena, detailing how we collect, use, and protect your personal and booking information.",
-  alternates: {
-    canonical: "/privacy",
-  },
-};
+  path: "/privacy",
+});
 
 export default function PrivacyPage() {
   return (

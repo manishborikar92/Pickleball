@@ -1,18 +1,14 @@
 import { signInDemo } from "@/app/actions/auth-actions";
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Sign In",
   description: "Sign in to Baseline Arena to manage your pickleball court bookings, view transactions, and redeem rewards.",
-  alternates: {
-    canonical: "/login",
-  },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+  path: "/login",
+  isPrivate: true,
+});
 
 export default async function LoginPage({ searchParams }) {
   const params = await searchParams;

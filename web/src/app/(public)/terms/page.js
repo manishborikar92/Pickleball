@@ -1,13 +1,12 @@
 import { InfoPageLayout } from "@/components/layout";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Terms & Conditions & Liability Waiver",
   description:
     "Review the Terms and Conditions, Liability Waiver, and Court Safety Guidelines for playing at Baseline Arena Nagpur.",
-  alternates: {
-    canonical: "/terms",
-  },
-};
+  path: "/terms",
+});
 
 export default function TermsPage() {
   return (
@@ -28,7 +27,7 @@ export default function TermsPage() {
             1. Court Booking &amp; Slot Reservation
           </h2>
           <p className="leading-relaxed">
-            Baseline Arena provides indoor pickleball court reservations at our facility in Besa, Nagpur. Bookings are processed online through our mobile checkout system.
+            Baseline Arena provides outdoor pickleball court reservations at our facility in Besa, Nagpur. Bookings are processed online through our mobile checkout system.
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
             <li>

@@ -1,6 +1,7 @@
 import { BookingClient } from "@/components/features/booking";
 import { getAvailability, getVenue } from "@/lib/api";
 import { JsonLd } from "@/components/seo";
+import { getPageMetadata } from "@/config/metadata";
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -9,13 +10,11 @@ export async function generateMetadata({ params }) {
   const name = venue.name || "Besa, Nagpur";
   const brandName = venue.brandName || "Baseline Arena";
 
-  return {
+  return getPageMetadata({
     title: `Book Court at ${name} | ${brandName}`,
     description: `Select live pickleball court slots and complete secure checkout at ${brandName} in ${name}. Premium Pro Cushion indoor courts.`,
-    alternates: {
-      canonical: `/venues/${slug}/book`,
-    },
-  };
+    path: `/venues/${slug}/book`,
+  });
 }
 
 export default async function BookPage({ params }) {

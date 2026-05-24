@@ -8,15 +8,14 @@ import { Footer } from "@/components/layout";
 import { LocationSection } from "@/components/features/landing";
 import { ReviewsSection } from "@/components/features/landing";
 import { JsonLd } from "@/components/seo";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
   description:
     "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
-  alternates: {
-    canonical: "/",
-  },
-};
+  path: "/",
+});
 
 const orgSchema = {
   "@context": "https://schema.org",
