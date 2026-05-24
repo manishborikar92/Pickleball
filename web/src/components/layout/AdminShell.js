@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Badge, Button } from "@/components/shared";
-import { signOutDemo } from "@/app/actions/auth-actions";
+import { signOutStaffAction } from "@/app/actions/auth-actions";
+import { useAuth } from "@/hooks/useAuth";
 
 const ADMIN_LINKS = [
   { href: "/admin", label: "Overview", exact: true },
@@ -17,7 +18,9 @@ const ADMIN_LINKS = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export function AdminShell({ session, children }) {
+export function AdminShell({ session: propSession, children }) {
+  const { session: hookSession } = useAuth();
+  const session = hookSession || propSession;
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row">
       <Sidebar session={session} />
@@ -73,7 +76,7 @@ function Sidebar({ session }) {
 
         {/* Pushed to the bottom on desktop via mt-auto */}
         <div className="mt-auto pt-4 md:pt-6">
-          <form action={signOutDemo}>
+          <form action={signOutStaffAction}>
             <Button variant="secondary" className="w-full" type="submit">
               Sign Out
             </Button>

@@ -13,7 +13,7 @@ import { getPageMetadata } from "@/config/metadata";
 export const metadata = getPageMetadata({
   title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
   description:
-    "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
+    "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
   path: "/",
 });
 
