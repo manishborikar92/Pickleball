@@ -15,8 +15,8 @@ export default async function LoginPage({ searchParams }) {
   const next = params?.next || "/dashboard";
 
   return (
-    <main className="grid min-h-screen place-items-center px-6 py-12">
-      <Card className="w-full max-w-lg p-8">
+    <main className="sm:mx-auto sm:w-full sm:max-w-md px-6">
+      <Card className="p-8">
         <h1 className="text-4xl font-black">Choose a demo role</h1>
         <p className="mt-4 text-muted">
           This front-end build uses secure HTTP-only role cookies for route
@@ -33,7 +33,7 @@ export default async function LoginPage({ searchParams }) {
               <option value="super_admin">Super Admin</option>
             </select>
           </label>
-          <Button type="submit" className="w-full">Continue</Button>
+          <Button type="submit" className="w-full justify-center">Continue</Button>
         </form>
       </Card>
     </main>
