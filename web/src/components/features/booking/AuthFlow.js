@@ -2,7 +2,8 @@ import Link from "next/link";
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
 import { formatCurrency } from "@/lib/booking-engine";
-import { CheckCircle2, AlertCircle, Smartphone, User } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 
 export function AuthFlow({
   auth,
@@ -12,9 +13,7 @@ export function AuthFlow({
   quote,
   waiver,
   setWaiver,
-  submitName,
-  submitPhone,
-  submitOtp,
+  onAuthSuccess,
   confirmPayment,
   onClose,
 }) {
@@ -38,14 +37,14 @@ export function AuthFlow({
 
         {/* Scrollable Content Area */}
         <div className="overflow-y-auto p-5 pb-safe sm:p-6">
-          {auth.step === "name" && (
-            <NameStep auth={auth} setAuth={setAuth} onSubmit={submitName} />
-          )}
-          {auth.step === "phone" && (
-            <PhoneStep auth={auth} setAuth={setAuth} onSubmit={submitPhone} />
-          )}
-          {auth.step === "otp" && (
-            <OtpStep auth={auth} setAuth={setAuth} onSubmit={submitOtp} />
+          {["phone", "otp", "name"].includes(auth.step) && (
+            <CustomerCheckoutAuthGate
+              inline={true}
+              onSuccess={onAuthSuccess}
+              showStaffLoginLink={false}
+              initialPhone={auth.phone}
+              initialStep={auth.step}
+            />
           )}
           {auth.step === "waiver" && (
             <WaiverStep
@@ -65,114 +64,6 @@ export function AuthFlow({
 }
 
 /* ── Individual Steps ─────────────────────────────── */
-
-function NameStep({ auth, setAuth, onSubmit }) {
-  return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
-          <User className="h-7 w-7" />
-        </div>
-        <h2 className="text-3xl font-black sm:text-4xl">Almost there!</h2>
-        <p className="mt-2 text-sm text-muted sm:text-base">
-          Tell us your name to finish your booking.
-        </p>
-      </div>
-      <label className="block text-xs font-bold uppercase tracking-widest text-muted">
-        Full Name
-        <input
-          value={auth.name}
-          onChange={(e) =>
-            setAuth((prev) => ({ ...prev, name: e.target.value, error: "" }))
-          }
-          placeholder="Enter your full name"
-          autoFocus
-          className="mt-2 w-full rounded-xl border border-line bg-background px-4 py-3.5 text-[16px] normal-case tracking-normal text-foreground shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-        />
-      </label>
-      <FlowError message={auth.error} />
-      <Button className="w-full py-4 text-base" type="submit">
-        Next →
-      </Button>
-    </form>
-  );
-}
-
-function PhoneStep({ auth, setAuth, onSubmit }) {
-  return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div className="text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
-          <Smartphone className="h-7 w-7" />
-        </div>
-        <h2 className="text-2xl font-black sm:text-3xl">Verify to Book</h2>
-        <p className="mt-2 text-sm text-muted">
-          Enter your phone to receive a 6-digit code.
-        </p>
-      </div>
-      <div className="flex overflow-hidden rounded-xl border border-line bg-background shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-        <span className="flex shrink-0 items-center gap-1.5 border-r border-line bg-surface px-4 text-sm font-bold text-muted">
-          IN +91
-        </span>
-        <input
-          value={auth.phone}
-          onChange={(e) =>
-            setAuth((prev) => ({ ...prev, phone: e.target.value, error: "" }))
-          }
-          placeholder="98765 43210"
-          inputMode="tel"
-          autoFocus
-          className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-[16px] focus:outline-none"
-        />
-      </div>
-      <FlowError message={auth.error} />
-      <Button className="w-full py-4 text-base" type="submit">
-        Send OTP →
-      </Button>
-    </form>
-  );
-}
-
-function OtpStep({ auth, setAuth, onSubmit }) {
-  return (
-    <form onSubmit={onSubmit} className="space-y-5">
-      <div className="text-center">
-        <h2 className="text-2xl font-black sm:text-3xl">Enter Code</h2>
-        <p className="mt-2 text-sm text-muted">
-          Sent to {auth.phone}.{" "}
-          <span className="font-bold">Demo OTP: 482913</span>
-        </p>
-      </div>
-      <input
-        value={auth.otp}
-        onChange={(e) =>
-          setAuth((prev) => ({ ...prev, otp: e.target.value, error: "" }))
-        }
-        placeholder="482913"
-        inputMode="numeric"
-        maxLength={6}
-        autoFocus
-        className="w-full rounded-xl border border-line bg-background px-4 py-4 text-center text-3xl font-black tracking-[0.35em] shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-      />
-      <button
-        type="button"
-        onClick={() =>
-          setAuth((prev) => ({
-            ...prev,
-            error: "Code resent. Use 482913.",
-          }))
-        }
-        className="mx-auto block p-2 text-sm font-bold text-accent hover:underline active:opacity-70"
-      >
-        Resend Code
-      </button>
-      <FlowError message={auth.error} />
-      <Button className="w-full py-4 text-base" type="submit">
-        Verify OTP
-      </Button>
-    </form>
-  );
-}
 
 function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
   const allChecked = waiver.time && waiver.policy;
@@ -283,18 +174,5 @@ function WaiverCheckbox({ checked, onChange, label }) {
       />
       <span className="text-sm leading-snug text-muted">{label}</span>
     </label>
-  );
-}
-
-function FlowError({ message }) {
-  if (!message) return null;
-  return (
-    <div
-      role="alert"
-      className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-    >
-      <AlertCircle className="h-4 w-4 shrink-0" />
-      <p>{message}</p>
-    </div>
   );
 }

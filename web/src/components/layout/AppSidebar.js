@@ -4,7 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/shared";
-import { signOutDemo } from "@/app/actions/auth-actions";
+import { signOutCustomerAction } from "@/app/actions/auth-actions";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV_LINKS = [
   { href: "/dashboard", label: "Overview", exact: true },
@@ -13,8 +14,10 @@ const NAV_LINKS = [
   { href: "/venues/besa-nagpur/book", label: "Book Again" },
 ];
 
-export function AppSidebar({ session }) {
+export function AppSidebar({ session: propSession }) {
   const pathname = usePathname();
+  const { session: hookSession } = useAuth();
+  const session = hookSession || propSession;
 
   return (
     <aside className="sticky top-0 z-20 flex flex-col border-b border-line bg-surface md:min-h-screen md:w-64 md:shrink-0 md:border-b-0 md:border-r lg:w-72">
@@ -60,7 +63,7 @@ export function AppSidebar({ session }) {
 
         {/* Pushed to the bottom on desktop via mt-auto */}
         <div className="mt-auto pt-4 md:pt-6">
-          <form action={signOutDemo}>
+          <form action={signOutCustomerAction}>
             <Button variant="secondary" className="w-full" type="submit">
               Sign Out
             </Button>

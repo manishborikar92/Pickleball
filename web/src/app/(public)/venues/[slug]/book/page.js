@@ -19,7 +19,10 @@ export async function generateMetadata({ params }) {
 
 export default async function BookPage({ params }) {
   const { slug } = await params;
-  const [venue, availability] = await Promise.all([getVenue(), getAvailability()]);
+  const [venue, availability] = await Promise.all([
+    getVenue(),
+    getAvailability(),
+  ]);
 
   const locationSchema = {
     "@context": "https://schema.org",
@@ -67,7 +70,11 @@ export default async function BookPage({ params }) {
   return (
     <>
       <JsonLd data={locationSchema} />
-      <BookingClient venue={venue} courts={venue.courts} availability={availability} />
+      <BookingClient
+        venue={venue}
+        courts={venue.courts}
+        availability={availability}
+      />
     </>
   );
 }
