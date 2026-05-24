@@ -8,10 +8,10 @@ const geistSans = Geist({
 
 export const metadata = {
   title: {
-    default: "Baseline Arena | Security Portal",
-    template: "%s | Baseline Arena Security",
+    default: "Baseline Arena | Login",
+    template: "%s | Baseline Arena",
   },
-  description: "Secure Single Sign-On (SSO) Portal for Baseline Arena",
+  description: "Secure login portal for Baseline Arena",
   // Strict robots configuration: Auth subdomain and login paths must NEVER be indexed
   robots: {
     index: false,

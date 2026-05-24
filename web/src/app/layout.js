@@ -16,7 +16,7 @@ export const metadata = {
     template: "%s | Baseline Arena",
   },
   description:
-    "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
+    "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
   alternates: {
     canonical: "/",
   },
@@ -37,7 +37,7 @@ export const metadata = {
     url: "https://baselinearena.in",
     title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
     description:
-      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
+      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
     siteName: "Baseline Arena",
     images: [
       {
@@ -52,7 +52,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
     description:
-      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
+      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
     images: ["/api/og?title=Baseline Arena&desc=Book premium outdoor pickleball courts in Besa, Nagpur."],
   },
   appleWebApp: {

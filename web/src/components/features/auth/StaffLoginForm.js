@@ -27,9 +27,9 @@ export function StaffLoginForm() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Shield className="h-7 w-7" />
         </div>
-        <h1 className="text-3xl font-black">Staff Single Sign-On</h1>
+        <h1 className="text-3xl font-black">Staff Sign In</h1>
         <p className="mt-2 text-sm text-muted">
-          This portal simulates Baseline Arena internal administrative credentials.
+          Access the Baseline Arena administrative portal.
         </p>
       </div>
 
@@ -37,7 +37,7 @@ export function StaffLoginForm() {
         <input type="hidden" name="next" value={next} />
         
         <label className="grid gap-2 text-sm font-bold text-muted">
-          Internal Role
+          Select Role
           <select 
             name="role" 
             defaultValue="staff"
