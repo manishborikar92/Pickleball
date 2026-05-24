@@ -3,15 +3,14 @@ import { Header } from "@/components/layout";
 import { Footer } from "@/components/layout";
 import { Badge } from "@/components/shared";
 import { CircleDashed, Smartphone, Trophy } from "lucide-react";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Coming Soon — Join the Wait List",
   description:
     "Baseline Arena is launching soon in Besa, Nagpur. Register your interest to be the first notified when courts open for booking.",
-  alternates: {
-    canonical: "/interest",
-  },
-};
+  path: "/interest",
+});
 
 const PERKS = [
   {

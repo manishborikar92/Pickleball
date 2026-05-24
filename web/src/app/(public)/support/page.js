@@ -1,14 +1,13 @@
 import { SupportClient } from "@/components/features/support";
 import { JsonLd } from "@/components/seo";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Help & Support",
   description:
     "Need help with court bookings? Review our FAQ lists regarding equipment, cancellations, refunds, court specifications, and rules, or contact Baseline Arena.",
-  alternates: {
-    canonical: "/support",
-  },
-};
+  path: "/support",
+});
 
 const faqSchema = {
   "@context": "https://schema.org",

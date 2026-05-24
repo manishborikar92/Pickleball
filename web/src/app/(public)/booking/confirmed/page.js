@@ -18,18 +18,14 @@ import {
   Activity,
   Sparkles
 } from "lucide-react";
+import { getPageMetadata } from "@/config/metadata";
 
-export const metadata = {
+export const metadata = getPageMetadata({
   title: "Booking Confirmed",
   description: "Your court booking at Baseline Arena has been successfully reserved. View booking details, location map, and player guidelines.",
-  alternates: {
-    canonical: "/booking/confirmed",
-  },
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
+  path: "/booking/confirmed",
+  isPrivate: true,
+});
 
 // Helper to format date strings nicely
 function formatDate(dateStr) {
