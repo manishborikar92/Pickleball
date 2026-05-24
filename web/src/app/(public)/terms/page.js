@@ -28,7 +28,7 @@ export default function TermsPage() {
             1. Court Booking &amp; Slot Reservation
           </h2>
           <p className="leading-relaxed">
-            Baseline Arena provides indoor pickleball court reservations at our facility in Besa, Nagpur. Bookings are processed online through our mobile checkout system.
+            Baseline Arena provides outdoor pickleball court reservations at our facility in Besa, Nagpur. Bookings are processed online through our mobile checkout system.
           </p>
           <ul className="list-disc pl-5 space-y-1.5 text-muted-foreground">
             <li>

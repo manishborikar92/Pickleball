@@ -11,7 +11,7 @@ export async function generateMetadata({ params }) {
 
   return {
     title: `Book Court at ${name} | ${brandName}`,
-    description: `Select live pickleball court slots and complete secure checkout at ${brandName} in ${name}. Premium Pro Cushion indoor courts.`,
+    description: `Select live pickleball court slots and complete secure checkout at ${brandName} in ${name}. Premium Pro Cushion outdoor courts.`,
     alternates: {
       canonical: `/venues/${slug}/book`,
     },

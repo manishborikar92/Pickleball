@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/seo";
 export const metadata = {
   title: "About Us",
   description:
-    "Discover the story of Baseline Arena, Nagpur's premier indoor pickleball facility offering top-tier cushion courts and professional play conditions.",
+    "Discover the story of Baseline Arena, Nagpur's premier outdoor pickleball facility offering top-tier cushion courts and professional play conditions.",
   alternates: {
     canonical: "/about",
   },
@@ -46,7 +46,7 @@ export default function AboutPage() {
       <JsonLd data={orgSchema} />
       <InfoPageLayout
         eyebrow="Our Story"
-        title="Nagpur's Premier Indoor Pickleball Hub"
+        title="Nagpur's Premier Outdoor Pickleball Hub"
         description="Baseline Arena is elevating the pickleball experience through cutting-edge technology and world-class sports facilities."
       >
       <div className="space-y-8">
@@ -59,7 +59,7 @@ export default function AboutPage() {
             Founded in Besa, Nagpur, Baseline Arena was born out of a simple passion: to build a dedicated, weatherproof, and high-performance environment for the fastest-growing sport in the world. We noticed that local enthusiasts were often restricted by unstable weather conditions, poor outdoor lighting, and tedious booking procedures.
           </p>
           <p className="text-sm leading-relaxed sm:text-base">
-            We solved this by establishing a premium indoor sports arena where players can enjoy perfect court conditions 365 days a year. By combining high-grade sports infrastructure with a frictionless, automated mobile checkout system, we have made booking a game as simple as tapping a screen.
+            We solved this by establishing a premium outdoor sports arena where players can enjoy perfect court conditions 365 days a year. By combining high-grade sports infrastructure with a frictionless, automated mobile checkout system, we have made booking a game as simple as tapping a screen.
           </p>
         </section>
 
@@ -81,7 +81,7 @@ export default function AboutPage() {
             </div>
             <div className="space-y-1">
               <span className="text-xs font-bold text-accent uppercase tracking-wider">
-                Indoor Climate &amp; Lights
+                Outdoor Climate &amp; Lights
               </span>
               <p className="text-sm font-bold text-foreground">Anti-Glare Sports LED Lighting</p>
               <p className="text-xs text-muted">High-lux overhead fixture layout prevents blind spots and shadows during fast rallies.</p>
@@ -145,7 +145,7 @@ export default function AboutPage() {
             Looking Ahead
           </h2>
           <p className="text-xs sm:text-sm leading-relaxed">
-            While our initial launch focuses on our premier Besa venue in Nagpur, our architecture and company structure are venue-aware from day one. As the pickleball community expands, we plan to bring our signature premium indoor court standard to other locations, keeping the same standard of visual luxury, athletic quality, and seamless booking technology.
+            While our initial launch focuses on our premier Besa venue in Nagpur, our architecture and company structure are venue-aware from day one. As the pickleball community expands, we plan to bring our signature premium outdoor court standard to other locations, keeping the same standard of visual luxury, athletic quality, and seamless booking technology.
           </p>
         </section>
       </div>

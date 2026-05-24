@@ -7,7 +7,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get("title") || "Baseline Arena";
-    const desc = searchParams.get("desc") || "Book premium indoor pickleball courts in Besa, Nagpur.";
+    const desc = searchParams.get("desc") || "Book premium outdoor pickleball courts in Besa, Nagpur.";
     const logoUrl = `${new URL(request.url).origin}/baseline-full-logo.svg`;
 
     return new ImageResponse(
