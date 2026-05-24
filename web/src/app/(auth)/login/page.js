@@ -10,10 +10,6 @@ export const metadata = getPageMetadata({
 
 export default function LoginPage() {
   return (
-    <main className="sm:mx-auto sm:w-full sm:max-w-md px-6">
-      <CustomerLoginForm
-        showStaffLink={true}
-      />
-    </main>
+    <CustomerLoginForm showStaffLink={true} />
   );
 }

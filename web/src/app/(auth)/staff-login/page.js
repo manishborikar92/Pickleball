@@ -10,8 +10,6 @@ export const metadata = getPageMetadata({
 
 export default function StaffLoginPage() {
   return (
-    <main className="sm:mx-auto sm:w-full sm:max-w-md px-6">
-      <StaffLoginForm />
-    </main>
+    <StaffLoginForm />
   );
 }
