@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, AlertCircle, User, Phone, ArrowRight } from "lucide-react";
-import { Button } from "@/components/shared";
-
+import { CheckCircle2, User, ArrowRight } from "lucide-react";
+import { Button, FormField, Input, FormAlert } from "@/components/shared";
 
 export function InterestForm() {
   const [form, setForm] = useState({ name: "", phone: "" });
@@ -91,66 +90,39 @@ export function InterestForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-5">
-      {/* Name field */}
-      <label className="block">
-        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted sm:mb-2 sm:text-xs sm:tracking-widest">
-          Full Name
-        </span>
-        <div className="relative">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-4">
-            <User className="h-4 w-4 text-muted" aria-hidden="true" />
-          </div>
-          <input
-            id="interest-name"
-            type="text"
-            name="name"
-            value={form.name}
-            onChange={handleChange}
-            placeholder="e.g. Rahul Sharma"
-            autoComplete="name"
-            required
-            className="w-full rounded-xl border border-line bg-surface py-2.5 pl-9 pr-3 text-sm text-foreground placeholder:text-muted/70 shadow-inner transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent sm:py-3 sm:pl-11 sm:pr-4 sm:text-base"
-          />
-        </div>
-      </label>
+      <FormField label="Full Name">
+        <Input
+          icon={User}
+          type="text"
+          name="name"
+          value={form.name}
+          onChange={handleChange}
+          placeholder="e.g. Rahul Sharma"
+          autoComplete="name"
+          required
+          className="py-2.5"
+          error={status === "error" && form.name.trim().length < 2}
+        />
+      </FormField>
 
-      {/* Phone field */}
-      <label className="block">
-        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-muted sm:mb-2 sm:text-xs sm:tracking-widest">
-          Phone Number
-        </span>
-        <div className="mt-1">
-          <div className="flex overflow-hidden rounded-xl border border-line bg-surface shadow-inner transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-            <span className="flex shrink-0 items-center gap-1 border-r border-line bg-surface-soft px-3 text-sm font-bold text-muted sm:gap-1.5 sm:px-4 sm:text-base">
-              🇮🇳 +91
-            </span>
-            <input
-              id="interest-phone"
-              type="tel"
-              name="phone"
-              value={form.phone}
-              onChange={handleChange}
-              placeholder="98765 43210"
-              inputMode="tel"
-              autoComplete="tel"
-              maxLength={11}
-              required
-              className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-foreground placeholder:text-muted/70 focus:outline-none sm:px-4 sm:py-3 sm:text-base"
-            />
-          </div>
-        </div>
-      </label>
+      <FormField label="Phone Number">
+        <Input
+          prefix="🇮🇳 +91"
+          type="tel"
+          name="phone"
+          value={form.phone}
+          onChange={handleChange}
+          placeholder="98765 43210"
+          inputMode="tel"
+          autoComplete="tel"
+          maxLength={10}
+          required
+          className="py-2.5"
+          error={status === "error" && form.phone.replace(/\D/g, "").length !== 10}
+        />
+      </FormField>
 
-      {/* Error state */}
-      {status === "error" && errorMessage && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <p>{errorMessage}</p>
-        </div>
-      )}
+      <FormAlert type="error" message={status === "error" ? errorMessage : ""} />
 
       <Button
         type="submit"
@@ -171,7 +143,7 @@ export function InterestForm() {
         )}
       </Button>
 
-      <p className="text-center text-xs text-muted/60">
+      <p className="text-center text-xs text-muted/65">
         No spam — we only reach out when courts are ready.
       </p>
     </form>

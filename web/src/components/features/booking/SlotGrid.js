@@ -20,38 +20,33 @@ const STATUS_LABELS = {
 };
 
 /**
- * SlotGrid — renders one grid per selected court.
+ * SlotGrid — renders one slot grid per court.
+ * All courts are always visible — no court toggle or filter needed.
  * Supports consecutive multi-slot selection per court.
  *
- * Props:
- *   availability       — array of { courtId, slots[] }
- *   courts             — array of court objects
- *   activeCourts       — Set of courtId strings currently toggled on
- *   courtSelections    — Map<courtId, { startTime, endTime }> — current selection per court
- *   onSlotSelect       — (courtId, slot, allSlots) => void
+ * @param {Object}   props
+ * @param {Array}    props.availability    - Array of { courtId, slots[] } per court
+ * @param {Array}    props.courts          - Array of court config objects
+ * @param {Map}      props.courtSelections - Map<courtId, { startTime, endTime }>
+ * @param {Function} props.onSlotSelect   - (courtId, slot, allSlots) => void
  */
 export function SlotGrid({
   availability,
   courts,
-  activeCourts,
   courtSelections,
   onSlotSelect,
 }) {
-  const activeCourtsArr = availability.filter((ca) =>
-    activeCourts.has(ca.courtId)
-  );
-
-  if (activeCourtsArr.length === 0) {
+  if (!availability || availability.length === 0) {
     return (
       <div className="mt-6 rounded-xl border border-line/50 bg-surface/30 p-6 text-center text-sm text-muted">
-        Select at least one court above to see available slots.
+        No courts are available for the selected date.
       </div>
     );
   }
 
   return (
     <div className="mt-5 space-y-8 border-t border-line pt-5 sm:mt-6 sm:pt-6">
-      {activeCourtsArr.map((courtAvailability) => {
+      {availability.map((courtAvailability) => {
         const court = courts.find((c) => c.id === courtAvailability.courtId);
         if (!court) return null;
         const sel = courtSelections.get(court.id) || null;

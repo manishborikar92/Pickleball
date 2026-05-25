@@ -1,10 +1,27 @@
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
 import { formatCurrency } from "@/lib/booking-engine";
-import { Tag, Lock } from "lucide-react";
+import { Tag, Lock, ShieldCheck, CalendarDays } from "lucide-react";
 
+/**
+ * Sticky booking summary panel displayed in the right column of the booking page.
+ * Shows per-court selections with pricing, optional discount, grand total,
+ * a promo-code input, and the primary checkout CTA.
+ *
+ * @param {Object}   props
+ * @param {Array}    props.selectedCourtsData  - Active court + slot selections with pricing
+ * @param {string}   props.selectedDate        - ISO date string of the selected booking date
+ * @param {boolean}  props.hasSelection        - Whether any valid court+slot pair is selected
+ * @param {Object}   props.quote               - Calculated price breakdown from booking engine
+ * @param {string}   props.couponCode          - Current promo code input value
+ * @param {string}   props.couponMessage       - Feedback message after applying a promo code
+ * @param {Function} props.onCouponCodeChange  - Handler for promo code input changes
+ * @param {Function} props.onApplyCoupon       - Handler to apply the entered promo code
+ * @param {Function} props.onCheckout          - Handler to initiate the checkout auth flow
+ */
 export function OrderSummary({
   selectedCourtsData,
+  selectedDate,
   hasSelection,
   quote,
   couponCode,
@@ -14,103 +31,126 @@ export function OrderSummary({
   onCheckout,
 }) {
   return (
-    <Card className="flex flex-col p-5 shadow-lg sm:p-6 lg:p-7">
-      <h3 className="text-xl font-black sm:text-2xl">Order Summary</h3>
+    <Card className="flex flex-col overflow-hidden p-0 shadow-xl">
+      {/* Panel header */}
+      <div className="border-b border-line/40 px-5 py-4 sm:px-6">
+        <h3 className="text-lg font-bold text-foreground">Booking Summary</h3>
+      </div>
 
-      {!hasSelection ? (
-        <div className="mt-5 rounded-lg border border-line/50 bg-surface/30 p-4 text-center text-sm text-muted sm:mt-6">
-          Select a court and time slot to see your order summary.
+      <div className="flex flex-col gap-5 p-5 sm:p-6">
+        {/* Selection state */}
+        {!hasSelection ? (
+          <EmptyState />
+        ) : (
+          <BookingItems
+            selectedCourtsData={selectedCourtsData}
+            selectedDate={selectedDate}
+            quote={quote}
+          />
+        )}
+
+        {/* Promo code */}
+        <CouponInput
+          couponCode={couponCode}
+          couponMessage={couponMessage}
+          onChange={onCouponCodeChange}
+          onApply={onApplyCoupon}
+        />
+
+        {/* Grand total */}
+        <TotalRow totalAmount={quote.totalAmount} />
+
+        {/* CTA + trust signals */}
+        <div className="flex flex-col gap-3">
+          <Button
+            type="button"
+            onClick={onCheckout}
+            disabled={!hasSelection}
+            className="w-full py-4 text-base font-bold shadow-md disabled:opacity-50"
+          >
+            Proceed to Pay
+          </Button>
+          <div className="flex items-center justify-center gap-4 text-xs text-muted">
+            <span className="flex items-center gap-1">
+              <Lock className="h-3 w-3" />
+              Secure checkout
+            </span>
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="h-3 w-3" />
+              UPI payments only
+            </span>
+          </div>
         </div>
-      ) : (
-        <LineItems selectedCourtsData={selectedCourtsData} quote={quote} />
-      )}
-
-      <CouponInput
-        couponCode={couponCode}
-        couponMessage={couponMessage}
-        onChange={onCouponCodeChange}
-        onApply={onApplyCoupon}
-      />
-
-      <TotalRow totalAmount={quote.totalAmount} />
-
-      <div className="mt-6 flex flex-col gap-3">
-        <Button
-          type="button"
-          onClick={onCheckout}
-          disabled={!hasSelection}
-          className="w-full py-4 text-base font-bold shadow-md disabled:opacity-50"
-        >
-          Confirm &amp; Pay
-        </Button>
-        <p className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-[0.2em] text-muted">
-          <Lock className="h-3 w-3" />
-          Secure checkout
-        </p>
       </div>
     </Card>
   );
 }
 
-function LineItems({ selectedCourtsData, quote }) {
+/* ── Sub-components ─────────────────────────────── */
+
+function EmptyState() {
   return (
-    <div className="mt-5 space-y-3.5 text-sm sm:mt-6 sm:text-base">
-      {/* Per-court line items */}
-      {selectedCourtsData.map(({ courtId, courtName, slots }) => {
-        const startTime = slots[0]?.startTime;
-        const endTime = slots[slots.length - 1]?.endTime;
-        const courtTotal = slots.reduce(
-          (sum, s) => sum + Number(s.price || 0),
-          0,
-        );
-        const slotCount = slots.length;
-
-        return (
-          <LineItem
-            key={courtId}
-            label={`${courtName} · ${startTime}–${endTime} (${slotCount} slot${slotCount > 1 ? "s" : ""})`}
-            value={formatCurrency(courtTotal)}
-          />
-        );
-      })}
-
-      {/* Service fee */}
-      {quote.breakdown
-        .filter((item) => item.label === "Service Fee")
-        .map((item) => (
-          <LineItem
-            key={item.label}
-            label={item.label}
-            value={formatCurrency(item.amount)}
-          />
-        ))}
-
-      {/* Discount */}
-      {quote.discountAmount > 0 && (
-        <div className="flex items-center justify-between gap-4 font-medium text-accent">
-          <span>Discount</span>
-          <span>-{formatCurrency(quote.discountAmount)}</span>
-        </div>
-      )}
-
-      {/* Tax */}
-      <LineItem label="Tax (18%)" value={formatCurrency(quote.taxAmount)} />
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line/50 bg-surface/20 py-8 text-center">
+      <CalendarDays className="h-8 w-8 text-muted/40" />
+      <p className="text-sm leading-snug text-muted">
+        Select a court and time slot to see your booking summary.
+      </p>
     </div>
   );
 }
 
-function LineItem({ label, value }) {
+function BookingItems({ selectedCourtsData, selectedDate, quote }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-muted">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
+    <div className="space-y-2">
+      {/* Per-court booking cards */}
+      {selectedCourtsData.map(({ courtId, courtName, slots }) => {
+        const startTime = slots[0]?.startTime;
+        const endTime = slots[slots.length - 1]?.endTime;
+        const slotCount = slots.length;
+        const durationMins = slotCount * 30;
+        const courtTotal = slots.reduce(
+          (sum, s) => sum + Number(s.price || 0),
+          0,
+        );
+
+        return (
+          <div
+            key={courtId}
+            className="flex items-start justify-between gap-3 rounded-xl bg-surface/50 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-foreground">
+                {courtName}
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                {selectedDate} · {startTime}–{endTime}
+              </p>
+              <p className="mt-0.5 text-xs text-muted/60">
+                {slotCount} slot{slotCount > 1 ? "s" : ""} · {durationMins} min
+              </p>
+            </div>
+            <span className="shrink-0 font-bold text-foreground">
+              {formatCurrency(courtTotal)}
+            </span>
+          </div>
+        );
+      })}
+
+      {/* Discount — only when a coupon is applied */}
+      {quote.discountAmount > 0 && (
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent">
+          <span>Discount applied</span>
+          <span>−{formatCurrency(quote.discountAmount)}</span>
+        </div>
+      )}
+
     </div>
   );
 }
 
 function CouponInput({ couponCode, couponMessage, onChange, onApply }) {
   return (
-    <div className="mt-5 border-t border-line pt-5 sm:mt-6 sm:pt-6">
+    <div className="border-t border-line/40 pt-5">
       <div className="flex gap-2">
         <div className="relative flex-1">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -142,7 +182,7 @@ function CouponInput({ couponCode, couponMessage, onChange, onApply }) {
 
 function TotalRow({ totalAmount }) {
   return (
-    <div className="mt-5 flex items-end justify-between border-t border-line pt-5 sm:mt-6 sm:pt-6">
+    <div className="flex items-center justify-between border-t border-line/40 pt-5">
       <span className="text-base font-bold text-muted">Total</span>
       <strong className="text-3xl font-black text-accent sm:text-4xl">
         {formatCurrency(totalAmount)}

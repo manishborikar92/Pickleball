@@ -1,7 +1,6 @@
 export { AuthFlow } from "./AuthFlow";
 export { BookingHeader } from "./BookingHeader";
 export { BookingClient } from "./BookingClient";
-export { CourtSelector } from "./CourtSelector";
 export { DatePicker } from "./DatePicker";
 export { OrderSummary } from "./OrderSummary";
 export { SlotGrid } from "./SlotGrid";

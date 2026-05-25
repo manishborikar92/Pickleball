@@ -4,14 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { Header, Footer } from "@/components/layout";
-import { Info, HelpCircle, FileText, Shield, RefreshCw } from "lucide-react";
+import { Info, HelpCircle, FileText, Shield } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/about", label: "About Us", Icon: Info },
   { href: "/support", label: "Help & Support", Icon: HelpCircle },
   { href: "/terms", label: "Terms & Conditions", Icon: FileText },
   { href: "/privacy", label: "Privacy Policy", Icon: Shield },
-  { href: "/refund", label: "Cancellation & Refund", Icon: RefreshCw },
 ];
 
 export function InfoPageLayout({ eyebrow, title, description, children }) {

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ── 1. CSS Custom Properties ────────────────────────── */
 :root {
   --background: #0d0f04;
   --foreground: #f7f7ef;
@@ -14,6 +15,7 @@
   --danger: #ff6b5f;
 }
 
+/* ── 2. Tailwind Theme Extension ────────────────────── */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -26,16 +28,26 @@
   --color-muted: var(--muted);
   --color-line: var(--border);
   --color-danger: var(--danger);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+
+  /* Dynamically map sans font to Geist loaded in RootLayout */
+  --font-sans: var(--font-geist-sans), "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
+
+  /* Custom CSS Keyframe Animations */
+  --animate-overlay-fade-in: overlay-fade-in 0.2s ease-out forwards;
+  --animate-modal-scale-in: modal-scale-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-modal-slide-up: modal-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-loader-slide: loader-slide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* ── 3. Base Element Overrides ───────────────────────── */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
 }
 
+/* Accessibility outline color styles */
 button,
 a,
 input,
@@ -44,6 +56,7 @@ select {
   outline-color: var(--accent);
 }
 
+/* ── 4. Layout & Hero Decorators ─────────────────────── */
 .court-hero {
   background:
     linear-gradient(180deg, rgba(13, 15, 4, 0.08), rgba(13, 15, 4, 0.95)),
@@ -63,10 +76,77 @@ select {
   padding-bottom: max(24px, env(safe-area-inset-bottom));
 }
 
+/* ── 5. Scrollbar Utilities ──────────────────────────── */
 .hide-scrollbar {
   scrollbar-width: none;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* ── 6. Component-Specific Scroll Animations ─────────── */
+@media (max-width: 639px) {
+  .slider-nav-animation-fadein {
+    animation: slider-fade-in linear both;
+    animation-timeline: view(inline);
+    animation-range: cover 0% cover 100%;
+  }
+}
+
+/* ── 7. Animation Keyframe Rules ─────────────────────── */
+@keyframes slider-fade-in {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.93);
+    filter: blur(1px);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(0.93);
+    filter: blur(1px);
+  }
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes modal-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes loader-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
 }

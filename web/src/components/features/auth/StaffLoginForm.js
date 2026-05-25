@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Button, Card } from "@/components/shared";
+import { Button, Card, FormField, Select } from "@/components/shared";
 import { signInStaffAction } from "@/app/actions/auth-actions";
 import { Shield } from "lucide-react";
 
@@ -36,18 +36,17 @@ export function StaffLoginForm() {
       <form action={signInStaffAction} className="grid gap-5">
         <input type="hidden" name="next" value={next} />
         
-        <label className="grid gap-2 text-sm font-bold text-muted">
-          Select Role
-          <select 
+        <FormField label="Select Role">
+          <Select 
             name="role" 
             defaultValue="staff"
-            className="rounded-xl border border-line bg-background p-3.5 text-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+            className="rounded-xl py-3.5"
           >
             <option value="staff">Staff</option>
             <option value="manager">Manager</option>
             <option value="super_admin">Super Admin</option>
-          </select>
-        </label>
+          </Select>
+        </FormField>
 
         <Button type="submit" className="w-full justify-center py-4 text-base">
           Sign In as Staff →

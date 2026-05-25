@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/shared";
+import { FormField, Input, FormAlert } from "@/components/shared";
 import { validateName } from "@/lib/validation";
-import { User, AlertCircle } from "lucide-react";
+import { User } from "lucide-react";
 
 /**
  * NameForm - Step 3: Collect full name for onboarding.
@@ -46,27 +47,19 @@ export function NameForm({
         <p className="mt-2 text-sm text-muted sm:text-base">{subtitle}</p>
       </div>
 
-      <label className="block text-xs font-bold uppercase tracking-widest text-muted">
-        Full Name
-        <input
+      <FormField label="Full Name">
+        <Input
           value={name}
           onChange={handleChange}
           placeholder="Enter your full name"
           autoFocus
           disabled={loading}
-          className="mt-2 w-full rounded-xl border border-line bg-background px-4 py-3.5 text-[16px] normal-case tracking-normal text-foreground shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+          error={!!error}
+          className="py-3.5 text-base"
         />
-      </label>
+      </FormField>
 
-      {error && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
+      <FormAlert type="error" message={error} />
 
       <Button
         className="w-full py-4 text-base justify-center"

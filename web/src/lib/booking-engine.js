@@ -32,45 +32,6 @@ export function buildDateWindow({ startDate, advanceBookingDays }) {
   });
 }
 
-export function calculateQuote({
-  courtFee,
-  equipmentFee = 0,
-  serviceFee = 0,
-  taxRate = 0,
-  coupon,
-  creditsApplied = 0,
-}) {
-  const subtotal = Number(courtFee) + Number(equipmentFee) + Number(serviceFee);
-  let discountAmount = 0;
-
-  if (coupon?.discountType === "flat") {
-    discountAmount = Math.min(Number(coupon.value), subtotal);
-  }
-
-  if (coupon?.discountType === "percentage") {
-    discountAmount = subtotal * (Number(coupon.value) / 100);
-  }
-
-  const afterDiscount = Math.max(0, subtotal - discountAmount);
-  const appliedCredits = Math.min(Number(creditsApplied || 0), afterDiscount);
-  const taxableAmount = Math.max(0, afterDiscount - appliedCredits);
-  const taxAmount = Number((taxableAmount * Number(taxRate || 0)).toFixed(2));
-  const totalAmount = Number((taxableAmount + taxAmount).toFixed(2));
-
-  return {
-    subtotal,
-    discountAmount: Number(discountAmount.toFixed(2)),
-    creditsApplied: Number(appliedCredits.toFixed(2)),
-    taxAmount,
-    totalAmount,
-    breakdown: [
-      { label: "Court Fee", amount: Number(courtFee) },
-      { label: "Equipment Rental", amount: Number(equipmentFee) },
-      { label: "Service Fee", amount: Number(serviceFee) },
-    ],
-  };
-}
-
 /**
  * Extract a consecutive range of slots between startTime and endTime (inclusive).
  * Returns [] if the range is invalid or has gaps.
@@ -85,25 +46,19 @@ export function getSlotRange(slots, startTime, endTime) {
 /**
  * Calculate a price quote for multiple selected courts and a time range.
  * @param {Object} params
- * @param {Array<{courtId: string, slots: Array}>} params.selectedCourts - each entry has courtId + selected slot range
- * @param {number} params.serviceFee
- * @param {number} params.taxRate
+ * @param {Array<{courtId: string, courtName: string, slots: Array}>} params.selectedCourts - each entry has courtId + selected slot range
  * @param {Object|null} params.coupon
- * @param {number} params.creditsApplied
  */
 export function calculateMultiQuote({
   selectedCourts = [],
-  serviceFee = 0,
-  taxRate = 0,
   coupon = null,
-  creditsApplied = 0,
 }) {
   // Sum all slot prices across all selected courts
   const courtFee = selectedCourts.reduce((total, { slots }) => {
     return total + slots.reduce((sum, slot) => sum + Number(slot.price || 0), 0);
   }, 0);
 
-  const subtotal = courtFee + Number(serviceFee);
+  const subtotal = courtFee;
   let discountAmount = 0;
 
   if (coupon?.discountType === "flat") {
@@ -113,11 +68,7 @@ export function calculateMultiQuote({
     discountAmount = subtotal * (Number(coupon.value) / 100);
   }
 
-  const afterDiscount = Math.max(0, subtotal - discountAmount);
-  const appliedCredits = Math.min(Number(creditsApplied || 0), afterDiscount);
-  const taxableAmount = Math.max(0, afterDiscount - appliedCredits);
-  const taxAmount = Number((taxableAmount * Number(taxRate || 0)).toFixed(2));
-  const totalAmount = Number((taxableAmount + taxAmount).toFixed(2));
+  const totalAmount = Math.max(0, subtotal - discountAmount);
 
   const courtBreakdown = selectedCourts.map(({ courtId, courtName, slots }) => ({
     label: courtName || courtId,
@@ -129,13 +80,8 @@ export function calculateMultiQuote({
     subtotal,
     courtFee,
     discountAmount: Number(discountAmount.toFixed(2)),
-    creditsApplied: Number(appliedCredits.toFixed(2)),
-    taxAmount,
     totalAmount,
-    breakdown: [
-      ...courtBreakdown,
-      { label: "Service Fee", amount: Number(serviceFee) },
-    ],
+    breakdown: courtBreakdown,
   };
 }
 
