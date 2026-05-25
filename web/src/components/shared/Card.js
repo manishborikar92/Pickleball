@@ -1,6 +1,8 @@
+import { cn } from "@/lib/utils";
+
 export function Card({ children, className = "", as: Component = "section" }) {
   return (
-    <Component className={`overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm ${className}`}>
+    <Component className={cn("overflow-hidden rounded-xl border border-line bg-surface-panel shadow-sm", className)}>
       {children}
     </Component>
   );
@@ -10,7 +12,7 @@ export function SectionHeader({ eyebrow, title, children, align = "center" }) {
   const isLeft = align === "left";
   
   return (
-    <div className={`flex flex-col ${isLeft ? "text-left" : "mx-auto max-w-2xl items-center text-center"}`}>
+    <div className={cn("flex flex-col", isLeft ? "text-left" : "mx-auto max-w-2xl items-center text-center")}>
       {eyebrow && (
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-accent sm:mb-3">
           {eyebrow}
@@ -20,7 +22,7 @@ export function SectionHeader({ eyebrow, title, children, align = "center" }) {
         {title}
       </h2>
       {children && (
-        <p className={`mt-3 text-sm leading-relaxed text-muted sm:mt-4 sm:text-base ${isLeft ? "max-w-3xl" : "max-w-2xl"}`}>
+        <p className={cn("mt-3 text-sm leading-relaxed text-muted sm:mt-4 sm:text-base", isLeft ? "max-w-3xl" : "max-w-2xl")}>
           {children}
         </p>
       )}

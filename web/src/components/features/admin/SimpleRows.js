@@ -1,34 +1,83 @@
-import { Badge, Button, Card } from "@/components/shared";
+"use client";
 
-/**
- * Reusable responsive data row list.
- * Each row requires an id: { id, name, scope, value, status, action?, actionLabel? }
- */
-export function SimpleRows({ rows }) {
+import { Button } from "@/components/shared";
+import { DataTable, StatusBadge } from "@/components/shared/Table";
+import { useTable } from "@/hooks/useTable";
+
+const COLUMNS = [
+  {
+    key: "name",
+    label: "Name",
+    render: (val, row) => (
+      <div className="min-w-0 flex flex-col">
+        <strong className="truncate text-base font-bold text-foreground">{val}</strong>
+        <span className="md:hidden mt-0.5 text-xs font-medium text-muted">{row.scope}</span>
+      </div>
+    ),
+  },
+  {
+    key: "scope",
+    label: "Scope",
+    className: "hidden md:table-cell text-muted",
+  },
+  {
+    key: "value",
+    label: "Value",
+  },
+  {
+    key: "status",
+    label: "Status",
+    render: (val) => <StatusBadge value={val} />,
+  },
+  {
+    key: "action",
+    label: "",
+    className: "text-right md:w-[120px]",
+    render: (_, row) => {
+      if (!row.action) return null;
+      return (
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={row.action}
+          className="py-1.5 px-3 text-xs min-h-[2rem] w-full md:w-auto"
+        >
+          {row.actionLabel || "Toggle"}
+        </Button>
+      );
+    },
+  },
+];
+
+export function SimpleRows({ rows = [] }) {
+  const table = useTable(rows, {
+    columns: COLUMNS,
+    defaultPageSize: 100, // Show all since search/pagination are disabled
+  });
+
   return (
-    <Card className="divide-y divide-line overflow-hidden">
-      {rows.map((row) => (
-        <SimpleRow key={row.id} row={row} />
-      ))}
-    </Card>
+    <DataTable
+      {...table}
+      columns={COLUMNS}
+      enableSearch={false}
+      enableFiltering={false}
+      enablePagination={false}
+      mobileCardRenderer={MobileCardRow}
+    />
   );
 }
 
-function SimpleRow({ row }) {
+function MobileCardRow(row) {
   return (
-    <div className="flex flex-col gap-3 p-5 md:grid md:grid-cols-[1.5fr_1fr_1fr_auto_120px] md:items-center md:gap-4 md:px-6 hover:bg-surface-high/30 transition-colors">
+    <div className="flex flex-col gap-3 p-5 hover:bg-surface-high/10 transition-colors">
       <div className="min-w-0 flex flex-col">
         <strong className="truncate text-base font-bold text-foreground">{row.name}</strong>
-        <span className="md:hidden mt-0.5 text-xs font-medium text-muted">{row.scope}</span>
+        <span className="mt-0.5 text-xs font-medium text-muted">{row.scope}</span>
       </div>
       
-      <span className="hidden md:block truncate text-sm font-medium text-muted">{row.scope}</span>
-      
-      <div className="flex items-center justify-between md:contents">
+      <div className="flex items-center justify-between">
         <span className="text-sm font-medium text-foreground">{row.value}</span>
-        <Badge tone={row.status === "active" ? "accent" : "neutral"} className="w-fit">
-          {row.status}
-        </Badge>
+        <StatusBadge value={row.status} />
       </div>
 
       {row.action && (
@@ -36,7 +85,7 @@ function SimpleRow({ row }) {
           type="button"
           variant="secondary"
           onClick={row.action}
-          className="mt-2 w-full py-2.5 text-sm md:mt-0 md:w-auto md:py-2"
+          className="mt-2 w-full py-2.5 text-sm"
         >
           {row.actionLabel || "Toggle"}
         </Button>

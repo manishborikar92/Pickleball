@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useId } from "react";
-import { Button, Card } from "@/components/shared";
+import { Button, Card, FormField, Input, Select, FormAlert } from "@/components/shared";
 import { AdminTable } from "./AdminTable";
 import { validatePhone } from "@/lib/validation";
 
@@ -70,71 +70,38 @@ export function AdminBookings({ initialRows }) {
 }
 
 function WalkInForm({ form, message, onChange, onSubmit }) {
-  const courtId = useId();
-
   return (
     <Card className="p-5 sm:p-6 lg:sticky lg:top-6">
       <h2 className="text-xl font-black tracking-tight sm:text-2xl">Create Walk-in</h2>
       <form onSubmit={onSubmit} className="mt-5 grid gap-4">
         {TEXT_FIELDS.map(({ key, label, inputMode, type }) => (
-          <FormField
-            key={key}
-            label={label}
-            value={form[key]}
-            inputMode={inputMode}
-            type={type}
-            onChange={(v) => onChange(key, v)}
-          />
+          <FormField key={key} label={label}>
+            <Input
+              type={type}
+              value={form[key]}
+              inputMode={inputMode}
+              onChange={(e) => onChange(key, e.target.value)}
+              error={message.type === "error" && !form[key]}
+            />
+          </FormField>
         ))}
 
-        <div className="grid gap-1.5">
-          <label htmlFor={courtId} className="text-sm font-bold text-muted">
-            Court
-          </label>
-          <select
-            id={courtId}
+        <FormField label="Court">
+          <Select
             value={form.court}
             onChange={(e) => onChange("court", e.target.value)}
-            className="w-full rounded-lg border border-line bg-background px-4 py-3 text-base text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent md:text-sm"
           >
             <option>Court 1</option>
             <option>Court 2</option>
-          </select>
-        </div>
+          </Select>
+        </FormField>
 
         <Button type="submit" className="mt-2 w-full py-3">
           Create Booking
         </Button>
         
-        {message.text && (
-          <p 
-            aria-live="polite" 
-            className={`text-sm font-medium ${message.type === "error" ? "text-red-500" : "text-green-500"}`}
-          >
-            {message.text}
-          </p>
-        )}
+        <FormAlert type={message.type} message={message.text} className="mt-2" />
       </form>
     </Card>
-  );
-}
-
-function FormField({ label, value, inputMode, type, onChange }) {
-  const inputId = useId();
-  
-  return (
-    <div className="grid gap-1.5">
-      <label htmlFor={inputId} className="text-sm font-bold text-muted">
-        {label}
-      </label>
-      <input
-        id={inputId}
-        type={type}
-        value={value}
-        inputMode={inputMode}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-line bg-background px-4 py-3 text-base text-foreground transition-colors placeholder:text-muted/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent md:text-sm"
-      />
-    </div>
   );
 }

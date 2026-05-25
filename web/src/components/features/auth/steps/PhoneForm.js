@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { Button } from "@/components/shared";
+import { Input, FormAlert } from "@/components/shared";
 import { validatePhone } from "@/lib/validation";
-import { Smartphone, AlertCircle } from "lucide-react";
+import { Smartphone } from "lucide-react";
 
 /**
  * PhoneForm - Step 1: Input and validate phone number.
@@ -46,31 +47,19 @@ export function PhoneForm({
         <p className="mt-2 text-sm text-muted">{subtitle}</p>
       </div>
 
-      <div className="flex overflow-hidden rounded-xl border border-line bg-background shadow-sm focus-within:border-accent focus-within:ring-1 focus-within:ring-accent">
-        <span className="flex shrink-0 items-center gap-1.5 border-r border-line bg-surface px-4 text-sm font-bold text-muted">
-          IN +91
-        </span>
-        <input
-          value={phone}
-          onChange={handleChange}
-          placeholder="98765 43210"
-          inputMode="tel"
-          maxLength={10}
-          autoFocus
-          disabled={loading}
-          className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-[16px] focus:outline-none"
-        />
-      </div>
+      <Input
+        prefix="IN +91"
+        value={phone}
+        onChange={handleChange}
+        placeholder="98765 43210"
+        inputMode="tel"
+        maxLength={10}
+        autoFocus
+        disabled={loading}
+        error={!!error}
+      />
 
-      {error && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
+      <FormAlert type="error" message={error} />
 
       <Button
         className="w-full py-4 text-base justify-center"

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/shared";
+import { Input, FormAlert } from "@/components/shared";
 import { validateOtp } from "@/lib/validation";
-import { AlertCircle } from "lucide-react";
 
 /**
  * OtpForm - Step 2: Verification of the 6-digit OTP code.
@@ -54,12 +54,12 @@ export function OtpForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="text-center">
         <h2 className="text-2xl font-black sm:text-3xl">{title}</h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm text-muted font-medium">
           Sent to {phone}.
         </p>
       </div>
 
-      <input
+      <Input
         value={otp}
         onChange={handleChange}
         placeholder="123456"
@@ -67,7 +67,8 @@ export function OtpForm({
         maxLength={6}
         autoFocus
         disabled={loading}
-        className="w-full rounded-xl border border-line bg-background px-4 py-4 text-center text-3xl font-black tracking-[0.35em] shadow-sm focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        error={!!error}
+        className="py-4 text-center text-3xl md:text-3xl font-black tracking-[0.35em] rounded-xl"
       />
 
       <button
@@ -79,15 +80,7 @@ export function OtpForm({
         Resend Code
       </button>
 
-      {error && (
-        <div
-          role="alert"
-          className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger"
-        >
-          <AlertCircle className="h-4 w-4 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
+      <FormAlert type="error" message={error} />
 
       <Button
         className="w-full py-4 text-base justify-center"

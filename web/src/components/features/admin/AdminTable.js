@@ -1,33 +1,72 @@
-import { Badge, Card } from "@/components/shared";
-import { formatCurrency } from "@/lib/booking-engine";
+"use client";
 
-export function AdminTable({ title, rows }) {
+import { DataTable, StatusBadge, Currency } from "@/components/shared/Table";
+import { useTable } from "@/hooks/useTable";
+
+const COLUMNS = [
+  {
+    key: "player",
+    label: "Player",
+    sortable: true,
+    searchable: true,
+    render: (val, row) => (
+      <div className="min-w-0">
+        <p className="truncate font-bold text-foreground">{val}</p>
+        <p className="truncate text-xs text-muted">{row.id}</p>
+      </div>
+    ),
+  },
+  {
+    key: "court",
+    label: "Court",
+    sortable: true,
+    filterable: true,
+    filterOptions: ["Court 1", "Court 2"],
+  },
+  {
+    key: "time",
+    label: "Time",
+    sortable: true,
+  },
+  {
+    key: "status",
+    label: "Status",
+    filterable: true,
+    filterOptions: ["walk_in", "confirmed", "cancelled"],
+    render: (val) => <StatusBadge value={val} />,
+  },
+  {
+    key: "amount",
+    label: "Amount Paid",
+    sortable: true,
+    className: "text-right md:pr-4",
+    render: (val) => <Currency value={val} />,
+  },
+];
+
+export function AdminTable({ title, rows = [] }) {
+  const table = useTable(rows, {
+    columns: COLUMNS,
+    defaultSortBy: "id",
+    defaultSortOrder: "desc",
+    defaultPageSize: 5,
+  });
+
   return (
-    <Card className="overflow-hidden">
-      <div className="border-b border-line px-5 py-4 sm:px-6">
-        <h2 className="text-lg font-black tracking-tight sm:text-xl">{title}</h2>
-      </div>
-
-      {/* Mobile-optimized card layout */}
-      <div className="divide-y divide-line md:hidden">
-        {rows.map((row) => (
-          <MobileBookingRow key={row.id} row={row} />
-        ))}
-      </div>
-
-      {/* Desktop-optimized tabular layout */}
-      <div className="hidden divide-y divide-line md:block">
-        {rows.map((row) => (
-          <DesktopBookingRow key={row.id} row={row} />
-        ))}
-      </div>
-    </Card>
+    <DataTable
+      {...table}
+      columns={COLUMNS}
+      emptyTitle={`No records in ${title}`}
+      emptyDescription="Try clearing your search query or adjusting options."
+      searchPlaceholder="Search by player name..."
+      mobileCardRenderer={MobileCardRow}
+    />
   );
 }
 
-function MobileBookingRow({ row }) {
+function MobileCardRow(row) {
   return (
-    <div className="flex items-start justify-between gap-4 p-5">
+    <div className="flex items-start justify-between gap-4 p-5 hover:bg-surface-high/10 transition-colors">
       <div className="min-w-0 flex-1">
         <p className="truncate font-bold text-foreground">{row.player}</p>
         <p className="mt-0.5 truncate text-xs text-muted">{row.id}</p>
@@ -36,31 +75,8 @@ function MobileBookingRow({ row }) {
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
-        <strong className="text-sm text-foreground">{formatCurrency(row.amount)}</strong>
-        <Badge tone={row.status === "walk_in" ? "accent" : "neutral"} className="text-[10px]">
-          {row.status.replace("_", " ")}
-        </Badge>
-      </div>
-    </div>
-  );
-}
-
-function DesktopBookingRow({ row }) {
-  return (
-    <div className="grid grid-cols-[1.5fr_1fr_1fr_auto] items-center gap-4 px-6 py-4 hover:bg-surface-high/30 transition-colors">
-      <div className="min-w-0">
-        <p className="truncate font-bold text-foreground">{row.player}</p>
-        <p className="truncate text-xs text-muted">{row.id}</p>
-      </div>
-      <span className="truncate text-sm font-medium text-muted">{row.court}</span>
-      <span className="truncate text-sm font-medium text-muted">{row.time}</span>
-      <div className="flex shrink-0 items-center justify-end gap-4">
-        <Badge tone={row.status === "walk_in" ? "accent" : "neutral"}>
-          {row.status.replace("_", " ")}
-        </Badge>
-        <strong className="w-20 text-right text-sm text-foreground">
-          {formatCurrency(row.amount)}
-        </strong>
+        <Currency value={row.amount} />
+        <StatusBadge value={row.status} />
       </div>
     </div>
   );
