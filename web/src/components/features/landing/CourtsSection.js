@@ -10,7 +10,7 @@ export function CourtsSection() {
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-16">
           <div className="flex flex-col justify-center">
-            <SectionHeader align="left" title="Dual Premium Courts & Amenities">
+            <SectionHeader align="left" title="Premium Courts & Amenities">
               Two Elite Courts featuring pro-grade lighting, protective flooring, 
               and a dedicated refreshment corner to recharge between games.
             </SectionHeader>
