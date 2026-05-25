@@ -144,26 +144,6 @@ function BookingItems({ selectedCourtsData, selectedDate, quote }) {
         </div>
       )}
 
-      {/* Service fee — only when non-zero */}
-      {quote.breakdown
-        .filter((item) => item.label === "Service Fee" && item.amount > 0)
-        .map((item) => (
-          <div
-            key={item.label}
-            className="flex items-center justify-between gap-4 px-1 text-sm text-muted"
-          >
-            <span>{item.label}</span>
-            <span>{formatCurrency(item.amount)}</span>
-          </div>
-        ))}
-
-      {/* Tax — only when non-zero */}
-      {quote.taxAmount > 0 && (
-        <div className="flex items-center justify-between gap-4 px-1 text-sm text-muted">
-          <span>Tax (18%)</span>
-          <span>{formatCurrency(quote.taxAmount)}</span>
-        </div>
-      )}
     </div>
   );
 }

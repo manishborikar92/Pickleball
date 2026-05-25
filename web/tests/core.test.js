@@ -15,7 +15,7 @@ import {
 } from "../src/lib/validation.js";
 import {
   buildDateWindow,
-  calculateQuote,
+  calculateMultiQuote,
   createBookingHold,
 } from "../src/lib/booking-engine.js";
 
@@ -57,20 +57,31 @@ test("date window respects configured advance booking days", () => {
   assert.equal(days[3].iso, "2026-05-16");
 });
 
-test("quote calculation centralizes totals and coupon waterfall", () => {
-  const quote = calculateQuote({
-    courtFee: 500,
-    equipmentFee: 100,
-    serviceFee: 20,
-    taxRate: 0.18,
+test("multi-quote calculation sums courts and handles coupons", () => {
+  const quote = calculateMultiQuote({
+    selectedCourts: [
+      {
+        courtId: "court-1",
+        courtName: "Court 1",
+        slots: [{ price: 200 }, { price: 200 }],
+      },
+      {
+        courtId: "court-2",
+        courtName: "Court 2",
+        slots: [{ price: 300 }],
+      },
+    ],
     coupon: { code: "FIRST50", discountType: "flat", value: 50 },
-    creditsApplied: 75,
   });
 
+  assert.equal(quote.courtFee, 700);
+  assert.equal(quote.subtotal, 700);
   assert.equal(quote.discountAmount, 50);
-  assert.equal(quote.creditsApplied, 75);
-  assert.equal(quote.taxAmount, 89.1);
-  assert.equal(quote.totalAmount, 584.1);
+  assert.equal(quote.totalAmount, 650);
+  assert.deepEqual(quote.breakdown, [
+    { label: "Court 1", amount: 400, slotCount: 2 },
+    { label: "Court 2", amount: 300, slotCount: 1 },
+  ]);
 });
 
 test("booking hold creates a pending payment lock with expiry metadata", () => {

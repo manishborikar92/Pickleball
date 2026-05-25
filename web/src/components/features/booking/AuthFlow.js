@@ -11,7 +11,6 @@ import { useOverlay } from "@/hooks/useOverlay";
  *
  * @param {Object}   props
  * @param {Object}   props.auth               - Current auth step state machine object
- * @param {Function} props.setAuth            - Auth state setter
  * @param {string}   props.selectedDate       - ISO date string of the selected booking date
  * @param {Array}    props.selectedCourtsData - Active court + slot selections with pricing
  * @param {Object}   props.quote              - Calculated price quote from booking engine
@@ -23,7 +22,6 @@ import { useOverlay } from "@/hooks/useOverlay";
  */
 export function AuthFlow({
   auth,
-  setAuth,
   selectedDate,
   selectedCourtsData,
   quote,

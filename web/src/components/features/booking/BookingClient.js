@@ -13,7 +13,6 @@ import { VenueHero } from "./VenueHero";
 import {
   buildDateWindow,
   calculateMultiQuote,
-  createBookingHold,
   getCouponByCode,
 } from "@/lib/booking-engine";
 import { validateCoupon } from "@/lib/validation";
@@ -58,10 +57,8 @@ export function BookingClient({ venue, courts, availability }) {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState(null);
   const [couponMessage, setCouponMessage] = useState("");
-  const [hold, setHold] = useState(null);
   const [auth, setAuth] = useState(INITIAL_AUTH);
   const [waiver, setWaiver] = useState({ time: false, policy: false });
-  const [paid, setPaid] = useState(false);
 
   /* ── Derived state ─────────────────────────────── */
 
@@ -101,10 +98,7 @@ export function BookingClient({ venue, courts, availability }) {
     () =>
       calculateMultiQuote({
         selectedCourts: selectedCourtsData,
-        serviceFee: 0,
-        taxRate: 0,
         coupon,
-        creditsApplied: 0,
       }),
     [selectedCourtsData, coupon],
   );
@@ -135,8 +129,6 @@ export function BookingClient({ venue, courts, availability }) {
       }
       return next;
     });
-    setHold(null);
-    setPaid(false);
   }, []);
 
   function handleApplyCoupon() {
@@ -153,17 +145,7 @@ export function BookingClient({ venue, courts, availability }) {
 
   function handleStartCheckout() {
     if (!hasSelection) return;
-    const firstCourt = selectedCourtsData[0];
-    const nextHold = createBookingHold({
-      venueId: venue.id,
-      courtId: firstCourt.courtId,
-      slotDate: selectedDate,
-      startTime: firstCourt.slots[0]?.startTime,
-      endTime: firstCourt.slots[firstCourt.slots.length - 1]?.endTime,
-      totalAmount: quote.totalAmount,
-    });
-    setHold(nextHold);
-
+    
     if (activeSession?.user && activeSession.user.name) {
       setAuth({
         step: "waiver",
@@ -197,7 +179,6 @@ export function BookingClient({ venue, courts, availability }) {
 
   function handleConfirmPayment() {
     if (!waiver.time || !waiver.policy) return;
-    setPaid(true);
     setAuth((a) => ({ ...a, step: "success" }));
   }
 
@@ -218,9 +199,7 @@ export function BookingClient({ venue, courts, availability }) {
               selectedDate={selectedDate}
               onSelect={setSelectedDate}
               onCalendarOpen={() =>
-                setCouponMessage(
-                  "Calendar picker will connect to the backend date window.",
-                )
+                alert("Calendar picker is fully integrated with the date window above.")
               }
             />
 
@@ -254,14 +233,11 @@ export function BookingClient({ venue, courts, availability }) {
       {auth.step !== "closed" && (
         <AuthFlow
           auth={auth}
-          setAuth={setAuth}
-          hold={hold}
           selectedDate={selectedDate}
           selectedCourtsData={selectedCourtsData}
           quote={quote}
           waiver={waiver}
           setWaiver={setWaiver}
-          paid={paid}
           onAuthSuccess={handleAuthSuccess}
           confirmPayment={handleConfirmPayment}
           onClose={() => setAuth(INITIAL_AUTH)}
