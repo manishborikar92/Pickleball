@@ -1,31 +1,35 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 
 /**
- * Reusable hook for overlay and modal closing, scroll locking, and focus accessibility.
+ * A custom React hook that standardizes dialog overlay behaviors, scroll locking, 
+ * Escape key dismissing, click-outside handling, and keyboard focus trapping.
  * 
- * @param {Object} params
- * @param {boolean} [params.isOpen=true] - Whether the overlay is currently visible.
- * @param {Function} params.onClose - Callback triggered when requesting to close the overlay.
- * @returns {Object} { containerRef, contentRef, handleBackdropClick }
+ * @param {Object} params - Hook configurations.
+ * @param {boolean} [params.isOpen=true] - State flag controlling active dialog render.
+ * @param {Function} params.onClose - Dismiss callback triggered on backdrop clicks or Escape key.
+ * @returns {Object} Returns refs and event handler callbacks.
+ * @property {React.RefObject<HTMLDivElement>} containerRef - Ref targeting the outer backdrop overlay frame.
+ * @property {React.RefObject<HTMLDivElement>} contentRef - Ref targeting the inner modal container.
+ * @property {Function} handleBackdropClick - Event callback to trigger onClose when clicking backdrop directly.
  */
 export function useOverlay({ isOpen = true, onClose }) {
-  const containerRef = useRef(null); // Ref to the outer overlay backdrop wrapper
-  const contentRef = useRef(null);   // Ref to the inner modal card/dialog container
+  const containerRef = useRef(null);
+  const contentRef = useRef(null);
   const previousFocusRef = useRef(null);
 
   useEffect(() => {
     if (typeof window === "undefined" || !isOpen) return;
 
-    // 1. Store the active element to restore focus when overlay unmounts
+    // 1. Capture currently focused element to restore it on cleanup
     previousFocusRef.current = document.activeElement;
 
-    // 2. Lock document body scrolling
+    // 2. Prevent body scrolling to freeze viewport interaction behind modal
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Dynamic fetch of focusable descendants inside the content ref container
+    // Queries list of focusable nodes inside modal to manage Tab index loop
     const getFocusableElements = () => {
       if (!contentRef.current) return [];
       return Array.from(
@@ -35,7 +39,7 @@ export function useOverlay({ isOpen = true, onClose }) {
       );
     };
 
-    // 3. Focus the first focusable element inside the modal card
+    // 3. Push focus to first element when component mounts
     const initFocus = setTimeout(() => {
       const focusables = getFocusableElements();
       if (focusables.length > 0) {
@@ -45,7 +49,7 @@ export function useOverlay({ isOpen = true, onClose }) {
       }
     }, 50);
 
-    // 4. Bind keyboard event listeners
+    // 4. Capture keyboard loops
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -64,13 +68,11 @@ export function useOverlay({ isOpen = true, onClose }) {
         const lastEl = focusables[focusables.length - 1];
 
         if (event.shiftKey) {
-          // Cycle to last if on first element
           if (document.activeElement === firstEl) {
             lastEl.focus();
             event.preventDefault();
           }
         } else {
-          // Cycle to first if on last element
           if (document.activeElement === lastEl) {
             firstEl.focus();
             event.preventDefault();
@@ -86,7 +88,7 @@ export function useOverlay({ isOpen = true, onClose }) {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = originalOverflow;
 
-      // Restore focus to original trigger element
+      // Safely restore focus to previous trigger element
       if (previousFocusRef.current && typeof previousFocusRef.current.focus === "function") {
         const prevEl = previousFocusRef.current;
         setTimeout(() => prevEl.focus(), 0);
@@ -94,13 +96,12 @@ export function useOverlay({ isOpen = true, onClose }) {
     };
   }, [isOpen, onClose]);
 
-  // Click outside backdrop handler
-  const handleBackdropClick = (event) => {
-    // Dismiss only if the click target is the backdrop wrapper itself
+  // Memoized backdrop click handler to prevent callback recreation
+  const handleBackdropClick = useCallback((event) => {
     if (containerRef.current && event.target === containerRef.current) {
       onClose?.();
     }
-  };
+  }, [onClose]);
 
   return {
     containerRef,
@@ -108,3 +109,4 @@ export function useOverlay({ isOpen = true, onClose }) {
     handleBackdropClick,
   };
 }
+

@@ -7,30 +7,20 @@ export function ReviewsSection() {
       <div className="mx-auto max-w-7xl">
         <SectionHeader title="Player Reviews">
           <span className="text-balance">
-            Published reviews build trust while admin suppression remains
-            available for moderation.
+            Published reviews build trust while admin suppression remains available for moderation.
           </span>
         </SectionHeader>
 
-        <ul className="hide-scrollbar slider-nav-animation mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 sm:mt-12 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 lg:gap-8">
+        <ul 
+          className="hide-scrollbar mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex sm:flex-wrap sm:justify-center sm:gap-6 lg:grid lg:grid-cols-3 lg:gap-8 sm:overflow-visible sm:pb-0"
+          role="list"
+          aria-label="Player Testimonials"
+        >
           {reviews.map((review) => (
-            <li key={review.id} className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:w-auto sm:shrink">
-              <ReviewCard review={review} />
-            </li>
-          ))}
-          {/* Duplicates for extended mobile scrolling */}
-          {reviews.map((review, index) => (
-            <li key={`dup1-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
-              <ReviewCard review={review} />
-            </li>
-          ))}
-          {reviews.map((review, index) => (
-            <li key={`dup2-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
-              <ReviewCard review={review} />
-            </li>
-          ))}
-          {reviews.map((review, index) => (
-            <li key={`dup3-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+            <li 
+              key={review.id} 
+              className="flex w-[82vw] max-w-[310px] shrink-0 snap-center sm:w-[calc(50%-12px)] sm:shrink-0 lg:w-auto"
+            >
               <ReviewCard review={review} />
             </li>
           ))}
@@ -41,18 +31,41 @@ export function ReviewsSection() {
 }
 
 function ReviewCard({ review }) {
+  const initials = (review?.name || "Anonymous")
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   return (
-    <Card className="flex w-full flex-col p-6 sm:p-8">
-      <StarRating rating={review.rating} />
-      <blockquote className="mt-4 grow">
-        <p className="text-sm leading-relaxed text-muted sm:text-base">
+    <Card className="flex w-full flex-col bg-surface-soft/40 backdrop-blur-sm border-line/60 p-6 transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/40 hover:shadow-[0_12px_30px_rgba(202,255,0,0.03)] focus-within:ring-2 focus-within:ring-accent sm:p-8">
+      <div className="flex items-center justify-between gap-4">
+        {/* Initials Profile Avatar */}
+        <div 
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent/20 bg-accent/5 text-xs font-black tracking-wider text-accent"
+          aria-hidden="true"
+        >
+          {initials}
+        </div>
+        {/* Testimonial Star Ratings */}
+        <StarRating rating={review.rating} />
+      </div>
+
+      <blockquote className="relative mt-6 grow">
+        <span className="pointer-events-none absolute -top-4 -left-2 text-6xl font-serif text-accent/5 select-none leading-none">
+          &ldquo;
+        </span>
+        <p className="relative text-sm leading-relaxed text-muted sm:text-base">
           &ldquo;{review.quote}&rdquo;
         </p>
       </blockquote>
-      <div className="mt-6 border-t border-line/50 pt-4">
+
+      <div className="mt-6 border-t border-line/40 pt-4">
         <p className="text-sm font-bold text-foreground sm:text-base">
-          {review.name}{" "}
-          <span className="block font-normal text-muted sm:inline">
+          {review.name}
+          <span className="mt-0.5 block text-xs font-normal text-muted sm:inline sm:mt-0 sm:text-sm">
             <span className="hidden sm:inline"> — </span>
             {review.label}
           </span>
@@ -81,7 +94,7 @@ function StarRating({ rating }) {
           </svg>
         ))}
       </div>
-      <span className="ml-2 text-sm font-bold text-foreground">{rating}/5</span>
+      <span className="ml-1 text-xs font-black text-foreground">{rating}/5</span>
     </div>
   );
 }

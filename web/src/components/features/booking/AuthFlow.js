@@ -87,30 +87,50 @@ export function AuthFlow({
 
 /* ── Individual Steps ─────────────────────────────── */
 
+/**
+ * Step view allowing users to review court selections, pricing quote breakdown, 
+ * and check the liability waiver and cancel policies before payment checkout.
+ * 
+ * @param {Object} props
+ * @param {Object} props.hold - The active reservation lock metadata object.
+ * @param {string} props.fullTime - The human-readable formatted booking times text block.
+ * @param {Object} props.quote - The pricing and fee breakdown values object.
+ * @param {Object} props.waiver - Current checkbox confirmation checked states.
+ * @param {Function} props.setWaiver - State trigger to modify checking parameters.
+ * @param {Function} props.onConfirm - Final confirmation check click callback.
+ */
 function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
-  const allChecked = waiver.time && waiver.policy;
+  const allChecked = waiver?.time && waiver?.policy;
+  
+  // Safe date time formatting extraction
+  const expiresAtText = hold?.expiresAt
+    ? new Date(hold.expiresAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })
+    : "";
+
   return (
     <div className="space-y-5">
       <h2 className="text-2xl font-black sm:text-3xl">Confirm &amp; Pay</h2>
       <Card className="border-line/50 bg-surface/50 p-5 text-sm">
         <div className="flex items-center justify-between">
           <p className="font-bold text-foreground">Booking hold active</p>
-          <p className="text-xs font-semibold text-accent">
-            Expires {new Date(hold.expiresAt).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}
-          </p>
+          {expiresAtText && (
+            <p className="text-xs font-semibold text-accent">
+              Expires {expiresAtText}
+            </p>
+          )}
         </div>
         <p className="mt-4 font-medium text-muted sm:text-base">{fullTime}</p>
         <div className="mt-4 border-t border-line/50 pt-4">
           <p className="text-sm text-muted">Total Amount</p>
           <p className="text-2xl font-black text-foreground">
-            {formatCurrency(quote.totalAmount)}
+            {formatCurrency(quote?.totalAmount || 0)}
           </p>
         </div>
       </Card>
 
       <div className="space-y-3">
         <WaiverCheckbox
-          checked={waiver.time}
+          checked={waiver?.time || false}
           onChange={(v) => setWaiver((w) => ({ ...w, time: v }))}
           label={
             <span>
@@ -127,7 +147,7 @@ function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
           }
         />
         <WaiverCheckbox
-          checked={waiver.policy}
+          checked={waiver?.policy || false}
           onChange={(v) => setWaiver((w) => ({ ...w, policy: v }))}
           label={
             <span>
@@ -159,7 +179,7 @@ function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
         onClick={onConfirm}
         className="w-full py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Pay {formatCurrency(quote.totalAmount)}
+        Pay {formatCurrency(quote?.totalAmount || 0)}
       </Button>
     </div>
   );
