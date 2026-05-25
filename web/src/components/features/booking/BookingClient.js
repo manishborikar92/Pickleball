@@ -6,7 +6,6 @@ import { Card } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthFlow } from "./AuthFlow";
 import { BookingHeader } from "./BookingHeader";
-import { CourtSelector } from "./CourtSelector";
 import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
@@ -15,12 +14,9 @@ import {
   buildDateWindow,
   calculateMultiQuote,
   createBookingHold,
-  formatCurrency,
   getCouponByCode,
 } from "@/lib/booking-engine";
-import {
-  validateCoupon,
-} from "@/lib/validation";
+import { validateCoupon } from "@/lib/validation";
 
 const INITIAL_AUTH = {
   step: "closed",
@@ -31,11 +27,18 @@ const INITIAL_AUTH = {
 };
 
 /**
- * courtSelections: Map<courtId, { startTime, endTime }>
- *   — null entry means court is active but no slot selected yet
+ * Primary client-side booking page controller.
+ * All courts are always visible — users select time slots per court independently.
+ * Manages slot selections, quote calculation, coupon state, and checkout flow.
+ *
+ * @param {Object} props
+ * @param {Object} props.venue        - Venue configuration object
+ * @param {Array}  props.courts       - Array of court config objects
+ * @param {Array}  props.availability - Per-court slot availability array
  */
 export function BookingClient({ venue, courts, availability }) {
   const { session: activeSession } = useAuth();
+
   const dates = useMemo(
     () =>
       buildDateWindow({
@@ -49,12 +52,7 @@ export function BookingClient({ venue, courts, availability }) {
     dates[2]?.iso ?? dates[0].iso,
   );
 
-  // Set of toggled-on courtIds
-  const [activeCourts, setActiveCourts] = useState(
-    new Set([availability[0].courtId]),
-  );
-
-  // Map<courtId, {startTime, endTime} | null>
+  // Map<courtId, { startTime, endTime } | null>
   const [courtSelections, setCourtSelections] = useState(new Map());
 
   const [couponCode, setCouponCode] = useState("");
@@ -67,15 +65,18 @@ export function BookingClient({ venue, courts, availability }) {
 
   /* ── Derived state ─────────────────────────────── */
 
-  // Build selectedCourts array for quote calculation
+  /**
+   * Build the selected courts array for quote calculation.
+   * Iterates over all courts — only courts with a completed slot selection are included.
+   */
   const selectedCourtsData = useMemo(() => {
     const result = [];
-    for (const courtId of activeCourts) {
-      const sel = courtSelections.get(courtId);
+    for (const court of courts) {
+      const sel = courtSelections.get(court.id);
       if (!sel) continue;
-      const courtAvail = availability.find((ca) => ca.courtId === courtId);
-      const court = courts.find((c) => c.id === courtId);
-      if (!courtAvail || !court) continue;
+
+      const courtAvail = availability.find((ca) => ca.courtId === court.id);
+      if (!courtAvail) continue;
 
       const startIdx = courtAvail.slots.findIndex(
         (s) => s.startTime === sel.startTime,
@@ -86,13 +87,13 @@ export function BookingClient({ venue, courts, availability }) {
       if (startIdx === -1 || endIdx === -1) continue;
 
       result.push({
-        courtId,
+        courtId: court.id,
         courtName: court.name,
         slots: courtAvail.slots.slice(startIdx, endIdx + 1),
       });
     }
     return result;
-  }, [activeCourts, courtSelections, availability, courts]);
+  }, [courtSelections, availability, courts]);
 
   const hasSelection = selectedCourtsData.length > 0;
 
@@ -108,73 +109,35 @@ export function BookingClient({ venue, courts, availability }) {
     [selectedCourtsData, coupon],
   );
 
-  // Build a human-readable time string from selections
-  const fullTime = useMemo(() => {
-    if (selectedCourtsData.length === 0) return "";
-    const courtLabels = selectedCourtsData.map(({ courtName, slots }) => {
-      const start = slots[0]?.startTime;
-      const end = slots[slots.length - 1]?.endTime;
-      return `${courtName}: ${start} – ${end}`;
-    });
-    return `${selectedDate} — ${courtLabels.join(" | ")}`;
-  }, [selectedDate, selectedCourtsData]);
-
   /* ── Handlers ─────────────────────────────────── */
 
-  function handleCourtToggle(courtId) {
-    setActiveCourts((prev) => {
-      const next = new Set(prev);
-      if (next.has(courtId)) {
-        // If at least one other court would remain, allow deselect
-        if (next.size > 1) {
-          next.delete(courtId);
-          // Also clear its slot selection
-          setCourtSelections((m) => {
-            const nm = new Map(m);
-            nm.delete(courtId);
-            return nm;
-          });
-        }
+  const handleSlotSelect = useCallback((courtId, slotOrAction) => {
+    setCourtSelections((prev) => {
+      const next = new Map(prev);
+
+      if (slotOrAction === null) {
+        next.delete(courtId);
+        return next;
+      }
+
+      if (slotOrAction.startSlot && slotOrAction.endSlot) {
+        // Range extension
+        next.set(courtId, {
+          startTime: slotOrAction.startSlot.startTime,
+          endTime: slotOrAction.endSlot.endTime,
+        });
       } else {
-        next.add(courtId);
+        // Single slot start
+        next.set(courtId, {
+          startTime: slotOrAction.startTime,
+          endTime: slotOrAction.endTime,
+        });
       }
       return next;
     });
     setHold(null);
     setPaid(false);
-  }
-
-  const handleSlotSelect = useCallback(
-    (courtId, slotOrAction, allSlots) => {
-      setCourtSelections((prev) => {
-        const next = new Map(prev);
-
-        if (slotOrAction === null) {
-          // Deselect
-          next.delete(courtId);
-          return next;
-        }
-
-        if (slotOrAction.startSlot && slotOrAction.endSlot) {
-          // Range extension
-          next.set(courtId, {
-            startTime: slotOrAction.startSlot.startTime,
-            endTime: slotOrAction.endSlot.endTime,
-          });
-        } else {
-          // Single slot start
-          next.set(courtId, {
-            startTime: slotOrAction.startTime,
-            endTime: slotOrAction.endTime,
-          });
-        }
-        return next;
-      });
-      setHold(null);
-      setPaid(false);
-    },
-    [],
-  );
+  }, []);
 
   function handleApplyCoupon() {
     const validation = validateCoupon(couponCode);
@@ -245,7 +208,7 @@ export function BookingClient({ venue, courts, availability }) {
       <BookingHeader />
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px]">
-        {/* Left column */}
+        {/* Left column — date picker + all court slot grids */}
         <div className="min-w-0 space-y-5 sm:space-y-6">
           <VenueHero venue={venue} />
 
@@ -261,24 +224,17 @@ export function BookingClient({ venue, courts, availability }) {
               }
             />
 
-            {/* Court selector */}
-            <CourtSelector
-              courts={courts}
-              activeCourts={activeCourts}
-              onToggle={handleCourtToggle}
-            />
-
+            {/* All courts always visible — no selection step required */}
             <SlotGrid
               availability={availability}
               courts={courts}
-              activeCourts={activeCourts}
               courtSelections={courtSelections}
               onSlotSelect={handleSlotSelect}
             />
           </Card>
         </div>
 
-        {/* Right column — sticky summary */}
+        {/* Right column — sticky order summary */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <OrderSummary
             selectedCourtsData={selectedCourtsData}
@@ -294,7 +250,7 @@ export function BookingClient({ venue, courts, availability }) {
         </aside>
       </div>
 
-      {/* Auth modal */}
+      {/* Checkout auth modal */}
       {auth.step !== "closed" && (
         <AuthFlow
           auth={auth}
