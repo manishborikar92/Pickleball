@@ -28,9 +28,25 @@ export function HowItWorksSection() {
             Pick your slot, verify once, and show up ready to play — every step made effortless.
           </span>
         </SectionHeader>
-        <ol className="mt-12 grid gap-10 sm:mt-16 sm:grid-cols-3 sm:gap-6 lg:gap-12">
+        <ol className="hide-scrollbar slider-nav-animation mt-12 flex snap-x snap-mandatory gap-10 overflow-x-auto pb-4 sm:mt-16 sm:grid sm:snap-none sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:pb-0 lg:gap-12">
           {STEPS.map(({ icon, title, body }) => (
-            <li key={title}>
+            <li key={title} className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:w-auto sm:shrink">
+              <StepCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {/* Duplicates for extended mobile scrolling */}
+          {STEPS.map(({ icon, title, body }, index) => (
+            <li key={`dup1-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <StepCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {STEPS.map(({ icon, title, body }, index) => (
+            <li key={`dup2-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <StepCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {STEPS.map(({ icon, title, body }, index) => (
+            <li key={`dup3-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
               <StepCard icon={icon} title={title} body={body} />
             </li>
           ))}

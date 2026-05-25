@@ -28,9 +28,25 @@ export function FacilitySection() {
             Every corner is intentionally crafted for your comfort, performance, and the perfect game.
           </span>
         </SectionHeader>
-        <ul className="mt-10 grid gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+        <ul className="hide-scrollbar slider-nav-animation mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 sm:mt-12 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 lg:gap-8">
           {FACILITY_STANDARDS.map(({ icon, title, body }) => (
-            <li key={title}>
+            <li key={title} className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:w-auto sm:shrink">
+              <FacilityCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {/* Duplicates for extended mobile scrolling */}
+          {FACILITY_STANDARDS.map(({ icon, title, body }, index) => (
+            <li key={`dup1-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <FacilityCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {FACILITY_STANDARDS.map(({ icon, title, body }, index) => (
+            <li key={`dup2-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <FacilityCard icon={icon} title={title} body={body} />
+            </li>
+          ))}
+          {FACILITY_STANDARDS.map(({ icon, title, body }, index) => (
+            <li key={`dup3-${index}`} aria-hidden="true" className="slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
               <FacilityCard icon={icon} title={title} body={body} />
             </li>
           ))}

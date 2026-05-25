@@ -12,9 +12,25 @@ export function ReviewsSection() {
           </span>
         </SectionHeader>
 
-        <ul className="mt-10 grid gap-6 sm:mt-12 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+        <ul className="hide-scrollbar slider-nav-animation mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4 sm:mt-12 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 lg:gap-8">
           {reviews.map((review) => (
-            <li key={review.id} className="flex">
+            <li key={review.id} className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:w-auto sm:shrink">
+              <ReviewCard review={review} />
+            </li>
+          ))}
+          {/* Duplicates for extended mobile scrolling */}
+          {reviews.map((review, index) => (
+            <li key={`dup1-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <ReviewCard review={review} />
+            </li>
+          ))}
+          {reviews.map((review, index) => (
+            <li key={`dup2-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
+              <ReviewCard review={review} />
+            </li>
+          ))}
+          {reviews.map((review, index) => (
+            <li key={`dup3-${index}`} aria-hidden="true" className="flex slider-nav-animation-fadein w-[80vw] shrink-0 snap-center sm:hidden">
               <ReviewCard review={review} />
             </li>
           ))}
