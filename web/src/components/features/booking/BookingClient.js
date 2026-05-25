@@ -100,8 +100,8 @@ export function BookingClient({ venue, courts, availability }) {
     () =>
       calculateMultiQuote({
         selectedCourts: selectedCourtsData,
-        serviceFee: 40,
-        taxRate: 0.18,
+        serviceFee: 0,
+        taxRate: 0,
         coupon,
         creditsApplied: 0,
       }),
@@ -282,6 +282,7 @@ export function BookingClient({ venue, courts, availability }) {
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <OrderSummary
             selectedCourtsData={selectedCourtsData}
+            selectedDate={selectedDate}
             hasSelection={hasSelection}
             quote={quote}
             couponCode={couponCode}
@@ -299,7 +300,8 @@ export function BookingClient({ venue, courts, availability }) {
           auth={auth}
           setAuth={setAuth}
           hold={hold}
-          fullTime={fullTime}
+          selectedDate={selectedDate}
+          selectedCourtsData={selectedCourtsData}
           quote={quote}
           waiver={waiver}
           setWaiver={setWaiver}
