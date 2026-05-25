@@ -2,8 +2,9 @@ import Link from "next/link";
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
 import { formatCurrency } from "@/lib/booking-engine";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, X } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
+import { useOverlay } from "@/hooks/useOverlay";
 
 export function AuthFlow({
   auth,
@@ -17,26 +18,47 @@ export function AuthFlow({
   confirmPayment,
   onClose,
 }) {
+  const { containerRef, contentRef, handleBackdropClick } = useOverlay({
+    isOpen: auth.step !== "closed",
+    onClose,
+  });
+
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-background/85 backdrop-blur-md md:items-center md:justify-center"
+      ref={containerRef}
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-background/80 backdrop-blur-md animate-overlay-fade-in md:items-center md:justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="Booking checkout"
     >
-      <div className="flex max-h-[90dvh] w-full flex-col rounded-t-3xl border-t border-line bg-surface-high shadow-2xl md:max-h-[85vh] md:max-w-md md:rounded-3xl md:border">
-        {/* Drag handle (mobile only) */}
+      <div
+        ref={contentRef}
+        tabIndex={-1}
+        className="relative flex max-h-[90dvh] w-full flex-col rounded-t-3xl border-t border-line bg-surface-high shadow-2xl animate-modal-slide-up focus:outline-none md:max-h-[85vh] md:max-w-md md:rounded-3xl md:border md:animate-modal-scale-in"
+      >
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 rounded-full p-1.5 text-muted transition-colors hover:bg-surface-panel hover:text-foreground focus-visible:bg-surface-panel focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          aria-label="Close checkout"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        {/* Drag handle (mobile only, visual / clickable secondary option) */}
         <div className="flex shrink-0 items-center justify-center pb-2 pt-4 md:hidden">
           <button
             type="button"
             onClick={onClose}
-            className="h-1.5 w-12 rounded-full bg-muted/30"
+            className="h-1.5 w-12 rounded-full bg-muted/30 hover:bg-muted/50 transition-colors"
             aria-label="Close checkout"
           />
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="overflow-y-auto p-5 pb-safe sm:p-6">
+        <div className="overflow-y-auto p-5 pb-safe pt-12 sm:p-6 sm:pt-14">
           {["phone", "otp", "name"].includes(auth.step) && (
             <CustomerCheckoutAuthGate
               inline={true}
