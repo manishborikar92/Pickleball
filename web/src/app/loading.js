@@ -16,19 +16,8 @@ export default function Loading() {
 
         {/* Cohesive, Centered Progress Bar Accent */}
         <div className="relative mt-6 h-[2px] w-24 overflow-hidden rounded bg-line/60">
-          <div className="absolute top-0 left-0 h-full w-8 bg-accent animate-slide" />
+          <div className="absolute top-0 left-0 h-full w-8 bg-accent animate-loader-slide" />
         </div>
-
-        {/* Custom infinite slide animation */}
-        <style dangerouslySetInnerHTML={{ __html: `
-          @keyframes slide {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(300%); }
-          }
-          .animate-slide {
-            animation: slide 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          }
-        `}} />
       </div>
     </main>
   );
