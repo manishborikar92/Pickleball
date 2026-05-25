@@ -67,27 +67,51 @@ export const availability = [
 export const reviews = [
   {
     id: "review-1",
-    name: "Sarah J.",
-    label: "4.5 DUPR",
+    name: "Devendra Deshmukh",
+    label: "Nagpur Pickleball Club",
     rating: 5,
     quote:
-      "Best outdoor courts in the city. The lighting is incredible and the surface grip is exactly what you want for competitive matches.",
+      "Finally, a professional-grade pickleball setup coming to Besa! Spoke with the team last week—they are importing high-quality net systems and using proper cushion surfaces. Visited the site and construction is in full swing. Can't wait to play here once it opens in August!",
   },
   {
     id: "review-2",
-    name: "Mike T.",
-    label: "Rec Player",
+    name: "Rithika Sen",
+    label: "Intermediate Player",
     rating: 5,
     quote:
-      "Booking is so easy. No more waiting around or calling facilities. Just book, show up, and play on premium courts.",
+      "Nagpur has been desperately needing dedicated pickleball courts. The location in Besa is perfect for players from Manish Nagar and Somalwada. I signed up for their early-access waitlist, and the process was super smooth. Really looking forward to the floodlights for late evening matches!",
   },
   {
     id: "review-3",
-    name: "Anaya P.",
-    label: "Weekend Player",
+    name: "Chinmay Kulkarni",
+    label: "Recreational Player",
     rating: 4,
     quote:
-      "Clean courts, clear booking flow, and the staff helped us get started with equipment in minutes.",
+      "I have been following the construction updates on their WhatsApp group. The layout plans look top-class. Pro-cushion courts will be a lifesaver for knees compared to the concrete surfaces we play on right now. Rating it 4 stars for now, will upgrade to 5 once I get my paddle on the court!",
+  },
+  {
+    id: "review-4",
+    name: "Kavitha Nair",
+    label: "Manish Nagar Resident",
+    rating: 5,
+    quote:
+      "Very responsive management! I had a few questions about coaching sessions for beginners, and they replied immediately on WhatsApp. They are planning to host weekend mixers which is exactly what the Nagpur pickleball community needs to grow. Excitement level is 10/10!",
+  },
+  {
+    id: "review-5",
+    name: "Abhinav Jaiswal",
+    label: "DUPR 3.5 Player",
+    rating: 4,
+    quote:
+      "The website looks slick and clean, was able to fill out the interest form in under a minute. Nagpur has a lot of tennis players switching to pickleball, so having two dedicated courts in a growing area like Besa is a smart move. Hoping they stick to the launch timeline!",
+  },
+  {
+    id: "review-6",
+    name: "Tanvi Deshpande",
+    label: "Weekend Player",
+    rating: 5,
+    quote:
+      "Super excited about this! Besa is developing so fast, and having recreational facilities like Baseline Arena nearby is amazing. The updates they share show high attention to detail—cushioned flooring, glare-free night lighting, and a neat courtside seating plan. Pre-registered today!",
   },
 ];
 
