@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 export function Badge({ children, tone = "neutral", className = "" }) {
   const tones = {
     neutral: "border-line bg-surface-high text-muted",
@@ -6,8 +8,12 @@ export function Badge({ children, tone = "neutral", className = "" }) {
   };
 
   return (
-    <span 
-      className={`inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold leading-5 whitespace-nowrap ${tones[tone]} ${className}`}
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-bold leading-5 whitespace-nowrap",
+        tones[tone],
+        className
+      )}
     >
       {children}
     </span>

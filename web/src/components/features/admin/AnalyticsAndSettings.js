@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useId } from "react";
-import { Button, Card } from "@/components/shared";
+import { useState } from "react";
+import { Button, Card, FormField, Input, Textarea, FormAlert } from "@/components/shared";
 import { ManagerSurface } from "./ManagerSurface";
 
 /* ── Analytics ──────────────────────────────────── */
@@ -56,63 +56,35 @@ export function SettingsView() {
     >
       <Card className="p-5 sm:p-6">
         <form onSubmit={handleSubmit} className="grid gap-5 sm:grid-cols-2">
-          <SettingsField
-            label="Advance booking days"
-            defaultValue="7"
-            type="number"
-            inputMode="numeric"
-          />
-          <SettingsField
-            label="Rollover time"
-            defaultValue="08:00"
-            type="time"
-          />
-          <SettingsField
-            label="Notification template"
-            defaultValue="You are booked for {{court}} at {{time}}."
-            isTextarea
-            className="sm:col-span-2"
-          />
+          <FormField label="Advance booking days">
+            <Input
+              defaultValue="7"
+              type="number"
+              inputMode="numeric"
+            />
+          </FormField>
+          <FormField label="Rollover time">
+            <Input
+              defaultValue="08:00"
+              type="time"
+            />
+          </FormField>
+          <FormField label="Notification template" className="sm:col-span-2">
+            <Textarea
+              defaultValue="You are booked for {{court}} at {{time}}."
+              rows={3}
+            />
+          </FormField>
           <div className="flex flex-col items-start gap-3 sm:col-span-2 sm:flex-row sm:items-center">
-            <Button type="submit" className="w-full py-3 sm:w-auto sm:py-2">
+            <Button type="submit" className="w-full py-3 sm:w-auto sm:py-2.5">
               Save Settings
             </Button>
             {saved && (
-              <p aria-live="polite" className="text-sm font-medium text-green-500">
-                Settings saved locally.
-              </p>
+              <FormAlert type="success" message="Settings saved locally." />
             )}
           </div>
         </form>
       </Card>
     </ManagerSurface>
-  );
-}
-
-function SettingsField({ label, defaultValue, type = "text", inputMode, isTextarea, className = "" }) {
-  const inputId = useId();
-
-  return (
-    <div className={`grid gap-1.5 ${className}`}>
-      <label htmlFor={inputId} className="text-sm font-bold text-muted">
-        {label}
-      </label>
-      {isTextarea ? (
-        <textarea
-          id={inputId}
-          defaultValue={defaultValue}
-          rows={3}
-          className="w-full resize-y rounded-lg border border-line bg-background px-4 py-3 text-base text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent md:text-sm"
-        />
-      ) : (
-        <input
-          id={inputId}
-          type={type}
-          defaultValue={defaultValue}
-          inputMode={inputMode}
-          className="w-full rounded-lg border border-line bg-background px-4 py-3 text-base text-foreground transition-colors focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent md:text-sm"
-        />
-      )}
-    </div>
   );
 }

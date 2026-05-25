@@ -43,7 +43,7 @@ test("booking validation normalizes customer auth inputs", () => {
     value: "+919876543210",
   });
   assert.equal(validateOtp("12345").ok, false);
-  assert.equal(validateOtp("482913").ok, true);
+  assert.equal(validateOtp("123456").ok, true);
 });
 
 test("date window respects configured advance booking days", () => {

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useId } from "react";
-import { Badge, Button, Card } from "@/components/shared";
+import { Button, Card, FormField, Input } from "@/components/shared";
+import { DataTable, StatusBadge, DateTime } from "@/components/shared/Table";
+import { useTable } from "@/hooks/useTable";
 import { ManagerSurface } from "./ManagerSurface";
 
 const INITIAL_EXCEPTIONS = [
@@ -14,17 +16,55 @@ const INITIAL_EXCEPTIONS = [
   },
 ];
 
+const COLUMNS = [
+  {
+    key: "date",
+    label: "Date",
+    sortable: true,
+    render: (val) => <DateTime date={val} />,
+  },
+  {
+    key: "court",
+    label: "Court",
+    sortable: true,
+    filterable: true,
+    filterOptions: ["Court 1", "Court 2", "All Courts"],
+  },
+  {
+    key: "type",
+    label: "Type",
+    render: (val) => <StatusBadge value={val} />,
+  },
+  {
+    key: "note",
+    label: "Note",
+    className: "text-right md:pr-4",
+  },
+];
+
 export function ScheduleManager() {
   const [exceptions, setExceptions] = useState(INITIAL_EXCEPTIONS);
   const [note, setNote] = useState("");
 
+  const table = useTable(exceptions, {
+    columns: COLUMNS,
+    defaultSortBy: "date",
+    defaultSortOrder: "desc",
+    defaultPageSize: 5,
+  });
+
   function handleAddException(event) {
     event.preventDefault();
     if (!note.trim()) return;
-    setExceptions((prev) => [
-      { id: `exc-${Date.now()}`, date: "2026-05-20", court: "Court 1", type: "blocked", note },
-      ...prev,
-    ]);
+    const newException = {
+      id: `exc-${Date.now()}`,
+      date: "2026-05-20",
+      court: "Court 1",
+      type: "blocked",
+      note: note.trim(),
+    };
+    
+    setExceptions((prev) => [newException, ...prev]);
     setNote("");
   }
 
@@ -41,7 +81,17 @@ export function ScheduleManager() {
           onSubmit={handleAddException}
         />
       </div>
-      <ExceptionsTable exceptions={exceptions} />
+
+      <div className="mt-5 sm:mt-6">
+        <DataTable
+          {...table}
+          columns={COLUMNS}
+          enableSearch={false}
+          emptyTitle="No schedule exceptions"
+          emptyDescription="There are currently no active blocks or modified hours."
+          mobileCardRenderer={MobileExceptionCard}
+        />
+      </div>
     </ManagerSurface>
   );
 }
@@ -69,21 +119,19 @@ function OperatingTemplate() {
 }
 
 function AddExceptionForm({ note, onChange, onSubmit }) {
-  const inputId = useId();
-  
   return (
     <Card className="flex flex-col p-5 sm:p-6 h-full">
       <h3 className="text-lg font-black tracking-tight sm:text-xl">Add Exception</h3>
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row">
-        <label htmlFor={inputId} className="sr-only">Reason for exception</label>
-        <input
-          id={inputId}
-          value={note}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Reason for exception..."
-          className="min-w-0 flex-1 rounded-lg border border-line bg-background px-4 py-3 text-base placeholder:text-muted/50 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent md:text-sm"
-        />
-        <Button type="submit" className="shrink-0 py-3 sm:py-2">
+      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <FormField label="Reason for exception" className="flex-1">
+          <Input
+            value={note}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Reason for exception..."
+            className="py-2.5 text-sm"
+          />
+        </FormField>
+        <Button type="submit" className="shrink-0 py-3 sm:py-2.5">
           Add Rule
         </Button>
       </form>
@@ -91,20 +139,19 @@ function AddExceptionForm({ note, onChange, onSubmit }) {
   );
 }
 
-function ExceptionsTable({ exceptions }) {
+function MobileExceptionCard(row) {
   return (
-    <Card className="divide-y divide-line overflow-hidden mt-5 sm:mt-6">
-      {exceptions.map((item) => (
-        <div
-          key={item.id}
-          className="grid gap-3 p-5 sm:grid-cols-[120px_1fr_auto_1fr] sm:items-center sm:gap-4 sm:px-6"
-        >
-          <span className="font-bold text-foreground">{item.date}</span>
-          <span className="text-sm font-medium text-muted">{item.court}</span>
-          <Badge tone="accent" className="w-fit text-[10px] sm:text-xs">{item.type.replace("_", " ")}</Badge>
-          <span className="text-sm text-muted sm:text-right truncate" title={item.note}>{item.note}</span>
-        </div>
-      ))}
-    </Card>
+    <div className="flex flex-col gap-2 p-5 hover:bg-surface-high/10 transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="font-bold text-foreground">
+          <DateTime date={row.date} />
+        </span>
+        <StatusBadge value={row.type} />
+      </div>
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>{row.court}</span>
+        <span className="truncate max-w-[200px]" title={row.note}>{row.note}</span>
+      </div>
+    </div>
   );
 }

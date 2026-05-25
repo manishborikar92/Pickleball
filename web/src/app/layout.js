@@ -1,4 +1,5 @@
 import { Geist } from "next/font/google";
+import AppProviders from "@/providers/AppProviders";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,11 +16,44 @@ export const metadata = {
     template: "%s | Baseline Arena",
   },
   description:
-    "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and role-based operations.",
+    "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
-    title: "Baseline Arena",
-    description: "Premium pickleball court booking for Besa, Nagpur.",
-    images: ["/court-3.png"],
+    type: "website",
+    locale: "en_IN",
+    url: "https://baselinearena.in",
+    title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
+    description:
+      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
+    siteName: "Baseline Arena",
+    images: [
+      {
+        url: "/api/og?title=Baseline Arena&desc=Book premium outdoor pickleball courts in Besa, Nagpur.",
+        width: 1200,
+        height: 630,
+        alt: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
+    description:
+      "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
+    images: ["/api/og?title=Baseline Arena&desc=Book premium outdoor pickleball courts in Besa, Nagpur."],
   },
   appleWebApp: {
     title: "Baseline Arena",
@@ -34,7 +68,7 @@ export default function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

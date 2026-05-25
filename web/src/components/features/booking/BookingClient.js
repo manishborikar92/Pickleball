@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 
 import { Card } from "@/components/shared";
+import { useAuth } from "@/hooks/useAuth";
 import { AuthFlow } from "./AuthFlow";
 import { BookingHeader } from "./BookingHeader";
 import { CourtSelector } from "./CourtSelector";
@@ -19,9 +20,6 @@ import {
 } from "@/lib/booking-engine";
 import {
   validateCoupon,
-  validateName,
-  validateOtp,
-  validatePhone,
 } from "@/lib/validation";
 
 const INITIAL_AUTH = {
@@ -37,6 +35,7 @@ const INITIAL_AUTH = {
  *   — null entry means court is active but no slot selected yet
  */
 export function BookingClient({ venue, courts, availability }) {
+  const { session: activeSession } = useAuth();
   const dates = useMemo(
     () =>
       buildDateWindow({
@@ -201,42 +200,37 @@ export function BookingClient({ venue, courts, availability }) {
       totalAmount: quote.totalAmount,
     });
     setHold(nextHold);
-    setAuth({ ...INITIAL_AUTH, step: "name" });
+
+    if (activeSession?.user && activeSession.user.name) {
+      setAuth({
+        step: "waiver",
+        name: activeSession.user.name,
+        phone: activeSession.user.phone,
+        otp: "",
+        error: "",
+      });
+    } else if (activeSession?.user && !activeSession.user.name) {
+      setAuth({
+        step: "name",
+        name: "",
+        phone: activeSession.user.phone,
+        otp: "",
+        error: "",
+      });
+    } else {
+      setAuth({ ...INITIAL_AUTH, step: "phone" });
+    }
   }
 
-  function handleSubmitName(event) {
-    event.preventDefault();
-    const v = validateName(auth.name);
-    if (!v.ok) {
-      setAuth((a) => ({ ...a, error: v.message }));
-      return;
-    }
-    setAuth((a) => ({ ...a, name: v.value, step: "phone", error: "" }));
-  }
-
-  function handleSubmitPhone(event) {
-    event.preventDefault();
-    const v = validatePhone(auth.phone);
-    if (!v.ok) {
-      setAuth((a) => ({ ...a, error: v.message }));
-      return;
-    }
-    setAuth((a) => ({ ...a, phone: v.value, step: "otp", error: "" }));
-  }
-
-  function handleSubmitOtp(event) {
-    event.preventDefault();
-    const v = validateOtp(auth.otp);
-    if (!v.ok) {
-      setAuth((a) => ({ ...a, error: v.message }));
-      return;
-    }
-    if (v.value !== "482913") {
-      setAuth((a) => ({ ...a, error: "Use demo OTP 482913 to continue." }));
-      return;
-    }
-    setAuth((a) => ({ ...a, step: "waiver", error: "" }));
-  }
+  const handleAuthSuccess = useCallback((userData) => {
+    setAuth((a) => ({
+      ...a,
+      step: "waiver",
+      name: userData.name,
+      phone: userData.phone,
+      error: "",
+    }));
+  }, []);
 
   function handleConfirmPayment() {
     if (!waiver.time || !waiver.policy) return;
@@ -310,9 +304,7 @@ export function BookingClient({ venue, courts, availability }) {
           waiver={waiver}
           setWaiver={setWaiver}
           paid={paid}
-          submitName={handleSubmitName}
-          submitPhone={handleSubmitPhone}
-          submitOtp={handleSubmitOtp}
+          onAuthSuccess={handleAuthSuccess}
           confirmPayment={handleConfirmPayment}
           onClose={() => setAuth(INITIAL_AUTH)}
         />

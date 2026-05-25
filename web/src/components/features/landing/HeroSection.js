@@ -10,7 +10,7 @@ export function HeroSection() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
             </span>
-            <span className="font-semibold tracking-wide">LIVE NOW</span>
+            <span className="font-semibold tracking-wide">OPENING SOON</span>
           </Badge>
 
           <h1 className="text-balance text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
@@ -19,19 +19,18 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-5 max-w-xl text-balance text-base leading-relaxed text-muted sm:mt-6 sm:text-lg sm:leading-8">
-            Experience courts tuned for competitive play. Browse live slots,
-            verify only when ready, and book Besa, Nagpur in minutes.
+            Your dedicated space for outdoor pickleball. Enjoy reliable courts, excellent lighting, and instant booking.
           </p>
 
           <div className="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row sm:items-center">
             <Button 
-              href="/venues/besa-nagpur/book" 
+              href="/interest" 
               className="flex min-h-[3rem] w-full items-center justify-center sm:w-auto sm:px-8"
             >
               Book Court
             </Button>
             <Button
-              href="/dashboard"
+              href="/interest"
               variant="secondary"
               className="flex min-h-[3rem] w-full items-center justify-center sm:w-auto sm:px-8"
             >

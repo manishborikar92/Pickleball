@@ -1,6 +1,13 @@
 import { AppSidebar } from "@/components/layout";
 import { requireRouteAccess } from "@/lib/session";
 
+export const metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
 export default async function CustomerLayout({ children }) {
   const session = await requireRouteAccess("/dashboard");
 
