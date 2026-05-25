@@ -130,44 +130,28 @@ function WaiverStep({ hold, fullTime, quote, waiver, setWaiver, onConfirm }) {
 
       <div className="space-y-3">
         <WaiverCheckbox
-          checked={waiver?.time || false}
-          onChange={(v) => setWaiver((w) => ({ ...w, time: v }))}
+          checked={allChecked || false}
+          onChange={(v) => setWaiver({ time: v, policy: v })}
           label={
             <span>
-              I confirm this booking is for {fullTime} and understand it is{" "}
-              <Link
-                href="/refund"
-                target="_blank"
-                className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
-              >
-                non-refundable
-              </Link>
-              .
-            </span>
-          }
-        />
-        <WaiverCheckbox
-          checked={waiver?.policy || false}
-          onChange={(v) => setWaiver((w) => ({ ...w, policy: v }))}
-          label={
-            <span>
-              I accept the{" "}
+              I confirm this booking is for {fullTime} and accept the{" "}
               <Link
                 href="/terms"
                 target="_blank"
                 className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
               >
                 Terms &amp; Conditions
-              </Link>{" "}
-              and{" "}
+              </Link>
+              ,{" "}
               <Link
                 href="/terms#waiver"
                 target="_blank"
                 className="text-accent underline font-semibold focus-visible:outline-none hover:text-accent-dim"
               >
-                Liability Waiver / Rules
+                Liability Waiver
               </Link>
-              .
+              , and acknowledge the strict{" "}
+              <span className="font-semibold text-accent">non-refundable policy</span>.
             </span>
           }
         />

@@ -9,7 +9,6 @@ export default async function sitemap() {
     "/about",
     "/interest",
     "/privacy",
-    "/refund",
     "/support",
     "/terms",
   ].map((route) => ({
