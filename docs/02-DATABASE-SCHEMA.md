@@ -53,8 +53,9 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `phone` | VARCHAR(20) | UNIQUE, NOT NULL | Primary identifier; includes country code |
-| `name` | VARCHAR(255) | | Collected at first booking |
-| `is_phone_verified` | BOOLEAN | NOT NULL, default false | Set true after first successful OTP |
+| `name` | VARCHAR(255) | | `NULL` until the user completes onboarding. A non-null `name` is the authoritative signal that onboarding is complete. |
+| `is_phone_verified` | BOOLEAN | NOT NULL, default false | Set `true` on first successful OTP verification |
+| `onboarding_completed_at` | TIMESTAMPTZ | | Set once when `name` is first submitted via `/auth/onboarding`. `NULL` for users who have verified OTP but not yet submitted their name. |
 | `wallet_credits` | NUMERIC(10,2) | NOT NULL, default 0.00 | Monetary credit balance (INR); issued on force-majeure cancellations |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
@@ -122,6 +123,42 @@ Maps a user to a role within a specific venue. A user may hold different roles a
 | PK | | (user_id, venue_id) | One role per user per venue |
 
 > At launch with a single venue and a small operator team, all admin users are assigned `super_admin` at the single venue. The multi-venue operational UI for managing cross-venue assignments is deferred, but the schema supports it from day one.
+
+---
+
+### `staff_credentials`
+
+Stores email + password credentials for non-customer users (`super_admin`, `manager`, `staff`). Customers never have rows in this table. Staff users never use OTP for login. The two auth systems share the `users` table as the identity root but are entirely separate in credential management.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK | |
+| `user_id` | UUID | FK → users.id, UNIQUE, NOT NULL | One credential record per staff user |
+| `email` | VARCHAR(255) | UNIQUE, NOT NULL | Login identifier for the admin panel |
+| `password_hash` | TEXT | NOT NULL | bcrypt hash, cost factor 12. Never logged or stored in plain text. |
+| `status` | VARCHAR(30) | NOT NULL, default 'pending_activation' | Enum: `pending_activation`, `active`, `suspended`, `locked` |
+| `activation_token_hash` | TEXT | | bcrypt hash of the single-use activation token. Cleared after activation. |
+| `activation_token_expires_at` | TIMESTAMPTZ | | Activation links expire after 72 hours |
+| `password_reset_token_hash` | TEXT | | bcrypt hash of the single-use password reset token. Cleared after use. |
+| `password_reset_expires_at` | TIMESTAMPTZ | | Reset links expire after 1 hour |
+| `failed_login_attempts` | SMALLINT | NOT NULL, default 0 | Reset to 0 on successful login |
+| `locked_until` | TIMESTAMPTZ | | Set when failed attempts reach 10; locked for 30 minutes |
+| `force_password_change` | BOOLEAN | NOT NULL, default false | If true, staff must change password before any protected route is accessible |
+| `last_login_at` | TIMESTAMPTZ | | |
+| `last_login_ip` | INET | | |
+| `password_changed_at` | TIMESTAMPTZ | | Updated on every successful password change |
+| `created_by` | UUID | FK → users.id | The super_admin who provisioned this account |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+**`status` transitions:**
+```
+pending_activation → (activation link clicked + password set) → active
+active             → (admin suspends)                          → suspended
+active             → (10 failed login attempts)                → locked
+locked             → (30-min lockout expires OR admin resets)  → active
+suspended          → (admin re-activates)                      → active
+```
 
 ---
 
@@ -283,14 +320,13 @@ Default hourly rate per court.
 
 ### `bookings`
 
-The parent transaction record. One booking covers a contiguous time session across one or more courts. All slot-level detail (which court, which slot unit) lives in `booking_slots`. Financial columns remain on this table.
+The parent transaction record. One booking covers a contiguous time session across one or more courts. All slot-level detail lives in `booking_slots`. Financial columns remain on this table. Bookings are always created by an authenticated, onboarding-complete user — there are no anonymous holds.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `venue_id` | UUID | FK → venues.id, NOT NULL | |
-| `user_id` | UUID | FK → users.id | NULL until OTP verified |
-| `session_id` | VARCHAR(255) | | Anonymous session ID used before verification |
+| `user_id` | UUID | FK → users.id, NOT NULL | Always set at hold time; no anonymous bookings |
 | `slot_date` | DATE | NOT NULL | All booking_slots in this booking share this date |
 | `session_start_time` | TIME | NOT NULL | Earliest slot start across all courts |
 | `session_end_time` | TIME | NOT NULL | Latest slot end across all courts |
@@ -521,9 +557,13 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 
 | Table | Index | Type | Purpose |
 |---|---|---|---|
+| `users` | (phone) | Unique | Primary lookup by phone number |
+| `users` | (name) WHERE name IS NULL | Partial | Identify users with incomplete onboarding |
+| `staff_credentials` | (email) | Unique | Staff login lookup |
+| `staff_credentials` | (user_id) | Unique | Reverse lookup from user to credentials |
+| `staff_credentials` | (status) WHERE status = 'pending_activation' | Partial | Find unactivated accounts |
 | `bookings` | (status, expires_at) | B-tree | Background expiry sweeper |
-| `bookings` | (user_id, status) | B-tree | User booking history |
-| `bookings` | (session_id) | B-tree | Anonymous session lookup |
+| `bookings` | (user_id, status) | B-tree | User booking history and velocity check |
 | `booking_slots` | (court_id, slot_date, slot_start_time) WHERE active | Partial Unique | **Core double-booking prevention** |
 | `booking_slots` | (booking_id) | B-tree | Fetch all slot units for a booking |
 | `booking_slots` | (court_id, slot_date) | B-tree | Availability query per court per date |
