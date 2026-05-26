@@ -27,7 +27,7 @@ const orgSchema = {
   "sameAs": ["https://instagram.com/baseline.arena"],
   "contactPoint": {
     "@type": "ContactPoint",
-    "telephone": "+91-88012-34687",
+    "telephone": "+91-99704-09410",
     "contactType": "customer service",
     "email": "hello@baselinearena.in",
     "areaServed": "IN",
@@ -45,11 +45,11 @@ const locationSchema = {
     "https://baselinearena.in/court-3.png",
   ],
   "priceRange": "₹₹",
-  "telephone": "+91-88012-34687",
+  "telephone": "+91-99704-09410",
   "email": "hello@baselinearena.in",
   "address": {
     "@type": "PostalAddress",
-    "streetAddress": "123 Pickleball Way, Besa",
+    "streetAddress": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road",
     "addressLocality": "Nagpur",
     "addressRegion": "Maharashtra",
     "postalCode": "440037",
@@ -57,8 +57,8 @@ const locationSchema = {
   },
   "geo": {
     "@type": "GeoCoordinates",
-    "latitude": 21.0772,
-    "longitude": 79.0664,
+    "latitude": 21.0851090,
+    "longitude": 79.0859310,
   },
   "url": "https://baselinearena.in/venues/besa-nagpur/book",
   "openingHoursSpecification": {
@@ -72,8 +72,8 @@ const locationSchema = {
       "Saturday",
       "Sunday",
     ],
-    "opens": "06:00",
-    "closes": "23:00",
+    "opens": "07:00",
+    "closes": "00:00",
   },
 };
 

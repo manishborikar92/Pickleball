@@ -46,6 +46,11 @@ export function LocationSection() {
                     <a href={`tel:${venue.phone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
                       {venue.phone}
                     </a>
+                    {venue.secondaryPhone && (
+                      <a href={`tel:${venue.secondaryPhone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
+                        {venue.secondaryPhone}
+                      </a>
+                    )}
                   </span>
                 }
               />

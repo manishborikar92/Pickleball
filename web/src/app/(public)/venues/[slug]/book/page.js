@@ -39,7 +39,7 @@ export default async function BookPage({ params }) {
     "email": venue.email,
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "123 Pickleball Way, Besa",
+      "streetAddress": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road",
       "addressLocality": "Nagpur",
       "addressRegion": "Maharashtra",
       "postalCode": "440037",
@@ -62,8 +62,8 @@ export default async function BookPage({ params }) {
         "Saturday",
         "Sunday",
       ],
-      "opens": "06:00",
-      "closes": "23:00",
+      "opens": "07:00",
+      "closes": "00:00",
     },
   };
 
