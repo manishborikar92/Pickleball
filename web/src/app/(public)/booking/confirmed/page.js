@@ -238,7 +238,7 @@ export default async function BookingConfirmedPage(props) {
                     </div>
                     <div className="flex flex-col justify-end">
                       <a
-                        href={`https://www.google.com/maps/search/?api=1&query=${venue.location.lat},${venue.location.lng}`}
+                        href={venue.googleMapsLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-line bg-surface-panel/30 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-foreground transition-all hover:bg-surface-panel hover:text-accent"
@@ -255,10 +255,16 @@ export default async function BookingConfirmedPage(props) {
                       Need assistance with your booking? Reach out directly:
                     </p>
                     <div className="flex flex-col gap-2 text-xs sm:text-sm font-semibold">
-                      <a href={`tel:${venue.phone.replace(/\s+/g, '')}`} className="flex items-center gap-2 text-muted hover:text-accent transition-colors">
+                      <a href={`tel:${venue.phone.replace(/\D/g, '')}`} className="flex items-center gap-2 text-muted hover:text-accent transition-colors">
                         <Phone className="h-4 w-4 text-accent shrink-0" />
                         <span>{venue.phone}</span>
                       </a>
+                      {venue.secondaryPhone && (
+                        <a href={`tel:${venue.secondaryPhone.replace(/\D/g, '')}`} className="flex items-center gap-2 text-muted hover:text-accent transition-colors">
+                          <Phone className="h-4 w-4 text-accent shrink-0" />
+                          <span>{venue.secondaryPhone}</span>
+                        </a>
+                      )}
                       <a href={`mailto:${venue.email}`} className="flex items-center gap-2 text-muted hover:text-accent transition-colors">
                         <Mail className="h-4 w-4 text-accent shrink-0" />
                         <span>{venue.email}</span>

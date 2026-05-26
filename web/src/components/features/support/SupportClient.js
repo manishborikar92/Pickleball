@@ -149,14 +149,22 @@ export function SupportClient() {
                 <Phone className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Telephone</h4>
-                  <p className="mt-1 text-sm">
+                  <div className="mt-1 flex flex-col gap-1 text-sm font-semibold text-muted">
                     <a
                       href={`tel:${venue.phone.replace(/\D/g, "")}`}
-                      className="font-semibold text-muted transition-colors hover:text-accent"
+                      className="transition-colors hover:text-accent"
                     >
                       {venue.phone}
                     </a>
-                  </p>
+                    {venue.secondaryPhone && (
+                      <a
+                        href={`tel:${venue.secondaryPhone.replace(/\D/g, "")}`}
+                        className="transition-colors hover:text-accent"
+                      >
+                        {venue.secondaryPhone}
+                      </a>
+                    )}
+                  </div>
                 </div>
               </Card>
 

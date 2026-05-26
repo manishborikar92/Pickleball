@@ -14,8 +14,8 @@ export const MAP_CONFIG = {
   
   // Default coordinates (Nagpur, India area for now)
   DEFAULT_CENTER: {
-    lat: 21.0772,
-    lng: 79.0664
+    lat: 21.0851090,
+    lng: 79.0859310
   },
 
   MARKER_SIZE: 40,
