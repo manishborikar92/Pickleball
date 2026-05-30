@@ -51,7 +51,7 @@ function BrandLogo() {
           className={`${logoFont.className} text-[15px] font-extrabold text-foreground sm:text-lg md:text-xl leading-none`}
           style={{ letterSpacing: "-0.04em" }}
         >
-          Baseline<span className="text-accent" style={{ marginLeft: "0.03em" }}>Arena</span>
+          Baseline Arena
         </span>
         {/* Location sub-label directly below logo */}
         <div className="mt-0.5 flex items-center gap-0.5 text-[6px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground transition-colors group-hover:text-accent sm:text-[8px] leading-none">
