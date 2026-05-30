@@ -311,7 +311,7 @@ A funnel visualization tracking the full journey from `slot_selected` → `booki
 
 **Key questions it answers:**
 - What percentage of users who select a slot complete the booking?
-- At which auth step (name → phone → OTP) do most users abandon?
+- At which auth step (phone → OTP → name collection) do most users abandon?
 - How often does payment initiation not result in confirmation?
 
 ### 6.2 Traffic & Acquisition Dashboard

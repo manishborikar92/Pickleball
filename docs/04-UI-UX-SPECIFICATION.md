@@ -112,72 +112,100 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 
 ---
 
-### 2.3 Auth Gate — Bottom Sheet Sequence
+### 2.3 Auth Gate — Modal Surface (Booking Context)
 
-The auth gate appears as a sequence of bottom-sheet modals layered over the blurred Checkout page. The user progresses through three steps before payment.
+The auth gate appears as a bottom-sheet modal overlay on the booking page. It is used exclusively when the user is in an active booking flow — preserving their court and slot selection in React state without any page navigation.
 
-#### Step 1 — Name Entry
+**When the modal is used:**
+- User clicks "Confirm & Pay" on `/book` while unauthenticated.
+- User's JWT expires mid-session while reviewing the checkout summary.
+- Any in-context flow where leaving the current page would destroy the selection state.
 
-**Trigger:** User taps "Confirm & Pay" for the first time (unauthenticated).
+**When the dedicated `/login` page is used instead:**
+- User navigates directly to `/login` with no booking in progress.
+- Route guard redirects from a protected page (e.g., `/bookings`, `/wallet`).
+- Shared or external links to the platform.
+- Authentication recovery (expired session, device change).
+
+**The booking page never navigates away during auth.** The modal is always used in a booking context. This guarantees the user's court and time slot selection, accumulated in React state, is never lost.
+
+Both the modal and the `/login` page use the same `useAuth` hook and identical step components. See Section 2A for the shared frontend architecture.
+
+**Path determination on "Confirm & Pay" click:**
+
+```
+Valid JWT in storage?
+├─ YES → GET /users/me
+│   ├─ name IS NOT NULL → skip auth gate entirely → proceed to Hold
+│   └─ name IS NULL    → show Step 3 sheet only (OTP already verified)
+└─ NO / 401 → open Auth Gate from Step 1
+```
+
+#### Step 1 — Phone Entry (always first for unauthenticated users)
 
 **Content:**
-- Top of bottom sheet: blurred preview of the order summary visible above.
-- Heading: "Almost there!"
-- Subheading: "Tell us your name to finish your booking."
-- Input field labeled "FULL NAME" with a person icon placeholder.
-- CTA: "Next →"
-
-**Validation:** Name must be non-empty, at least 2 characters.
-
----
-
-#### Step 2 — Phone Entry
-
-**Trigger:** User submits name.
-
-**Content:**
-- Phone icon in a circular container at top of sheet.
+- Phone icon in circular container at top.
 - Heading: "Verify to Book"
-- Subheading: "Enter your phone number to receive a 4-digit code."
-- Input field: Flag emoji + "+91" prefix (fixed), followed by 10-digit phone number entry.
+- Subheading: "Enter your phone number to receive a 6-digit code."
+- Input: flag emoji + "+91" (fixed), 10-digit phone number field.
 - CTA: "Send OTP →"
 
-**Behaviour:**
-- The "+91" country code is pre-filled and non-editable (India only at launch).
-- Tapping "Send OTP" calls the backend which triggers a WhatsApp OTP message.
-- If the user already has 2 pending bookings, the backend returns an error at this step and the flow is blocked.
-
 ---
 
-#### Step 3 — OTP Entry
-
-**Trigger:** OTP sent successfully.
+#### Step 2 — OTP Entry
 
 **Content:**
 - Heading: "Enter Code"
-- Subheading: "Sent to +91 XXXXX XXXXX" (masked phone number).
-- 6-box OTP input (one digit per box). The first box is auto-focused. On mobile, the numeric keyboard appears automatically.
-- "↺ Resend Code" link (rate-limited; appears after a countdown timer).
+- Subheading: "Sent to +91 XXXXX XXXXX" (last 5 digits visible).
+- 6-box OTP input; auto-focuses first box; numeric keyboard on mobile.
+- "↺ Resend Code" link with countdown timer (appears after 30 seconds).
 - CTA: "Verify OTP"
 
-**Behaviour:**
-- Each digit auto-advances focus to the next box.
-- On successful verification, the backend links the booking to the user profile and proceeds to the waiver/payment step.
-- If OTP is incorrect, an inline error is shown. After N failed attempts, the OTP is invalidated and the user must request a new one.
+**On success:**
+- Backend returns `next_step`.
+- `complete_onboarding` → advance to Step 3 (name collection).
+- `resume_booking` → close auth gate; proceed to slot hold.
+- `admin_dashboard` → navigate to `/admin` (no booking flow continues).
 
 ---
 
-### 2.4 Checkout — Waiver & Payment
+#### Step 3 — Name Collection (first-time users only)
 
-**Trigger:** OTP verified successfully.
+Shown only when `next_step = "complete_onboarding"`. Does not re-appear for returning users.
 
 **Content:**
-- Full order summary rendered clearly: venue, court, date, time (full unambiguous format, e.g., "Sunday, 11 May 2025 — 09:00 AM to 10:00 AM").
-- Two mandatory checkboxes (both must be checked to enable Pay):
-  1. "I confirm my booking is for [full time string] and I understand this is non-refundable."
+- Heading: "Almost there!"
+- Subheading: "Tell us your name to finish your booking."
+- Input labeled "FULL NAME" with person icon and placeholder.
+- CTA: "Continue →"
+
+**On submit:**
+- Calls `POST /auth/onboarding { name }`.
+- On success: auth gate closes; frontend proceeds to slot hold.
+
+**Interrupted onboarding handling:** If the user had previously verified OTP but never submitted a name (closed mid-flow), the frontend detects `user.name = null` on `GET /users/me` and shows only this Step 3 sheet — Steps 1 and 2 are skipped since the JWT is still valid.
+
+---
+
+#### Already Authenticated (No Gate Shown)
+
+If `GET /users/me` returns a user with `name IS NOT NULL` and the JWT is valid, the entire auth gate is bypassed silently. The user proceeds directly to the slot hold. This is the experience for all returning users who have previously completed a booking.
+
+---
+
+### 2.4 Checkout — Hold Confirmed → Waiver & Payment
+
+**Trigger:** Auth gate completed (or skipped for returning users). Slot hold created successfully via `POST /bookings/hold`.
+
+**Content:**
+- Full order summary rendered clearly: court(s), date, session time in full unambiguous format (e.g., "Sunday, 11 May 2025 · 9:00 AM to 12:00 PM · 3 hours").
+- Per-unit price breakdown (collapsible), coupon field, wallet credit toggle.
+- Two mandatory checkboxes (both must be checked to enable "Confirm & Pay"):
+  1. "I confirm my booking is for [full time string] and understand it is non-refundable."
   2. "I accept the Terms & Conditions and Liability Waiver."
-- Final total amount displayed.
-- CTA: "Confirm & Pay" → opens PhonePe payment sheet.
+- Countdown timer showing remaining hold time (10 minutes).
+- Final total amount.
+- CTA: "Confirm & Pay" → opens PhonePe payment sheet or confirms wallet-only booking.
 
 ---
 
@@ -195,7 +223,97 @@ The auth gate appears as a sequence of bottom-sheet modals layered over the blur
 
 ---
 
-### 2.6 Rate Your Experience Screen
+### 2.7 Dedicated Login Page — `/login`
+
+**Purpose:** Full-page authentication entry point for all flows outside an active booking. Supports direct navigation, route guard redirects, and shared links.
+
+**URL:** `/login?callbackUrl=[encoded-path]`
+
+The `callbackUrl` query param carries the destination the user should be sent to after successful auth. If absent, defaults to `/`.
+
+**Layout:**
+- Platform logo and "Welcome back" heading at the top.
+- Minimal background — dark theme consistent with design system.
+- The same step flow as the modal (Phone → OTP → Name if new user), but rendered as a centred card on desktop and a full-screen view on mobile.
+- Progress indicator (Step 1 of 2 / Step 2 of 2) — visible because there is no modal context to orient the user.
+- Back-arrow on the OTP step to return to phone entry.
+
+**Step 1 — Phone Entry:**
+- Same `PhoneInput` component as the modal.
+- Heading: "Sign in to continue" (or "Create your account" for new users — determined after OTP verify).
+- Subheading: "Enter your phone number to receive a 6-digit code."
+- CTA: "Send OTP →"
+
+**Step 2 — OTP Entry:**
+- Same `OtpInput` component as the modal.
+- 30-second resend countdown.
+- CTA: "Verify OTP"
+- On success: `next_step` drives routing (see below).
+
+**Post-verify routing from `/login`:**
+
+| `next_step` | Action |
+|---|---|
+| `complete_onboarding` | Redirect to `/onboarding?callbackUrl=[original callbackUrl]` |
+| `resume_booking` | Redirect to `callbackUrl` (or `/` if absent) |
+| `admin_dashboard` | Redirect to `/admin` |
+
+**Route guards on `/login`:**
+- If already authenticated (`name IS NOT NULL`): redirect to `callbackUrl` or `/` immediately.
+- If authenticated but onboarding incomplete (`name IS NULL`): redirect to `/onboarding?callbackUrl=...`.
+
+---
+
+### 2.8 Dedicated Onboarding Page — `/onboarding`
+
+**Purpose:** Full-page name collection for first-time users arriving from `/login` or from a route guard redirect. Never shown during an active booking flow (the modal handles that case).
+
+**URL:** `/onboarding?callbackUrl=[encoded-path]`
+
+**Access rules:**
+- Requires a valid JWT (`requireAuth`). If no JWT → redirect to `/login?callbackUrl=/onboarding?callbackUrl=...`.
+- If `name IS NOT NULL` (already onboarded) → redirect to `callbackUrl` or `/`.
+
+**Layout:**
+- Progress indicator: "Step 2 of 2 — Almost done!"
+- Heading: "What should we call you?"
+- Subheading: "Your name helps us personalise your booking experience."
+- Full-name input (same `NameInput` component as the modal).
+- CTA: "Continue →"
+
+**On submit:**
+- Calls `POST /auth/onboarding { name }`.
+- On success: redirect to `callbackUrl` or `/`.
+- Error states shown inline.
+
+---
+
+### 2.9 Route Guard Reference
+
+All protected customer routes check auth state client-side (via a `useRequireAuth` hook in Next.js) and server-side (via Next.js middleware). Both layers must agree.
+
+| Route | Accessible to | Redirect if not met |
+|---|---|---|
+| `/login` | Unauthenticated only | `/` or `callbackUrl` if already authenticated |
+| `/onboarding` | JWT only (name may be null) | `/login?callbackUrl=/onboarding` if no JWT |
+| `/book` | Public (auth triggered mid-flow via modal) | — |
+| `/bookings`, `/wallet`, `/rewards` | JWT + onboarding complete | `/login?callbackUrl=[current path]` |
+| `/review/[id]` | JWT + booking owner | `/login?callbackUrl=[current path]` |
+| `/admin/*` | JWT + non-customer role | `/admin/login` |
+| `/admin/login` | Unauthenticated (or non-admin JWT) | `/admin` if already authenticated as staff |
+
+**Next.js middleware (`middleware.ts`) handles:**
+- No JWT present → redirect to `/login` (customer) or `/admin/login` (admin paths).
+- Staff JWT on customer-only routes → allowed (admins can browse the customer experience).
+
+**Page-level `useRequireAuth` hook handles:**
+- JWT present but onboarding incomplete → redirect to `/onboarding`.
+- JWT present but insufficient role → show `403` component (not a redirect).
+- `force_password_change` flag on staff → redirect to `/admin/change-password` regardless of target route.
+
+---
+
+### 2.10 Rate Your Experience Screen
 
 **Trigger:** Automatically triggered via WhatsApp link after the booking slot end time has passed.
 
@@ -214,6 +332,137 @@ The auth gate appears as a sequence of bottom-sheet modals layered over the blur
 - Star rating is required to enable submit.
 - Photo upload sends the file to Cloudflare R2 and stores the URL in the `reviews.photo_url` column.
 - After submit, a success state is shown and the screen is no longer accessible for that booking.
+
+---
+
+## 2A. Frontend Authentication Architecture
+
+This section defines the shared architecture that powers both the modal and page authentication surfaces. Business logic, API calls, state management, and validation live here exactly once.
+
+### 2A.1 The `useAuth` Hook
+
+A custom React hook that encapsulates the entire customer auth state machine. Both `AuthModal` and the `/login` page import and use this hook — they are simply different shells around the same logic.
+
+```
+useAuth({ callbackUrl, onSuccess, mode })
+  mode: 'modal' | 'page'
+
+State machine:
+  idle
+    → entering_phone   (user starts typing phone)
+    → sending_otp      (POST /auth/otp/send in flight)
+    → entering_otp     (OTP sent, awaiting user input)
+    → verifying_otp    (POST /auth/otp/verify in flight)
+    → collecting_name  (nextStep = 'complete_onboarding')
+    → submitting_name  (POST /auth/onboarding in flight)
+    → authenticated    (terminal — onSuccess() called)
+    → error            (any failed step — user can retry)
+
+Exposed values:
+  step, phone, isLoading, error, canResendOtp, resendCountdown
+
+Exposed actions:
+  setPhone(value)
+  sendOtp()
+  setOtp(value)
+  verifyOtp()
+  resendOtp()
+  setName(value)
+  submitName()
+  reset()          ← returns to idle (used when modal is dismissed)
+```
+
+### 2A.2 Shared Step Components
+
+These components are UI-only — they receive state and actions as props and render nothing stateful themselves.
+
+| Component | Used on step | Props |
+|---|---|---|
+| `PhoneStep` | `entering_phone`, `sending_otp` | `phone`, `setPhone`, `onSubmit`, `isLoading`, `error` |
+| `OtpStep` | `entering_otp`, `verifying_otp` | `phone`, `onSubmit`, `onResend`, `isLoading`, `error`, `countdown` |
+| `NameStep` | `collecting_name`, `submitting_name` | `onSubmit`, `isLoading`, `error` |
+
+### 2A.3 Modal Shell vs Page Shell
+
+The same step components are wrapped in different layout containers:
+
+```
+AuthModal (bottom-sheet, for booking context):
+  <BottomSheet isOpen={isOpen} onClose={handleDismiss}>
+    <PhoneStep  />  or  <OtpStep  />  or  <NameStep  />
+    (chosen based on auth.step)
+  </BottomSheet>
+
+  Dismissal: user taps outside or swipes down → auth.reset()
+  Booking context is fully preserved (no navigation)
+
+LoginPage (/login, for all other contexts):
+  <PageLayout>
+    <ProgressIndicator step={auth.step} />
+    <PhoneStep  />  or  <OtpStep  />  or  <NameStep  />
+  </PageLayout>
+
+  No dismiss — user uses browser back button
+  callbackUrl from query param drives post-auth redirect
+```
+
+### 2A.4 Post-Auth Routing Logic
+
+`onSuccess` is called by `useAuth` when the state machine reaches `authenticated`. The behaviour differs between modal and page mode:
+
+```
+Modal mode (onSuccess):
+  nextStep === 'complete_onboarding' → transition modal to NameStep
+  nextStep === 'resume_booking'      → close modal → proceed to booking hold
+  nextStep === 'admin_dashboard'     → full page navigate to /admin
+
+Page mode (onSuccess):
+  nextStep === 'complete_onboarding' → router.push('/onboarding?callbackUrl=...')
+  nextStep === 'resume_booking'      → router.push(callbackUrl || '/')
+  nextStep === 'admin_dashboard'     → router.push('/admin')
+```
+
+### 2A.5 The `useOnboarding` Hook
+
+A narrower hook used only on the `/onboarding` page (and by the `NameStep` component inside the auth flow). Encapsulates name collection only:
+
+```
+useOnboarding({ callbackUrl, onSuccess })
+  State: name, isLoading, error
+  Actions: setName(value), submit()
+```
+
+The `NameStep` component in the auth flow is powered by this hook through `useAuth`'s internal delegation.
+
+### 2A.6 Session Restoration on App Load
+
+On every app load or page navigation, a top-level `AuthProvider` component (wrapping the Next.js layout) checks session state:
+
+```
+1. Read JWT from localStorage (customer) or secure cookie (admin — TBD).
+2. If JWT exists and not expired (client-side exp check):
+   → Call GET /users/me to confirm validity and get current user state.
+   → If name IS NULL: user is partially onboarded.
+     → On /book: show NameStep modal when they click "Confirm & Pay".
+     → On /bookings or /wallet: route guard redirects to /onboarding.
+   → If name IS NOT NULL: fully authenticated → store user in AuthContext.
+3. If JWT is absent or expired:
+   → Clear any stale tokens.
+   → User is unauthenticated → route guards apply on page access.
+```
+
+### 2A.7 Booking Context Preservation
+
+The booking page (`/book`) holds the user's court and slot selection entirely in React state (no server-side draft, no local storage persistence). This is intentional:
+
+- The modal never causes a page navigation → selection is preserved.
+- If the user closes the tab or browser, the selection is lost — this is expected behaviour.
+- The 10-minute slot hold only starts after auth is complete and `POST /bookings/hold` is called.
+- If the user's JWT expires exactly as they click "Confirm & Pay", the modal opens (they re-authenticate in ~30 seconds), and the selection remains intact.
+
+### 2A.8 Staff Auth Architecture
+
+Staff auth (`/admin/login`, activation, reset) uses an entirely separate `useStaffAuth` hook that calls the `/auth/staff/*` endpoints. It does not share state or components with `useAuth`. Staff-side logic does not bleed into the customer auth flow.
 
 ---
 
@@ -288,9 +537,100 @@ On desktop, the layout switches to a two-column arrangement: date/slot selection
 
 ---
 
-## 6. Admin Dashboard — High-Level Screens
+## 6. Admin Panel — Auth Pages
 
-The admin dashboard is a separate authenticated web application (accessible via `/admin`). It is not part of the customer-facing Next.js pages.
+The admin panel is a separate authenticated surface at `/admin`. It uses credential-based auth entirely independent of the customer OTP flow.
+
+### 6.1 Admin Login Page — `/admin/login`
+
+**Purpose:** Entry point for all non-customer roles.
+
+**Layout:**
+- Platform logo and "Admin Panel" label at the top.
+- Email input (type `email`, autofocus).
+- Password input (type `password`, with show/hide toggle).
+- "Sign In" primary button (full width, accent colour).
+- "Forgot your password?" link → navigates to `/admin/forgot-password`.
+- No self-registration link — accounts are admin-provisioned only.
+
+**Behaviour:**
+- On submit: calls `POST /auth/staff/login`.
+- `next_step: "admin_dashboard"` → redirect to `/admin`.
+- `next_step: "force_password_change"` → redirect to `/admin/change-password`.
+- Error states rendered inline below the form (not as page-level alerts):
+  - `INVALID_CREDENTIALS` → "Incorrect email or password."
+  - `ACCOUNT_LOCKED` → "Account locked due to too many failed attempts. Try again at [time]."
+  - `ACCOUNT_SUSPENDED` → "Your account has been suspended. Contact your administrator."
+  - `ACCOUNT_NOT_ACTIVATED` → "Account not yet activated. Check your email for the activation link."
+
+---
+
+### 6.2 Account Activation Page — `/admin/activate`
+
+**Purpose:** Shown when a staff member clicks the activation link in their provisioning email.
+
+**URL shape:** `/admin/activate?token=<raw-token>`
+
+**Layout:**
+- "Set your password" heading.
+- Display of the email address for the account (fetched from the token lookup).
+- Password input + confirm password input.
+- Password strength indicator.
+- "Activate Account" button.
+
+**Behaviour:**
+- On submit: calls `POST /auth/staff/activate { token, password, password_confirm }`.
+- On success: JWT stored, redirect to `/admin`.
+- `INVALID_ACTIVATION_TOKEN` → "This activation link has expired or is invalid. Ask your administrator to resend the activation email."
+- `PASSWORD_TOO_WEAK` → Inline validation shown before submit.
+
+---
+
+### 6.3 Forgot Password Page — `/admin/forgot-password`
+
+**Layout:**
+- "Reset your password" heading.
+- Email input.
+- "Send Reset Link" button.
+- Back to login link.
+
+**Behaviour:**
+- Calls `POST /auth/staff/reset-password/request { email }`.
+- Always shows: "If that email is registered, a reset link has been sent." (prevents account enumeration regardless of result).
+
+---
+
+### 6.4 Password Reset Page — `/admin/reset-password`
+
+**URL shape:** `/admin/reset-password?token=<raw-token>`
+
+**Layout:** Identical to the activation page — new password + confirm password inputs.
+
+**Behaviour:**
+- Calls `POST /auth/staff/reset-password/confirm { token, password, password_confirm }`.
+- On success: JWT stored, redirect to `/admin`.
+- Expired token → friendly error with link to request a new reset.
+
+---
+
+### 6.5 Force Password Change Page — `/admin/change-password`
+
+Shown when `next_step: "force_password_change"` is returned after login. All other admin routes redirect here until the password is changed.
+
+**Layout:**
+- "You must change your password to continue" heading.
+- Current password input + new password + confirm.
+- "Update Password" button.
+
+**Behaviour:**
+- Calls `POST /auth/staff/change-password`.
+- On success: clears `force_password_change` flag, redirect to `/admin`.
+
+---
+
+## 7. Admin Dashboard — Operational Screens
+
+The admin dashboard is a separate authenticated web application (accessible via `/admin`). It is not part of the customer-facing Next.js pages. Access requires a valid staff JWT with the appropriate `venue_user_roles` assignment.
 
 | Screen | Status | Key Functions |
 |---|---|---|
@@ -299,7 +639,8 @@ The admin dashboard is a separate authenticated web application (accessible via 
 | **Schedule Manager** | Launch | Edit standard operating hours, create/edit/delete schedule exceptions |
 | **Pricing Manager** | Launch | Create/edit/deactivate pricing rules; manage coupons |
 | **Courts** | Launch | Edit court details, status (active/maintenance/offline), cover images |
-| **Users** | Launch | Look up user by phone; view booking history, wallet balance, reward instance history |
+| **Users** | Launch | Look up customer by phone; view booking history, wallet balance, reward instance history |
+| **Staff Management** | Launch | Provision new staff accounts, manage status (activate/suspend/unlock), resend activation, force password reset |
 | **Settings** | Launch | Venue-level settings (rollover time, advance window, tax rate) |
 | **Reward Engine** | **Deferred** | Create/edit/activate reward mechanisms; edit prize pool config; view instances — activate when reward engine is enabled |
 | **Analytics — Advanced** | **Deferred** | Utilization heatmaps, revenue trends, coupon usage, CLV reporting — built after 3+ months of data |

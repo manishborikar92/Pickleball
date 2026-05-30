@@ -55,37 +55,191 @@ Sends an OTP to the provided phone number via WhatsApp. Rate-limited per phone.
 
 ### `POST /auth/otp/verify`
 
-Verifies the OTP and returns a JWT pair.
+Verifies the OTP and issues a JWT. Creates the `users` record if this phone has never been verified before. Returns a `next_step` field that tells the frontend exactly where to navigate — the frontend should not compute this routing logic independently.
 
 **Body:**
 ```json
-{ "phone": "+919876543210", "otp": "4829" }
+{ "phone": "+919876543210", "otp": "482931" }
 ```
 
 **Response `200`:**
 ```json
 {
   "access_token": "<jwt>",
-  "refresh_token": "<jwt>",
-  "user": { "id": "<uuid>", "phone": "+919876543210", "name": "Arjun Mehta", "is_new_user": false }
+  "user": {
+    "id": "<uuid>",
+    "phone": "+919876543210",
+    "name": null,
+    "is_new_user": true,
+    "onboarding_complete": false
+  },
+  "next_step": "complete_onboarding"
 }
 ```
 
-**Errors:** `400` invalid OTP, `410` OTP expired.
+**`next_step` values:**
+
+| Value | Meaning | Frontend action |
+|---|---|---|
+| `complete_onboarding` | New user; `name` is null | Show name collection screen |
+| `resume_booking` | Returning user; name is set | Proceed to `POST /bookings/hold` |
+| `admin_dashboard` | User has a non-customer role | Redirect to `/admin` |
+
+> `admin_dashboard` takes priority over `complete_onboarding`. If an admin account somehow has no name set, `next_step` is `complete_onboarding` — name collection is required before admin dashboard access.
+
+**Errors:** `400` invalid OTP, `410` OTP expired, `429` too many attempts.
 
 ---
 
-### `POST /auth/refresh`
+### `POST /auth/onboarding`
+
+*Protected (requires JWT; does NOT require onboarding to be complete).* Collects the user's name and marks onboarding as done. Idempotent — calling it again updates the name.
 
 **Body:**
 ```json
-{ "refresh_token": "<jwt>" }
+{ "name": "Arjun Mehta" }
+```
+
+**Validation:** Name must be 2–100 characters, non-empty after trimming.
+
+**Response `200`:**
+```json
+{
+  "user": {
+    "id": "<uuid>",
+    "phone": "+919876543210",
+    "name": "Arjun Mehta",
+    "onboarding_complete": true
+  },
+  "next_step": "resume_booking"
+}
+```
+
+**Errors:** `400 INVALID_NAME` if name fails validation.
+
+---
+
+## 3. Staff Auth Endpoints
+
+These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) only. They use email + password credentials managed in the `staff_credentials` table. WhatsApp OTP is never involved.
+
+### `POST /auth/staff/login`
+
+*Public.* Authenticates a staff member with email and password.
+
+**Body:**
+```json
+{ "email": "manager@besanagpur.com", "password": "SecurePass123!" }
 ```
 
 **Response `200`:**
 ```json
-{ "access_token": "<jwt>" }
+{
+  "access_token": "<jwt>",
+  "user": { "id": "<uuid>", "name": "Ravi Kumar", "email": "manager@besanagpur.com" },
+  "next_step": "admin_dashboard"
+}
 ```
+
+**`next_step` values:** `admin_dashboard` (normal) or `force_password_change` (admin forced a reset).
+
+**Errors:**
+
+| Code | HTTP Status | Description |
+|---|---|---|
+| `INVALID_CREDENTIALS` | 401 | Email not found or password incorrect (intentionally vague) |
+| `ACCOUNT_SUSPENDED` | 403 | Account is suspended by an admin |
+| `ACCOUNT_LOCKED` | 423 | Too many failed attempts; includes `locked_until` in response body |
+| `ACCOUNT_NOT_ACTIVATED` | 403 | Activation email not yet completed |
+
+**Security:** Failed attempts are tracked per `staff_credentials` row. After 10 failures the account is locked for 30 minutes. Rate limiting (5 attempts per IP per 15 minutes) is applied at the middleware layer.
+
+---
+
+### `POST /auth/staff/activate`
+
+*Public (activation token acts as credential).* Sets the initial password for a newly provisioned staff account.
+
+**Body:**
+```json
+{
+  "token": "<raw-activation-token-from-email>",
+  "password": "MyNewSecurePass1!",
+  "password_confirm": "MyNewSecurePass1!"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "access_token": "<jwt>",
+  "user": { "id": "<uuid>", "name": "Ravi Kumar", "email": "manager@besanagpur.com" },
+  "next_step": "admin_dashboard"
+}
+```
+
+**Errors:** `400 INVALID_ACTIVATION_TOKEN` (token wrong or expired), `400 PASSWORD_MISMATCH`, `400 PASSWORD_TOO_WEAK`.
+
+---
+
+### `POST /auth/staff/reset-password/request`
+
+*Public.* Requests a password reset email. Always returns `200` regardless of whether the email is found (prevents account enumeration).
+
+**Body:**
+```json
+{ "email": "manager@besanagpur.com" }
+```
+
+**Response `200`:**
+```json
+{ "message": "If that email is associated with a staff account, a reset link has been sent." }
+```
+
+---
+
+### `POST /auth/staff/reset-password/confirm`
+
+*Public (reset token acts as credential).* Sets a new password using a valid reset token.
+
+**Body:**
+```json
+{
+  "token": "<raw-reset-token-from-email>",
+  "password": "NewSecurePass1!",
+  "password_confirm": "NewSecurePass1!"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "access_token": "<jwt>",
+  "user": { "id": "<uuid>", "name": "Ravi Kumar" },
+  "next_step": "admin_dashboard"
+}
+```
+
+**Errors:** `400 INVALID_RESET_TOKEN` (token wrong or expired after 1 hour), `400 PASSWORD_MISMATCH`, `400 PASSWORD_TOO_WEAK`.
+
+---
+
+### `POST /auth/staff/change-password`
+
+*Protected (JWT + staff role).* Allows a logged-in staff member to change their own password. Required when `next_step = "force_password_change"`.
+
+**Body:**
+```json
+{
+  "current_password": "OldPass123!",
+  "new_password": "NewPass456!",
+  "new_password_confirm": "NewPass456!"
+}
+```
+
+**Response `200`:** Updated user object. Clears `force_password_change` flag.
+
+**Errors:** `400 INVALID_CURRENT_PASSWORD`, `400 PASSWORD_MISMATCH`, `400 PASSWORD_TOO_WEAK`.
 
 ---
 
@@ -97,11 +251,11 @@ Verifies the OTP and returns a JWT pair.
 
 ---
 
-## 3. User Endpoints
+## 4. User Endpoints
 
 ### `GET /users/me`
 
-*Protected.* Returns the authenticated user's profile including wallet balance.
+*Protected (JWT only; does NOT require onboarding complete).* Returns the authenticated user's full profile. The frontend calls this on app load to determine auth state and onboarding state without re-running OTP.
 
 **Response `200`:**
 ```json
@@ -109,15 +263,35 @@ Verifies the OTP and returns a JWT pair.
   "id": "<uuid>",
   "phone": "+919876543210",
   "name": "Arjun Mehta",
-  "wallet_credits": 500.00
+  "onboarding_complete": true,
+  "wallet_credits": 500.00,
+  "roles": [
+    { "venue_id": "<uuid>", "venue_name": "Besa, Nagpur", "role": "customer" }
+  ]
 }
 ```
+
+`onboarding_complete` is computed as `name IS NOT NULL`. `roles` shows the user's venue assignments — an empty array means customer-only access.
+
+**If `name` is `null`** (OTP verified but onboarding not finished):
+```json
+{
+  "id": "<uuid>",
+  "phone": "+919876543210",
+  "name": null,
+  "onboarding_complete": false,
+  "wallet_credits": 0.00,
+  "roles": []
+}
+```
+
+The frontend uses this response on app load to decide whether to show the name collection screen before any booking action.
 
 ---
 
 ### `PATCH /users/me`
 
-*Protected.* Update name.
+*Protected (JWT + onboarding complete).* Update name after onboarding is done. For initial name collection during onboarding, use `POST /auth/onboarding` instead.
 
 **Body:**
 ```json
@@ -179,7 +353,7 @@ Verifies the OTP and returns a JWT pair.
 
 ---
 
-## 4. Venue & Court Endpoints
+## 5. Venue & Court Endpoints
 
 ### `GET /venues/:venueId`
 
@@ -190,12 +364,12 @@ Verifies the OTP and returns a JWT pair.
 {
   "id": "<uuid>",
   "name": "Besa, Nagpur",
-  "address": "123 Pickleball Way, Besa, Nagpur",
+  "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
   "city": "Nagpur",
   "timezone": "Asia/Kolkata",
   "advance_booking_days": 7,
   "rollover_time": "08:00",
-  "phone": "0880 123-4687",
+  "phone": "+91 99704 09410",
   "courts": [
     { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
     { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
@@ -211,7 +385,7 @@ Verifies the OTP and returns a JWT pair.
 
 ---
 
-## 5. Scheduling & Availability Endpoints
+## 6. Scheduling & Availability Endpoints
 
 ### `GET /venues/:venueId/availability`
 
@@ -261,7 +435,7 @@ Verifies the OTP and returns a JWT pair.
 
 ---
 
-## 6. Booking Endpoints
+## 7. Booking Endpoints
 
 ### `POST /bookings/price-preview`
 
@@ -309,9 +483,7 @@ Verifies the OTP and returns a JWT pair.
 
 ### `POST /bookings/hold`
 
-Validates the selection, attempts to lock all N×M slot units atomically, and returns the authoritative price quote. This is an all-or-nothing operation — if any single slot unit is taken, the entire request fails.
-
-*Public (session-based). No auth token required at this step.*
+*Protected (requires JWT + onboarding complete via `requireOnboarding` middleware).* Validates the full selection and attempts to lock all N×M slot units atomically. All-or-nothing — if any single slot unit is taken the entire request fails. The `user_id` is taken from the JWT; no `session_id` is required.
 
 **Body:**
 ```json
@@ -319,8 +491,7 @@ Validates the selection, attempts to lock all N×M slot units atomically, and re
   "venue_id": "<uuid>",
   "court_ids": ["<uuid1>", "<uuid2>"],
   "slot_date": "2025-05-17",
-  "slot_start_times": ["09:00", "10:00", "11:00"],
-  "session_id": "<client-generated-uuid>"
+  "slot_start_times": ["09:00", "10:00", "11:00"]
 }
 ```
 
@@ -542,7 +713,7 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ---
 
-## 7. Review Endpoints
+## 8. Review Endpoints
 
 ### `POST /bookings/:bookingId/review`
 
@@ -576,7 +747,7 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ---
 
-## 8. Admin Endpoints
+## 9. Admin Endpoints
 
 All admin endpoints require a valid JWT. The `Permission` column specifies the exact capability checked by `requirePermission()` middleware, which resolves through `venue_user_roles` → `roles` → `role_permissions` at request time.
 
@@ -635,11 +806,39 @@ All admin endpoints require a valid JWT. The `Permission` column specifies the e
 
 | Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `GET` | `/admin/users` | `manage_bookings` | Search users by phone |
-| `GET` | `/admin/users/:id/bookings` | `manage_bookings` | View user's full booking history |
+| `GET` | `/admin/users` | `manage_bookings` | Search customers by phone |
+| `GET` | `/admin/users/:id/bookings` | `manage_bookings` | View customer's full booking history |
 | `GET` | `/admin/users/:id/wallet` | `issue_credits` | View monetary wallet balance and transactions |
 | `POST` | `/admin/users/:id/credits` | `issue_credits` | Manually issue monetary wallet credits |
 | `GET` | `/admin/users/:id/rewards` | `manage_bookings` | View a user's reward instance history |
+| `PATCH` | `/admin/users/:id/phone` | `manage_courts` | Update a customer's phone number (validates uniqueness) |
+
+### Staff Account Management
+
+All endpoints require `super_admin` role (checked via `requirePermission('manage_courts')`).
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `GET` | `/admin/staff` | `manage_courts` | List all staff accounts with status |
+| `POST` | `/admin/staff` | `manage_courts` | Provision a new staff account (triggers activation email) |
+| `PATCH` | `/admin/staff/:id` | `manage_courts` | Update name, email, or venue role assignment |
+| `POST` | `/admin/staff/:id/suspend` | `manage_courts` | Suspend account (blocks future logins immediately) |
+| `POST` | `/admin/staff/:id/activate` | `manage_courts` | Re-activate a suspended account |
+| `POST` | `/admin/staff/:id/resend-activation` | `manage_courts` | Resend activation email with a new token |
+| `POST` | `/admin/staff/:id/force-password-reset` | `manage_courts` | Sets `force_password_change = true`; sends reset email |
+| `POST` | `/admin/staff/:id/unlock` | `manage_courts` | Unlock a locked account before the 30-minute window expires |
+
+**Provision staff body:**
+```json
+{
+  "email": "manager@besanagpur.com",
+  "name": "Ravi Kumar",
+  "role": "manager",
+  "venue_id": "<uuid>"
+}
+```
+
+On success: creates `users` record (name pre-set), `staff_credentials` record (`status: pending_activation`), `venue_user_roles` record, sends activation email. Returns `201` with the created staff profile.
 
 ### Reward Engine Management
 
@@ -685,7 +884,7 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 ---
 
-## 9. Reward Engine Endpoints
+## 10. Reward Engine Endpoints
 
 ### `GET /rewards/instances`
 
@@ -774,7 +973,7 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 ---
 
-## 10. Error Response Format
+## 11. Error Response Format
 
 All errors follow a consistent structure:
 
@@ -796,9 +995,31 @@ All errors follow a consistent structure:
 | `SLOTS_UNAVAILABLE` | 409 | One or more slot units taken during multi-slot hold attempt; returns list of unavailable units |
 | `SLOTS_NOT_CONSECUTIVE` | 400 | Selected slot_start_times are not consecutive |
 | `HOLD_LIMIT_EXCEEDED` | 429 | Velocity check: 2 pending holds already active |
+| `INVALID_CREDENTIALS` | 401 | Staff login: email not found or password incorrect |
+| `ACCOUNT_SUSPENDED` | 403 | Staff account is suspended |
+| `ACCOUNT_LOCKED` | 423 | Staff account locked after too many failed attempts |
+| `ACCOUNT_NOT_ACTIVATED` | 403 | Staff activation email not yet completed |
+| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Staff must change password before accessing protected routes |
+| `INVALID_ACTIVATION_TOKEN` | 400 | Activation token is wrong or expired (72h window) |
+| `INVALID_RESET_TOKEN` | 400 | Password reset token is wrong or expired (1h window) |
+| `PASSWORD_TOO_WEAK` | 400 | Password does not meet minimum requirements |
+| `PASSWORD_MISMATCH` | 400 | `password` and `password_confirm` do not match |
+| `EMAIL_ALREADY_EXISTS` | 409 | Staff provision: email already in use |
 | `OTP_INVALID` | 400 | Wrong OTP entered |
 | `OTP_EXPIRED` | 410 | OTP TTL has passed |
 | `OTP_RATE_LIMITED` | 429 | Too many OTP requests |
+| `ONBOARDING_INCOMPLETE` | 403 | JWT is valid but `users.name` is NULL; user must complete `/auth/onboarding` before accessing this resource |
+| `INVALID_NAME` | 400 | Name failed validation (too short, empty, or too long) |
+| `INVALID_CREDENTIALS` | 401 | Email not found or password incorrect (intentionally vague to prevent account enumeration) |
+| `ACCOUNT_SUSPENDED` | 403 | Staff account suspended by an admin |
+| `ACCOUNT_LOCKED` | 423 | Too many failed login attempts; `locked_until` included in response body |
+| `ACCOUNT_NOT_ACTIVATED` | 403 | Staff account activation email not yet completed |
+| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Staff must change password before accessing any admin route |
+| `INVALID_ACTIVATION_TOKEN` | 400 | Activation token is wrong or has expired (72-hour window) |
+| `INVALID_RESET_TOKEN` | 400 | Password reset token is wrong or has expired (1-hour window) |
+| `PASSWORD_MISMATCH` | 400 | `password` and `password_confirm` fields do not match |
+| `PASSWORD_TOO_WEAK` | 400 | Password does not meet minimum requirements |
+| `EMAIL_ALREADY_EXISTS` | 409 | Email is already registered to another staff account |
 | `COUPON_INVALID` | 400 | Code not found, inactive, or wrong venue |
 | `COUPON_LIMIT_REACHED` | 400 | Max uses exceeded globally or per phone |
 | `BOOKING_EXPIRED` | 410 | 10-minute hold expired before payment |
