@@ -1,8 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UserCircle, MapPin } from "lucide-react";
+import { Montserrat } from "next/font/google";
 import { Button } from "@/components/shared";
 import { venue } from "@/data/platform";
+
+const logoFont = Montserrat({
+  subsets: ["latin"],
+  weight: "800",
+});
 
 export function Header() {
   return (
@@ -26,24 +32,32 @@ function BrandLogo() {
   return (
     <Link
       href="/"
-      className="group flex flex-col justify-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      className="group flex items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       aria-label={`Go to ${venue.brandName} homepage`}
     >
-      <div className="flex shrink-0 items-center justify-start transition-transform group-hover:scale-[1.01]">
+      <div className="flex shrink-0 items-center justify-center transition-transform group-hover:scale-105">
         <Image
-          src="/baseline-full-logo.svg"
-          alt={`${venue.brandName} Full Logo`}
-          width={150}
+          src="/baseline-logo.svg"
+          alt={`${venue.brandName} Logo`}
+          width={40}
           height={40}
-          className="h-7 w-auto sm:h-8 md:h-9"
+          className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11"
           priority
         />
       </div>
       
-      {/* Location sub-label directly below logo */}
-      <div className="mt-0.5 flex items-center gap-1 pl-0.5 text-[7px] font-extrabold uppercase tracking-widest text-muted-foreground transition-colors group-hover:text-accent sm:text-[8px]">
-        <MapPin className="h-2 w-2 shrink-0 text-accent/80 sm:h-2.5 sm:w-2.5" />
-        <span>{venue.name}</span>
+      <div className="flex flex-col justify-center">
+        <span 
+          className={`${logoFont.className} text-[15px] font-extrabold text-foreground sm:text-lg md:text-xl leading-none`}
+          style={{ letterSpacing: "-0.04em" }}
+        >
+          Baseline<span className="text-accent" style={{ marginLeft: "0.03em" }}>Arena</span>
+        </span>
+        {/* Location sub-label directly below logo */}
+        <div className="mt-0.5 flex items-center gap-0.5 text-[6px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground transition-colors group-hover:text-accent sm:text-[8px] leading-none">
+          <MapPin className="h-1.5 w-1.5 shrink-0 text-accent/80" />
+          <span>{venue.name}</span>
+        </div>
       </div>
     </Link>
   );
