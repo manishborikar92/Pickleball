@@ -1,5 +1,4 @@
-import mongoose from 'mongoose';
-
+import { getPrisma } from '../lib/prisma.js';
 import logger from '../utils/logger.js';
 
 export const connectDatabase = async (config) => {
@@ -8,44 +7,18 @@ export const connectDatabase = async (config) => {
     return null;
   }
 
-  if (!config.database.uri) {
-    throw new Error('MONGODB_URI is required when DATABASE_ENABLED=true');
+  if (!config.database.url) {
+    throw new Error('DATABASE_URL is required when DATABASE_ENABLED=true');
   }
 
-  mongoose.set('sanitizeFilter', true);
-  mongoose.set('strictQuery', true);
-
-  await mongoose.connect(config.database.uri, {
-    maxPoolSize: 10,
-    serverSelectionTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-  });
-
-  logger.info('MongoDB connected', {
-    dbName: mongoose.connection.name,
-    host: mongoose.connection.host,
-  });
-
-  mongoose.connection.on('error', (error) => {
-    logger.error('MongoDB runtime error', { error });
-  });
-
-  mongoose.connection.on('disconnected', () => {
-    logger.warn('MongoDB disconnected');
-  });
-
-  mongoose.connection.on('reconnected', () => {
-    logger.info('MongoDB reconnected');
-  });
-
-  return mongoose.connection;
+  const prisma = getPrisma();
+  await prisma.$connect();
+  logger.info('PostgreSQL connected');
+  return prisma;
 };
 
 export const disconnectDatabase = async () => {
-  if (mongoose.connection.readyState === 0) {
-    return;
-  }
-
-  await mongoose.disconnect();
-  logger.info('MongoDB disconnected');
+  const prisma = getPrisma();
+  await prisma.$disconnect();
+  logger.info('PostgreSQL disconnected');
 };

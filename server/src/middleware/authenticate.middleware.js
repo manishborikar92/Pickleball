@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 
 import defaultConfig from '../config/env.js';
+import { getPrisma } from '../lib/prisma.js';
 import { UnauthorizedError } from '../utils/api-error.js';
 
 const extractBearerToken = (req) => {
@@ -17,6 +18,37 @@ const extractBearerToken = (req) => {
   return token;
 };
 
+const resolveSessionId = (decoded) => decoded.session_id || decoded.sid || null;
+
+const validateDatabaseSession = async ({ config, decoded }) => {
+  if (!config.database?.enabled) {
+    return true;
+  }
+
+  const sessionId = resolveSessionId(decoded);
+  if (!sessionId || !decoded.sub) {
+    return false;
+  }
+
+  const session = await getPrisma().authSession.findUnique({
+    where: { id: sessionId },
+    select: {
+      userId: true,
+      status: true,
+      expiresAt: true,
+      revokedAt: true,
+    },
+  });
+
+  return Boolean(
+    session
+    && session.userId === decoded.sub
+    && session.status === 'active'
+    && !session.revokedAt
+    && session.expiresAt > new Date(),
+  );
+};
+
 export const authenticate = (options = {}) => async (req, _res, next) => {
   try {
     const config = options.config || req.app.get('config') || defaultConfig;
@@ -26,10 +58,28 @@ export const authenticate = (options = {}) => async (req, _res, next) => {
       ...(config.auth.audience ? { audience: config.auth.audience } : {}),
     };
     const decoded = jwt.verify(token, config.auth.accessTokenSecret, verifyOptions);
+    const sessionValidator = options.validateSession || validateDatabaseSession;
+    const sessionActive = await sessionValidator({
+      sessionId: resolveSessionId(decoded),
+      userId: decoded.sub,
+      decoded,
+      req,
+      config,
+    });
+
+    if (!sessionActive) {
+      throw new UnauthorizedError('Session is no longer active');
+    }
+
+    const roles = Array.isArray(decoded.roles)
+      ? decoded.roles
+      : [decoded.role].filter(Boolean);
 
     let principal = {
       subject: decoded.sub,
-      role: decoded.role,
+      sessionId: resolveSessionId(decoded),
+      role: decoded.role || roles[0],
+      roles,
       permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
       claims: decoded,
     };

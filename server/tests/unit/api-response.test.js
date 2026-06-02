@@ -5,7 +5,7 @@ import { ApiResponse } from '../../src/utils/api-response.js';
 
 test('ApiResponse.success removes undefined values and normalizes ids', () => {
   const response = ApiResponse.success({
-    _id: { toHexString: () => 'abc123' },
+    _id: 'abc123',
     keep: 'value',
     drop: undefined,
     nested: {

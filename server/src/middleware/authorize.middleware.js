@@ -9,7 +9,12 @@ export const authorize = (...allowedRoles) => (req, _res, next) => {
     return next();
   }
 
-  if (!allowedRoles.includes(req.auth.role)) {
+  const grantedRoles = new Set([
+    ...(Array.isArray(req.auth.roles) ? req.auth.roles : []),
+    req.auth.role,
+  ].filter(Boolean));
+
+  if (!allowedRoles.some((role) => grantedRoles.has(role))) {
     return next(new ForbiddenError('Insufficient permissions'));
   }
 

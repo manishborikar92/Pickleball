@@ -1,16 +1,9 @@
 import Joi from 'joi';
-import mongoose from 'mongoose';
 
-export const objectId = Joi.string().custom((value, helpers) => {
-  if (!mongoose.Types.ObjectId.isValid(value)) {
-    return helpers.error('any.invalid');
-  }
+export const uuid = Joi.string().guid({ version: ['uuidv4'] });
 
-  return value;
-}, 'ObjectId validation');
-
-export const objectIdParamSchema = Joi.object({
-  id: objectId.required(),
+export const uuidParamSchema = Joi.object({
+  id: uuid.required(),
 });
 
 export const paginationQuerySchema = Joi.object({

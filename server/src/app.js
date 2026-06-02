@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 import { buildConfig } from './config/env.js';
 import { createCorsOptions } from './config/cors.js';
@@ -31,6 +32,7 @@ const createApp = ({
   app.use(createHelmet(config));
   app.use(cors(createCorsOptions(config)));
   app.use(requestLogger);
+  app.use(cookieParser());
   app.use(express.json({
     limit: config.security.jsonBodyLimit,
     verify: (req, _res, buffer) => {

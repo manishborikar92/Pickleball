@@ -1,27 +1,15 @@
 import { Router } from 'express';
-import mongoose from 'mongoose';
 
+import { getDatabaseHealth } from '../../lib/prisma.js';
 import { ApiResponse } from '../../utils/api-response.js';
-
-const databaseStatus = () => {
-  const states = {
-    0: 'disconnected',
-    1: 'connected',
-    2: 'connecting',
-    3: 'disconnecting',
-  };
-
-  return {
-    state: states[mongoose.connection.readyState] || 'unknown',
-    name: mongoose.connection.name || null,
-    host: mongoose.connection.host || null,
-  };
-};
 
 export const createHealthRouter = ({ startedAt = new Date(), config } = {}) => {
   const router = Router();
 
-  router.get('/health', (_req, res) => {
+  router.get('/health', async (_req, res, next) => {
+    try {
+      const database = await getDatabaseHealth({ enabled: Boolean(config?.database?.enabled) });
+
     res.json(ApiResponse.success({
       status: 'ok',
       service: config?.app?.name || 'api',
@@ -34,23 +22,29 @@ export const createHealthRouter = ({ startedAt = new Date(), config } = {}) => {
         pid: process.pid,
         memoryMb: Math.round((process.memoryUsage().rss / 1024 / 1024) * 100) / 100,
       },
-      database: databaseStatus(),
+        database,
     }));
+    } catch (error) {
+      next(error);
+    }
   });
 
   router.get('/live', (_req, res) => {
     res.json(ApiResponse.success({ status: 'alive' }));
   });
 
-  router.get('/ready', (_req, res) => {
-    const dbRequired = Boolean(config?.database?.enabled);
-    const dbReady = !dbRequired || mongoose.connection.readyState === 1;
-    const statusCode = dbReady ? 200 : 503;
+  router.get('/ready', async (_req, res, next) => {
+    try {
+      const database = await getDatabaseHealth({ enabled: Boolean(config?.database?.enabled) });
+      const statusCode = database.ready ? 200 : 503;
 
-    res.status(statusCode).json(ApiResponse.success({
-      status: dbReady ? 'ready' : 'not_ready',
-      database: databaseStatus(),
-    }));
+      res.status(statusCode).json(ApiResponse.success({
+        status: database.ready ? 'ready' : 'not_ready',
+        database,
+      }));
+    } catch (error) {
+      next(error);
+    }
   });
 
   return router;

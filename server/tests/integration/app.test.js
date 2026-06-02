@@ -16,13 +16,27 @@ test('createApp wires root and health endpoints with a consistent response envel
   const root = await request(app).get('/');
   assert.equal(root.status, 200);
   assert.equal(root.body.success, true);
-  assert.equal(root.body.data.name, 'Enterprise Express API');
+  assert.equal(root.body.data.name, 'Pickleball Platform API');
 
   const health = await request(app).get('/api/v1/health');
   assert.equal(health.status, 200);
   assert.equal(health.body.success, true);
   assert.equal(health.body.data.status, 'ok');
+  assert.equal(health.body.data.database.provider, 'postgresql');
   assert.equal(typeof health.body.data.uptimeSeconds, 'number');
+});
+
+test('liveness and readiness probes expose operational status', async () => {
+  const app = createApp();
+
+  const live = await request(app).get('/api/v1/live');
+  assert.equal(live.status, 200);
+  assert.deepEqual(live.body.data, { status: 'alive' });
+
+  const ready = await request(app).get('/api/v1/ready');
+  assert.equal(ready.status, 200);
+  assert.equal(ready.body.data.status, 'ready');
+  assert.equal(ready.body.data.database.provider, 'postgresql');
 });
 
 test('unknown routes use the centralized not-found and error response format', async () => {
@@ -115,6 +129,63 @@ test('authenticate verifies JWTs and authorize enforces roles', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.data.auth.subject, 'user_123');
   assert.equal(response.body.data.auth.role, 'admin');
+});
+
+test('authenticate rejects tokens for revoked sessions', async () => {
+  const secret = 'test-access-secret-with-enough-length';
+  const token = jwt.sign(
+    { sub: 'user_123', session_id: 'session_revoked', roles: ['admin'] },
+    secret,
+    { expiresIn: '5m' },
+  );
+
+  const app = createApp({
+    configOverrides: {
+      auth: { accessTokenSecret: secret },
+    },
+    configureRoutes(router) {
+      router.get(
+        '/session-secure',
+        authenticate({
+          validateSession: async () => false,
+        }),
+        (_req, res) => res.json(ApiResponse.success()),
+      );
+    },
+  });
+
+  const response = await request(app)
+    .get('/api/v1/session-secure')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.message, 'Session is no longer active');
+});
+
+test('authorize accepts role arrays from access-token claims', async () => {
+  const secret = 'test-access-secret-with-enough-length';
+  const token = jwt.sign(
+    { sub: 'user_123', roles: ['admin'], permissions: ['users:read'] },
+    secret,
+    { expiresIn: '5m' },
+  );
+
+  const app = createApp({
+    configOverrides: {
+      auth: { accessTokenSecret: secret },
+    },
+    configureRoutes(router) {
+      router.get('/roles-secure', authenticate(), authorize('admin'), (_req, res) => {
+        res.json(ApiResponse.success());
+      });
+    },
+  });
+
+  const response = await request(app)
+    .get('/api/v1/roles-secure')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(response.status, 200);
 });
 
 test('authorize rejects authenticated users without an allowed role', async () => {

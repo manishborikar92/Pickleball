@@ -18,10 +18,24 @@ const envSchema = Joi.object({
   RATE_LIMIT_WINDOW_MS: Joi.number().integer().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: Joi.number().integer().positive().default(500),
   JWT_ACCESS_SECRET: Joi.string().min(24).default('development-access-secret-change-before-production'),
+  JWT_REFRESH_SECRET: Joi.string().min(24).default('development-refresh-secret-change-before-production'),
+  JWT_ACCESS_TTL_SECONDS: Joi.number().integer().positive().default(15 * 60),
+  JWT_REFRESH_TTL_SECONDS: Joi.number().integer().positive().default(30 * 24 * 60 * 60),
   JWT_ISSUER: Joi.string().allow('').default(''),
   JWT_AUDIENCE: Joi.string().allow('').default(''),
+  REFRESH_COOKIE_NAME: Joi.string().pattern(/^[A-Za-z0-9_-]+$/).default('pb_refresh_token'),
+  REFRESH_COOKIE_DOMAIN: Joi.string().allow('').default(''),
+  DATABASE_URL: Joi.string().uri({ scheme: ['postgresql', 'postgres'] }).allow('').default(''),
   DATABASE_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
-  MONGODB_URI: Joi.string().allow('').default(''),
+  OTP_MODE: Joi.string().valid('sandbox', 'test', 'production').default('sandbox'),
+  OTP_TEST_CODE: Joi.string().pattern(/^\d{6}$/).default('123456'),
+  OTP_TTL_SECONDS: Joi.number().integer().positive().default(5 * 60),
+  WHATSAPP_API_BASE_URL: Joi.string().uri().default('https://graph.facebook.com'),
+  WHATSAPP_API_VERSION: Joi.string().pattern(/^v\d+\.\d+$/).default('v20.0'),
+  WHATSAPP_ACCESS_TOKEN: Joi.string().allow('').default(''),
+  WHATSAPP_PHONE_NUMBER_ID: Joi.string().allow('').default(''),
+  WHATSAPP_OTP_TEMPLATE_NAME: Joi.string().allow('').default(''),
+  WHATSAPP_OTP_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
   SHUTDOWN_TIMEOUT_MS: Joi.number().integer().positive().default(10000),
 }).unknown(true);
 
@@ -67,8 +81,20 @@ export const buildConfig = (overrides = {}) => {
       throw new Error('JWT_ACCESS_SECRET must be set in production');
     }
 
-    if (value.DATABASE_ENABLED && !value.MONGODB_URI) {
-      throw new Error('MONGODB_URI must be set when DATABASE_ENABLED=true in production');
+    if (value.JWT_REFRESH_SECRET === 'development-refresh-secret-change-before-production') {
+      throw new Error('JWT_REFRESH_SECRET must be set in production');
+    }
+
+    if (value.DATABASE_ENABLED && !value.DATABASE_URL) {
+      throw new Error('DATABASE_URL must be set when DATABASE_ENABLED=true in production');
+    }
+
+    if (value.OTP_MODE === 'production' && (!value.WHATSAPP_ACCESS_TOKEN || !value.WHATSAPP_PHONE_NUMBER_ID)) {
+      throw new Error('WhatsApp credentials must be set when OTP_MODE=production');
+    }
+
+    if (value.OTP_MODE === 'production' && (!value.WHATSAPP_OTP_TEMPLATE_NAME || !value.WHATSAPP_OTP_TEMPLATE_LANGUAGE)) {
+      throw new Error('WhatsApp OTP template settings must be set when OTP_MODE=production');
     }
 
     if (parseCsv(value.ALLOWED_ORIGINS).length === 0) {
@@ -101,12 +127,31 @@ export const buildConfig = (overrides = {}) => {
     },
     auth: {
       accessTokenSecret: value.JWT_ACCESS_SECRET,
+      refreshTokenSecret: value.JWT_REFRESH_SECRET,
+      accessTokenTtlSeconds: value.JWT_ACCESS_TTL_SECONDS,
+      refreshTokenTtlSeconds: value.JWT_REFRESH_TTL_SECONDS,
       issuer: value.JWT_ISSUER || undefined,
       audience: value.JWT_AUDIENCE || undefined,
+      refreshCookieName: value.REFRESH_COOKIE_NAME,
+      refreshCookieDomain: value.REFRESH_COOKIE_DOMAIN || undefined,
     },
     database: {
       enabled: value.DATABASE_ENABLED,
-      uri: value.MONGODB_URI,
+      url: value.DATABASE_URL || undefined,
+      provider: 'postgresql',
+    },
+    otp: {
+      mode: value.OTP_MODE,
+      testCode: value.OTP_TEST_CODE,
+      ttlSeconds: value.OTP_TTL_SECONDS,
+    },
+    whatsapp: {
+      apiBaseUrl: value.WHATSAPP_API_BASE_URL,
+      apiVersion: value.WHATSAPP_API_VERSION,
+      accessToken: value.WHATSAPP_ACCESS_TOKEN || undefined,
+      phoneNumberId: value.WHATSAPP_PHONE_NUMBER_ID || undefined,
+      otpTemplateName: value.WHATSAPP_OTP_TEMPLATE_NAME || undefined,
+      otpTemplateLanguage: value.WHATSAPP_OTP_TEMPLATE_LANGUAGE || undefined,
     },
   };
 
