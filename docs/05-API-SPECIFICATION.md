@@ -2,6 +2,8 @@
 
 All endpoints are served under `/api/v1`. The backend is the single authority on pricing, availability, and booking state. The frontend never bypasses or replicates this logic.
 
+> **Implementation status:** the live backend currently implements root, health/liveness/readiness, authentication, onboarding, current-user, OpenAPI, and Swagger UI routes. Booking, payment, wallet, review, reward, and admin operations in this document are target product contracts to be implemented on top of the completed schema.
+
 ---
 
 ## 1. Authentication & Headers
@@ -15,10 +17,14 @@ All endpoints are served under `/api/v1`. The backend is the single authority on
 
 ### Token Lifecycle
 
-- Access token expires in **24 hours** at launch.
-- On logout, the client discards the token locally. No server-side denylist at launch.
+- Access tokens are short-lived JWTs sent as `Authorization: Bearer <access_token>` on protected API calls.
+- Refresh tokens are opaque, rotating values stored in HTTP-only cookies under `pb_refresh_token`.
+- Refresh tokens are stored only as hashes in PostgreSQL.
+- `POST /auth/refresh` rotates the refresh token and returns a new access token.
+- `POST /auth/logout` revokes the current browser/device session.
+- `POST /auth/logout-all` revokes all active sessions for the authenticated user.
 
-> **Future Enhancement — Redis JWT Denylist:** When staff accounts require instant revocation, a Redis denylist is introduced and JWT expiry returns to 15 minutes. Only the auth middleware changes — no route updates required.
+> PostgreSQL-backed sessions supersede the earlier 24-hour access-token-only approach. Redis remains a future scaling option, not the primary launch revocation mechanism.
 
 ### Permission Guards
 
@@ -46,7 +52,11 @@ Sends an OTP to the provided phone number via WhatsApp. Rate-limited per phone.
 
 **Response `200`:**
 ```json
-{ "message": "OTP sent", "expires_in_seconds": 300 }
+{
+  "success": true,
+  "message": "OTP sent",
+  "data": { "phone": "+919876543210", "expires_in_seconds": 300 }
+}
 ```
 
 **Errors:** `429 Too Many Requests` if rate limit exceeded.
@@ -55,7 +65,7 @@ Sends an OTP to the provided phone number via WhatsApp. Rate-limited per phone.
 
 ### `POST /auth/otp/verify`
 
-Verifies the OTP and issues a JWT. Creates the `users` record if this phone has never been verified before. Returns a `next_step` field that tells the frontend exactly where to navigate — the frontend should not compute this routing logic independently.
+Verifies the OTP, creates an auth session, sets the refresh-token cookie, and returns an access token. Creates the `users` record if this phone has never been verified before. Returns a `next_step` field that tells the frontend exactly where to navigate — the frontend should not compute this routing logic independently.
 
 **Body:**
 ```json
@@ -65,17 +75,23 @@ Verifies the OTP and issues a JWT. Creates the `users` record if this phone has 
 **Response `200`:**
 ```json
 {
-  "access_token": "<jwt>",
-  "user": {
-    "id": "<uuid>",
-    "phone": "+919876543210",
-    "name": null,
-    "is_new_user": true,
-    "onboarding_complete": false
-  },
-  "next_step": "complete_onboarding"
+  "success": true,
+  "message": "OTP verified",
+  "data": {
+    "access_token": "<jwt>",
+    "user": {
+      "id": "<uuid>",
+      "phone": "+919876543210",
+      "name": null,
+      "is_new_user": true,
+      "onboarding_complete": false
+    },
+    "next_step": "complete_onboarding"
+  }
 }
 ```
+
+**Cookie:** `Set-Cookie: pb_refresh_token=<opaque-token>; HttpOnly; SameSite=Lax; Path=/api/v1/auth`
 
 **`next_step` values:**
 
@@ -105,13 +121,17 @@ Verifies the OTP and issues a JWT. Creates the `users` record if this phone has 
 **Response `200`:**
 ```json
 {
-  "user": {
-    "id": "<uuid>",
-    "phone": "+919876543210",
-    "name": "Arjun Mehta",
-    "onboarding_complete": true
-  },
-  "next_step": "resume_booking"
+  "success": true,
+  "message": "Onboarding complete",
+  "data": {
+    "user": {
+      "id": "<uuid>",
+      "phone": "+919876543210",
+      "name": "Arjun Mehta",
+      "onboarding_complete": true
+    },
+    "next_step": "resume_booking"
+  }
 }
 ```
 
@@ -122,6 +142,8 @@ Verifies the OTP and issues a JWT. Creates the `users` record if this phone has 
 ## 3. Staff Auth Endpoints
 
 These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) only. They use email + password credentials managed in the `staff_credentials` table. WhatsApp OTP is never involved.
+
+Implementation status: `POST /auth/staff/login` is implemented and shares the same access/refresh/session lifecycle as customer OTP auth. Staff activation, reset-password, change-password, and admin provisioning are the target contract and require the email/provider and admin-management slice before exposure.
 
 ### `POST /auth/staff/login`
 
@@ -245,9 +267,54 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
 
 ### `POST /auth/logout`
 
-*Protected.* Client discards the token. At launch this is a client-side operation only — no server-side token invalidation. When the Redis denylist is added, this endpoint writes the token to Redis.
+*Refresh-cookie authenticated.* Revokes the current auth session and active refresh token. The response clears the refresh cookie. Missing or already-revoked refresh tokens are treated idempotently.
 
-**Response `204 No Content`**
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Logged out",
+  "data": { "logged_out": true }
+}
+```
+
+---
+
+### `POST /auth/refresh`
+
+*Refresh-cookie authenticated.* Rotates the current refresh token, returns a new access token, and sets the next refresh-token cookie. Reuse of a revoked refresh token revokes the session and returns `401`.
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Session refreshed",
+  "data": {
+    "access_token": "<jwt>",
+    "user": {
+      "id": "<uuid>",
+      "phone": "+919876543210",
+      "name": "Arjun Mehta",
+      "onboarding_complete": true
+    }
+  }
+}
+```
+
+---
+
+### `POST /auth/logout-all`
+
+*Protected.* Revokes every active session for the authenticated user.
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "All sessions logged out",
+  "data": { "logged_out_all": true }
+}
+```
 
 ---
 

@@ -52,7 +52,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `phone` | VARCHAR(20) | UNIQUE, NOT NULL | Primary identifier; includes country code |
+| `phone` | VARCHAR(20) | UNIQUE | Primary customer identifier; includes country code. Nullable for staff-only users who authenticate by email. |
 | `name` | VARCHAR(255) | | `NULL` until the user completes onboarding. A non-null `name` is the authoritative signal that onboarding is complete. |
 | `is_phone_verified` | BOOLEAN | NOT NULL, default false | Set `true` on first successful OTP verification |
 | `onboarding_completed_at` | TIMESTAMPTZ | | Set once when `name` is first submitted via `/auth/onboarding`. `NULL` for users who have verified OTP but not yet submitted their name. |
@@ -82,7 +82,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `key` | VARCHAR(100) | UNIQUE, NOT NULL | e.g., `edit_pricing`, `manage_bookings` |
 | `description` | TEXT | | |
 
-**Seed permissions at launch:** `manage_courts`, `edit_pricing`, `edit_schedule`, `manage_bookings`, `issue_credits`, `view_analytics`, `walk_in_entry`, `view_own_bookings`.
+**Seed permissions at launch:** `manage_courts`, `edit_pricing`, `edit_schedule`, `manage_bookings`, `issue_credits`, `view_analytics`, `walk_in_entry`, `view_own_bookings`, `manage_venues`.
 
 ---
 
@@ -106,6 +106,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `view_analytics` | ✓ | ✓ | | |
 | `walk_in_entry` | ✓ | ✓ | ✓ | |
 | `view_own_bookings` | ✓ | ✓ | ✓ | ✓ |
+| `manage_venues` | ✓ | | | |
 
 ---
 
@@ -176,6 +177,48 @@ Tracks OTP sends and verification attempts for rate-limiting and audit.
 | `attempt_count` | SMALLINT | NOT NULL, default 0 | |
 | `ip_address` | INET | | |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+---
+
+### `auth_sessions`
+
+Tracks browser/device sessions for refresh-token lifecycle, revocation, audit, and logout-all behavior.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK | Session identifier embedded in access-token `sid` claim |
+| `user_id` | UUID | FK -> users.id, NOT NULL | |
+| `status` | VARCHAR(20) | NOT NULL, default `active` | Enum: `active`, `revoked`, `expired` |
+| `ip_address` | INET | | First-seen client IP |
+| `user_agent` | TEXT | | First-seen user agent |
+| `last_seen_at` | TIMESTAMPTZ | NOT NULL, default now() | Updated on refresh |
+| `expires_at` | TIMESTAMPTZ | NOT NULL | Matches the refresh-token session horizon |
+| `revoked_at` | TIMESTAMPTZ | | Set by logout, logout-all, or token reuse detection |
+| `revoke_reason` | VARCHAR(100) | | e.g., `logout_current`, `logout_all`, `refresh_token_reuse` |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+Indexes: `(user_id, status)` for active-session lookup and `(expires_at)` for cleanup.
+
+---
+
+### `refresh_tokens`
+
+Stores rotating refresh-token hashes. Raw refresh tokens are never stored.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK | |
+| `session_id` | UUID | FK -> auth_sessions.id, NOT NULL | |
+| `user_id` | UUID | FK -> users.id, NOT NULL | |
+| `token_hash` | TEXT | UNIQUE, NOT NULL | SHA-256 hash of the raw refresh token |
+| `parent_token_id` | UUID | | Prior token in the rotation chain |
+| `replaced_by_token_id` | UUID | | Next token created during rotation |
+| `expires_at` | TIMESTAMPTZ | NOT NULL | |
+| `revoked_at` | TIMESTAMPTZ | | Set when rotated, logged out, or revoked |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+Indexes: `(session_id, revoked_at)`, `(user_id, created_at)`, `(expires_at)`, plus a partial unique index on `session_id` where `revoked_at IS NULL` so each session can have only one active refresh token.
 
 ---
 
@@ -557,8 +600,8 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 
 | Table | Index | Type | Purpose |
 |---|---|---|---|
-| `users` | (phone) | Unique | Primary lookup by phone number |
-| `users` | (name) WHERE name IS NULL | Partial | Identify users with incomplete onboarding |
+| `users` | (phone) | Unique | Primary lookup by phone number; nullable for staff-only accounts |
+| `users` | (name) | B-tree | Name search and admin lookup |
 | `staff_credentials` | (email) | Unique | Staff login lookup |
 | `staff_credentials` | (user_id) | Unique | Reverse lookup from user to credentials |
 | `staff_credentials` | (status) WHERE status = 'pending_activation' | Partial | Find unactivated accounts |

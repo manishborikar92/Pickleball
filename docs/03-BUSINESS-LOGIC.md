@@ -33,10 +33,13 @@ All admin API queries are filtered to the venue(s) the requesting user has a rol
 
 ### 1.4 Session Security
 
-- Access tokens are **JWTs with a 24-hour expiry** at launch.
-- On logout, the client discards the token. There is no server-side denylist at launch.
+- Access tokens are short-lived JWTs.
+- Refresh tokens are opaque random values stored only as hashes in PostgreSQL and delivered to browsers through HTTP-only cookies.
+- Refresh tokens rotate on every successful refresh.
+- Logout revokes the current auth session and active refresh token. Logout-all revokes every active session for the user.
+- Reuse of a revoked refresh token is treated as a compromised session and revokes that session.
 
-> **Future Enhancement — Redis JWT Denylist:** When staff account management requires instant revocation (e.g., a departing employee), a Redis denylist is added. The token expiry returns to 15 minutes. Only the `requirePermission` middleware is updated — no route changes required.
+> **Architecture decision:** PostgreSQL-backed `auth_sessions` and `refresh_tokens` provide launch revocation. Redis remains a future scaling option for distributed cache/rate-limit workloads, not the primary revocation mechanism.
 
 ---
 
@@ -55,7 +58,7 @@ The platform uses **two entirely separate authentication systems** that coexist 
 | `staff_credentials` row | Never created | Always required |
 | JWT issued | ✓ (same format) | ✓ (same format) |
 
-Both systems issue identical JWTs `{ user_id, exp }`. The `requireAuth` middleware is auth-method-agnostic — it only verifies the JWT signature and expiry. Role resolution always comes from `venue_user_roles` → `role_permissions`, regardless of how the JWT was obtained.
+Both systems issue the same access-token shape and session model. The `requireAuth` middleware is auth-method-agnostic: it verifies the JWT signature, expiry, and subject/session claims. Role resolution always comes from `venue_user_roles` to `role_permissions`, regardless of how the token was obtained.
 
 ---
 
@@ -96,7 +99,7 @@ On `POST /auth/otp/verify`:
    - Non-customer role exists → `next_step = "admin_dashboard"`
    - No name set → `next_step = "complete_onboarding"`
    - Name set → `next_step = "resume_booking"`
-5. Issue JWT `{ user_id, exp }`.
+5. Create an `auth_sessions` row, issue a short-lived access token, and set the initial rotating refresh token cookie.
 
 ### 2.3 Name Collection — `POST /auth/onboarding`
 
@@ -203,7 +206,7 @@ Staff clicks email link → /admin/reset-password?token=xxx
 | Token security | Activation and reset tokens stored as bcrypt hashes; raw tokens never persisted |
 | Token expiry | Activation: 72 hours; Password reset: 1 hour |
 | Force password change | Set on provision; must change before accessing any admin route |
-| Suspension | Immediate effect on new logins; existing JWTs valid until expiry (Redis denylist when added) |
+| Suspension | Immediate effect on new logins; active sessions can be revoked through the session tables |
 | HTTPS | All staff auth endpoints HTTPS only in production |
 
 #### Account Deactivation / Suspension
@@ -211,8 +214,7 @@ Staff clicks email link → /admin/reset-password?token=xxx
 ```
 Admin sets staff_credentials.status = 'suspended'
 → All future login attempts rejected with 403 ACCOUNT_SUSPENDED
-→ Existing JWTs remain valid until their 24h expiry (acceptable at launch)
-→ When Redis denylist is added: suspension immediately invalidates all active JWTs
+→ Active auth sessions are revoked when the admin suspension workflow is implemented
 ```
 
 ---
@@ -222,17 +224,17 @@ Admin sets staff_credentials.status = 'suspended'
 Both customer OTP auth and staff password auth issue the same JWT format:
 
 ```json
-{ "user_id": "<uuid>", "exp": <epoch> }
+{ "sub": "<user_id>", "sid": "<session_id>", "roles": [], "permissions": [], "exp": <epoch> }
 ```
 
-The `requireAuth` middleware simply verifies the signature and expiry. It does not know or care how the token was obtained. All role and permission resolution comes from the database at request time.
+The `requireAuth` middleware verifies signature, expiry, and identity claims. It does not know or care how the token was obtained. All role and permission resolution comes from the database at request time.
 
 ```
 requireAuth:
   1. Extract Bearer token from Authorization header
   2. Verify JWT signature (same secret for both auth paths)
   3. Check exp > NOW()
-  4. Load users record by user_id → attach to req.user
+  4. Load users record by `sub` and attach it to `req.user`
   5. Proceed
 
 requirePermission('edit_pricing'):

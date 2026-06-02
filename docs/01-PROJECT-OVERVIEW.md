@@ -28,7 +28,7 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 
 | Feature | Reason to Defer | When to Add |
 |---|---|---|
-| Redis JWT denylist (instant token revocation) | Standard 24h JWT expiry is sufficient at launch; suspension only prevents new logins | When staff accounts require immediate session invalidation |
+| Redis-backed cache / distributed rate limiting | PostgreSQL-backed sessions provide launch revocation; Redis is not needed until traffic or multi-instance rate limits require it | When API traffic or background jobs justify a shared cache |
 | Real-time slot sync (WebSockets / SSE) | Low concurrency; "slot taken" error on click is acceptable | When concurrent booking contention is noticeable |
 | WhatsApp T−24h / T−2h reminders | Requires reliable job scheduler; low impact at small scale | After launch stabilisation |
 | WhatsApp inbound support webhook | A contact phone number on the landing page is sufficient | When support volume justifies a structured inbox |
@@ -50,7 +50,7 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | Styling | Tailwind CSS | Utility-first; dark theme with yellow-green (`#CBFF00`) accent |
 | Backend | Express.js (JavaScript) | REST API; permission-guarded routes via `requirePermission()` middleware resolving through the RBAC tables |
 | Database | PostgreSQL | ACID compliance, row-level locking, JSONB for flexible pricing rules |
-| Auth | JWT (standard, 24h expiry) + dual auth system | Customers: WhatsApp OTP. Staff (admin/manager): email + bcrypt password via `staff_credentials` table. Both paths issue identical JWTs; role resolution always from `venue_user_roles` |
+| Auth | Short-lived JWT access tokens + rotating opaque refresh tokens | Customers: WhatsApp OTP. Staff credential schema is in place for admin/manager/staff. Session revocation is backed by `auth_sessions` and `refresh_tokens`; role resolution always comes from `venue_user_roles` |
 | OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP + booking confirmation at launch. T−24h/T−2h reminders and inbound support are deferred |
 | Payments | PhonePe Payment Gateway v2 (UPI only) | Web Standard Checkout — redirect/iFrame. Direct via `pg-sdk-node`. See `08-PAYMENT-INTEGRATION.md` |
 | File Storage | Cloudflare R2 | Court images. Review photo upload is deferred |
@@ -122,8 +122,8 @@ User Browser / Mobile
 |---|---|
 | Double-booking | Zero tolerance; enforced at the database layer |
 | Slot lock duration | 10 minutes from selection to payment |
-| OTP validity | Yet to be decided |
-| JWT expiry | 24 hours at launch (15 minutes when Redis denylist is added) |
+| OTP validity | 5 minutes by default, environment-configurable |
+| Auth session lifecycle | Short-lived access tokens; refresh tokens rotate on every refresh and can be revoked per device or all devices |
 | Payment webhook idempotency | Must handle duplicate signals without side effects |
 | Legal compliance | Digital liability waiver with logged timestamp, IP, and verified phone |
 | Accessibility | Yet to be decided |
