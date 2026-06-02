@@ -25,7 +25,7 @@ const fixedNow = new Date('2026-06-02T00:00:00.000Z');
 let idCounter = 0;
 const nextId = (prefix) => `${prefix}-${++idCounter}`;
 
-function createMemoryRepository() {
+function createMemoryRepository(clock = () => fixedNow) {
   const users = new Map();
   const otps = [];
   const sessions = new Map();
@@ -35,7 +35,7 @@ function createMemoryRepository() {
   return {
     data: { users, otps, sessions, refreshTokens, staffCredentials },
     async createOtpRequest(record) {
-      const saved = { id: nextId('otp'), ...record };
+      const saved = { id: nextId('otp'), createdAt: clock(), ...record };
       otps.push(saved);
       return saved;
     },
@@ -250,3 +250,80 @@ test('loginStaff issues token pair for an active staff credential', async () => 
   assert.equal(result.access_token.split('.').length, 3);
   assert.equal(repository.data.sessions.size, 1);
 });
+
+test('sendCustomerOtp enforces 60-second cooldown', async () => {
+  let mockTime = new Date('2026-06-02T00:00:00.000Z');
+  const repository = createMemoryRepository(() => mockTime);
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => mockTime,
+  });
+
+  // First request should succeed
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+
+  // Second request immediately after should fail
+  await assert.rejects(
+    () => service.sendCustomerOtp({ phone: '+919876543210' }),
+    /Please wait 60 seconds before requesting a new OTP/
+  );
+
+  // Advance time by 30 seconds - should still fail
+  mockTime = new Date(mockTime.getTime() + 30 * 1000);
+  await assert.rejects(
+    () => service.sendCustomerOtp({ phone: '+919876543210' }),
+    /Please wait 30 seconds before requesting a new OTP/
+  );
+
+  // Advance time by another 31 seconds (total 61s) - should succeed
+  mockTime = new Date(mockTime.getTime() + 31 * 1000);
+  const result = await service.sendCustomerOtp({ phone: '+919876543210' });
+  assert.equal(result.phone, '+919876543210');
+});
+
+test('verifyCustomerOtp blocks verification after maxAttempts limit is reached', async () => {
+  const repository = createMemoryRepository();
+  const testConfig = {
+    ...baseConfig,
+    otp: {
+      ...baseConfig.otp,
+      maxAttempts: 3,
+    },
+  };
+
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: testConfig,
+    clock: () => fixedNow,
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+
+  // Attempt 1: Failed
+  await assert.rejects(
+    () => service.verifyCustomerOtp({ phone: '+919876543210', otp: '000000' }),
+    /Invalid OTP/
+  );
+
+  // Attempt 2: Failed
+  await assert.rejects(
+    () => service.verifyCustomerOtp({ phone: '+919876543210', otp: '000000' }),
+    /Invalid OTP/
+  );
+
+  // Attempt 3: Failed
+  await assert.rejects(
+    () => service.verifyCustomerOtp({ phone: '+919876543210', otp: '000000' }),
+    /Invalid OTP/
+  );
+
+  // Attempt 4: Should be blocked by attempt count check
+  await assert.rejects(
+    () => service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' }),
+    /Too many failed attempts/
+  );
+});
+

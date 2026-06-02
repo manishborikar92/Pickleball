@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
+import logger from '../utils/logger.js';
+
 let prismaInstance;
 
 export const getPrisma = () => {
@@ -21,6 +23,13 @@ export const getPrisma = () => {
   return prismaInstance;
 };
 
+export const disconnectPrisma = async () => {
+  if (prismaInstance) {
+    await prismaInstance.$disconnect();
+    prismaInstance = undefined;
+  }
+};
+
 export const getDatabaseHealth = async ({ enabled = false } = {}) => {
   if (!enabled) {
     return {
@@ -39,11 +48,12 @@ export const getDatabaseHealth = async ({ enabled = false } = {}) => {
       ready: true,
     };
   } catch (error) {
+    logger.error('Database health check failed', { error });
     return {
       provider: 'postgresql',
       state: 'unavailable',
       ready: false,
-      error: error.message,
+      error: 'Database connection failed',
     };
   }
 };

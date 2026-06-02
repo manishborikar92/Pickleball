@@ -1,25 +1,28 @@
-import { AppError, BadRequestError, ConflictError, InternalServerError } from '../utils/api-error.js';
+import { Prisma } from '@prisma/client';
+import { AppError, BadRequestError, ConflictError, NotFoundError, InternalServerError } from '../utils/api-error.js';
 import { ApiResponse } from '../utils/api-response.js';
 import logger from '../utils/logger.js';
 
 const normalizeDatabaseError = (error) => {
-  if (error.name === 'ValidationError') {
-    return new BadRequestError('Validation failed', {
-      errors: Object.values(error.errors || {}).map((item) => item.message),
-    });
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2002') {
+      return new ConflictError('Duplicate value', {
+        fields: error.meta?.target || [],
+      });
+    }
+    if (error.code === 'P2025') {
+      return new NotFoundError(error.meta?.cause || 'Record not found');
+    }
+    if (error.code === 'P2003' || error.code === 'P2004') {
+      return new BadRequestError('Database constraint failed', {
+        code: error.code,
+        meta: error.meta,
+      });
+    }
   }
 
-  if (error.name === 'CastError') {
-    return new BadRequestError('Invalid identifier', {
-      path: error.path,
-      value: error.value,
-    });
-  }
-
-  if (error.code === 11000) {
-    return new ConflictError('Duplicate value', {
-      fields: Object.keys(error.keyPattern || {}),
-    });
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return new BadRequestError('Database validation failed');
   }
 
   return error;

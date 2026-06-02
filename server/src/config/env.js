@@ -30,6 +30,7 @@ const envSchema = Joi.object({
   OTP_MODE: Joi.string().valid('sandbox', 'test', 'production').default('sandbox'),
   OTP_TEST_CODE: Joi.string().pattern(/^\d{6}$/).default('123456'),
   OTP_TTL_SECONDS: Joi.number().integer().positive().default(5 * 60),
+  OTP_MAX_ATTEMPTS: Joi.number().integer().positive().default(5),
   WHATSAPP_API_BASE_URL: Joi.string().uri().default('https://graph.facebook.com'),
   WHATSAPP_API_VERSION: Joi.string().pattern(/^v\d+\.\d+$/).default('v20.0'),
   WHATSAPP_ACCESS_TOKEN: Joi.string().allow('').default(''),
@@ -144,6 +145,7 @@ export const buildConfig = (overrides = {}) => {
       mode: value.OTP_MODE,
       testCode: value.OTP_TEST_CODE,
       ttlSeconds: value.OTP_TTL_SECONDS,
+      maxAttempts: value.OTP_MAX_ATTEMPTS,
     },
     whatsapp: {
       apiBaseUrl: value.WHATSAPP_API_BASE_URL,

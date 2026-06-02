@@ -93,4 +93,4 @@ Production PhonePe, WhatsApp, email, storage, and scheduler implementations are 
 
 ## Seed Data
 
-`npm run prisma:seed` is idempotent. It creates launch roles, permissions, role-permission mappings, the Besa venue, two courts, base prices, and standard schedules. To seed the first super-admin account, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`; `SEED_ADMIN_NAME` and `SEED_ADMIN_PHONE` are optional.
+`npm run prisma:seed` is idempotent. It creates launch roles, permissions, role-permission mappings, the Besa venue, two courts, base prices, and standard schedules. To seed the first super-admin account, pass CLI arguments: `npm run prisma:seed -- --email <email> --password <password> [--name <name>] [--phone <phone>]`. If omitted, default credentials (email: `admin@baselinearena.in`, password: `SecurePass123!`) will be used.

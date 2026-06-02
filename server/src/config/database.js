@@ -1,4 +1,4 @@
-import { getPrisma } from '../lib/prisma.js';
+import { getPrisma, disconnectPrisma } from '../lib/prisma.js';
 import logger from '../utils/logger.js';
 
 export const connectDatabase = async (config) => {
@@ -18,7 +18,6 @@ export const connectDatabase = async (config) => {
 };
 
 export const disconnectDatabase = async () => {
-  const prisma = getPrisma();
-  await prisma.$disconnect();
+  await disconnectPrisma();
   logger.info('PostgreSQL disconnected');
 };

@@ -113,8 +113,17 @@ export const createAuthService = ({
         throw new BadRequestError('Invalid phone number');
       }
 
-      const code = resolveOtpCode(config);
+      const latestOtp = await repository.findLatestActiveOtp({ phone: normalizedPhone });
       const now = clock();
+      if (latestOtp) {
+        const secondsSinceLast = Math.floor((now.getTime() - latestOtp.createdAt.getTime()) / 1000);
+        const cooldownSeconds = 60;
+        if (secondsSinceLast < cooldownSeconds) {
+          throw new BadRequestError(`Please wait ${cooldownSeconds - secondsSinceLast} seconds before requesting a new OTP.`);
+        }
+      }
+
+      const code = resolveOtpCode(config);
       const expiresAt = addSeconds(now, config.otp.ttlSeconds);
 
       await repository.createOtpRequest({
@@ -154,6 +163,10 @@ export const createAuthService = ({
       const now = clock();
       if (!latestOtp || latestOtp.expiresAt <= now) {
         throw new BadRequestError('OTP expired or not found');
+      }
+
+      if (latestOtp.attemptCount >= config.otp.maxAttempts) {
+        throw new BadRequestError('Too many failed attempts. Please request a new OTP.');
       }
 
       const valid = await verifyOtpHash(otp, latestOtp.otpHash);
