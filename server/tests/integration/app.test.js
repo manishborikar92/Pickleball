@@ -108,7 +108,7 @@ test('authenticate verifies JWTs and authorize enforces roles', async () => {
   const token = jwt.sign(
     { sub: 'user_123', role: 'admin', permissions: ['users:read'] },
     secret,
-    { expiresIn: '5m' },
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
   const app = createApp({
@@ -136,7 +136,7 @@ test('authenticate rejects tokens for revoked sessions', async () => {
   const token = jwt.sign(
     { sub: 'user_123', session_id: 'session_revoked', roles: ['admin'] },
     secret,
-    { expiresIn: '5m' },
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
   const app = createApp({
@@ -167,7 +167,7 @@ test('authorize accepts role arrays from access-token claims', async () => {
   const token = jwt.sign(
     { sub: 'user_123', roles: ['admin'], permissions: ['users:read'] },
     secret,
-    { expiresIn: '5m' },
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
   const app = createApp({
@@ -190,7 +190,7 @@ test('authorize accepts role arrays from access-token claims', async () => {
 
 test('authorize rejects authenticated users without an allowed role', async () => {
   const secret = 'test-access-secret-with-enough-length';
-  const token = jwt.sign({ sub: 'user_123', role: 'member' }, secret, { expiresIn: '5m' });
+  const token = jwt.sign({ sub: 'user_123', role: 'member' }, secret, { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' });
 
   const app = createApp({
     configOverrides: {

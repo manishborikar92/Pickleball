@@ -191,7 +191,7 @@ test('POST /auth/logout-all clears refresh cookie after revoking sessions', asyn
   const token = jwt.sign(
     { sub: 'user-1', roles: ['customer'], permissions: ['view_own_bookings'] },
     secret,
-    { expiresIn: '5m' },
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
   const response = await request(app)

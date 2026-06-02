@@ -11,7 +11,7 @@ const secret = 'test-access-secret-with-enough-length';
 const token = jwt.sign(
   { sub: 'user-1', user_id: 'user-1', session_id: 'session-1', permissions: ['view_own_bookings'] },
   secret,
-  { expiresIn: '5m' },
+  { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
 );
 
 function createTestApp(userService) {

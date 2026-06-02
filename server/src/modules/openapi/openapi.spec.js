@@ -21,7 +21,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
         refreshCookie: {
           type: 'apiKey',
           in: 'cookie',
-          name: 'pb_refresh_token',
+          name: config?.auth?.refreshCookieName || 'pb_refresh_token',
         },
       },
       schemas: {
