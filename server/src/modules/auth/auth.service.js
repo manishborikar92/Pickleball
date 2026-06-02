@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {
   AppError,
   BadRequestError,
@@ -25,7 +26,7 @@ const resolveOtpCode = (config) => {
     return config.otp.testCode;
   }
 
-  return String(Math.floor(100000 + Math.random() * 900000));
+  return String(crypto.randomInt(100000, 1000000));
 };
 
 const onboardingComplete = (user) => Boolean(user?.name);
@@ -99,6 +100,7 @@ export const createAuthService = ({
 
     return {
       access_token: accessToken,
+      expires_in: config.auth.accessTokenTtlSeconds,
       refreshToken: {
         id: savedRefreshToken.id,
         raw: refreshToken.raw,
@@ -231,14 +233,17 @@ export const createAuthService = ({
         throw new ForbiddenError('Account not activated');
       }
 
-      if (
-        credential.status === 'locked'
-        && credential.lockedUntil
-        && credential.lockedUntil > now
-      ) {
-        throw new AppError('Account locked', 423, {
-          locked_until: credential.lockedUntil,
-        });
+      if (credential.status === 'locked' && credential.lockedUntil) {
+        if (credential.lockedUntil > now) {
+          throw new AppError('Account locked', 423, {
+            locked_until: credential.lockedUntil,
+          });
+        }
+
+        await repository.unlockStaffCredential(credential.id);
+        credential.status = 'active';
+        credential.failedLoginAttempts = 0;
+        credential.lockedUntil = null;
       }
 
       const passwordValid = await verifyPasswordHash(password, credential.passwordHash);

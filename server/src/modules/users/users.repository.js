@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { getPrisma } from '../../lib/prisma.js';
 import { NotFoundError } from '../../utils/api-error.js';
 
@@ -57,21 +58,30 @@ export const createUsersRepository = ({ prisma } = {}) => {
     },
 
     async completeOnboarding({ userId, name }) {
-      const existing = await db().user.findUnique({ where: { id: userId } });
-      if (!existing) {
-        throw new NotFoundError('User not found');
+      try {
+        return await db().$transaction(async (tx) => {
+          const existing = await tx.user.findUnique({ where: { id: userId } });
+          if (!existing) {
+            throw new NotFoundError('User not found');
+          }
+
+          const user = await tx.user.update({
+            where: { id: userId },
+            data: {
+              name,
+              onboardingCompletedAt: existing.onboardingCompletedAt || new Date(),
+            },
+            include: includeAuthContext,
+          });
+
+          return serializeAuthProfile(user);
+        });
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+          throw new NotFoundError('User not found');
+        }
+        throw error;
       }
-
-      const user = await db().user.update({
-        where: { id: userId },
-        data: {
-          name,
-          onboardingCompletedAt: existing.onboardingCompletedAt || new Date(),
-        },
-        include: includeAuthContext,
-      });
-
-      return serializeAuthProfile(user);
     },
   };
 };

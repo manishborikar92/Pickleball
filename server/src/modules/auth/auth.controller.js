@@ -39,6 +39,7 @@ const clearRefreshCookie = (res, config) => {
 
 const authPayload = (result) => ({
   access_token: result.access_token,
+  expires_in: result.expires_in,
   user: result.user,
   ...(result.next_step ? { next_step: result.next_step } : {}),
 });

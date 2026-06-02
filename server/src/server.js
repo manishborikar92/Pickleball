@@ -6,6 +6,31 @@ import { createShutdownManager } from './core/lifecycle.js';
 import logger from './utils/logger.js';
 
 export const startServer = async () => {
+  let shutdownManager;
+
+  const handleFatalError = (type, error) => {
+    logger.error(`Fatal ${type}`, { error });
+    if (shutdownManager) {
+      shutdownManager.shutdown(type);
+    } else {
+      process.exit(1);
+    }
+  };
+
+  const handleSignal = (signal) => {
+    logger.info(`Received ${signal}`);
+    if (shutdownManager) {
+      shutdownManager.shutdown(signal);
+    } else {
+      process.exit(0);
+    }
+  };
+
+  process.once('uncaughtException', (error) => handleFatalError('uncaughtException', error));
+  process.once('unhandledRejection', (reason) => handleFatalError('unhandledRejection', reason));
+  process.once('SIGTERM', () => handleSignal('SIGTERM'));
+  process.once('SIGINT', () => handleSignal('SIGINT'));
+
   await connectDatabase(config);
 
   const app = createApp();
@@ -25,23 +50,10 @@ export const startServer = async () => {
     apiPrefix: config.app.apiPrefix,
   });
 
-  const shutdownManager = createShutdownManager({
+  shutdownManager = createShutdownManager({
     server,
     config,
     cleanup: [disconnectDatabase],
-  });
-
-  process.on('SIGTERM', () => shutdownManager.shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdownManager.shutdown('SIGINT'));
-
-  process.on('unhandledRejection', (reason) => {
-    logger.error('Unhandled promise rejection', { reason });
-    shutdownManager.shutdown('unhandledRejection');
-  });
-
-  process.on('uncaughtException', (error) => {
-    logger.error('Uncaught exception', { error });
-    shutdownManager.shutdown('uncaughtException');
   });
 
   return { app, server, shutdownManager };

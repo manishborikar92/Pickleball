@@ -29,10 +29,24 @@ const normalizeDatabaseError = (error) => {
 };
 
 export const errorHandler = (err, req, res, _next) => {
-  const normalized = normalizeDatabaseError(err);
+  let normalized = err;
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    normalized = new BadRequestError('Invalid JSON payload');
+  } else if (err.status === 413 || err.type === 'entity.too.large') {
+    normalized = new AppError('Payload too large', 413);
+  } else {
+    normalized = normalizeDatabaseError(err);
+  }
+
+  const config = req.app.get('config');
+  const isProd = config?.isProduction;
+
   const error = normalized instanceof AppError
     ? normalized
-    : new InternalServerError(normalized.message || 'Internal server error');
+    : new InternalServerError(
+        isProd ? 'Internal server error' : (normalized.message || 'Internal server error'),
+        isProd ? {} : { stack: normalized.stack }
+      );
 
   if (!error.isOperational || error.statusCode >= 500) {
     logger.error('Unhandled application error', {
@@ -40,12 +54,11 @@ export const errorHandler = (err, req, res, _next) => {
       method: req.method,
       path: req.originalUrl,
       statusCode: error.statusCode,
-      error: normalized,
+      error: err,
     });
   }
 
-  const config = req.app.get('config');
-  const details = error.statusCode >= 500 && config?.isProduction ? {} : error.details;
+  const details = error.statusCode >= 500 && isProd ? {} : error.details;
 
   res.status(error.statusCode).json(ApiResponse.error(error.message, details));
 };

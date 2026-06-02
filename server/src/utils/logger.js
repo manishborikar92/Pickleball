@@ -13,18 +13,22 @@ const redactString = (value) => value
   .replace(BEARER_PATTERN, 'Bearer ***REDACTED***')
   .replace(URI_WITH_CREDENTIALS_PATTERN, '//***REDACTED***');
 
-const redact = (value) => {
+const redact = (value, seen = new WeakSet()) => {
   if (value === null || value === undefined) return value;
   if (typeof value === 'string') return redactString(value);
   if (value instanceof Error) return { name: value.name, message: value.message, stack: value.stack };
   if (value instanceof Date) return value.toISOString();
-  if (Array.isArray(value)) return value.map(redact);
 
   if (typeof value === 'object') {
+    if (seen.has(value)) return '[Circular]';
+    seen.add(value);
+
+    if (Array.isArray(value)) return value.map((item) => redact(item, seen));
+
     return Object.fromEntries(
       Object.entries(value).map(([key, nested]) => [
         key,
-        SENSITIVE_KEY_PATTERN.test(key) ? '***REDACTED***' : redact(nested),
+        SENSITIVE_KEY_PATTERN.test(key) ? '***REDACTED***' : redact(nested, seen),
       ]),
     );
   }
@@ -39,11 +43,11 @@ export const createLogger = ({ level = process.env.LOG_LEVEL || 'info', service 
     if ((LEVELS[logLevel] ?? LEVELS.info) < threshold) return;
 
     const entry = {
+      ...redact(meta),
       level: logLevel,
       timestamp: new Date().toISOString(),
       service,
       message: redactString(String(message)),
-      ...redact(meta),
     };
 
     const line = JSON.stringify(entry);

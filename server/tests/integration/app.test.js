@@ -7,7 +7,7 @@ import request from 'supertest';
 import createApp from '../../src/app.js';
 import { validate } from '../../src/middleware/validate.middleware.js';
 import { authenticate } from '../../src/middleware/authenticate.middleware.js';
-import { authorize } from '../../src/middleware/authorize.middleware.js';
+import { authorize, requirePermissions } from '../../src/middleware/authorize.middleware.js';
 import { ApiResponse } from '../../src/utils/api-response.js';
 
 test('createApp wires root and health endpoints with a consistent response envelope', async () => {
@@ -209,4 +209,42 @@ test('authorize rejects authenticated users without an allowed role', async () =
 
   assert.equal(response.status, 403);
   assert.equal(response.body.message, 'Insufficient permissions');
+});
+
+test('requirePermissions permits requests with valid permissions and rejects missing permissions', async () => {
+  const secret = 'test-access-secret-with-enough-length';
+
+  const token = jwt.sign(
+    { sub: 'user_123', permissions: ['read_profile', 'write_profile'] },
+    secret,
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' }
+  );
+
+  const app = createApp({
+    configOverrides: {
+      auth: { accessTokenSecret: secret },
+    },
+    configureRoutes(router) {
+      router.get('/secure-action', authenticate(), requirePermissions('read_profile', 'write_profile'), (_req, res) => {
+        res.json(ApiResponse.success());
+      });
+      router.get('/restricted-action', authenticate(), requirePermissions('delete_profile'), (_req, res) => {
+        res.json(ApiResponse.success());
+      });
+    },
+  });
+
+  const successResponse = await request(app)
+    .get('/api/v1/secure-action')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(successResponse.status, 200);
+
+  const forbiddenResponse = await request(app)
+    .get('/api/v1/restricted-action')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(forbiddenResponse.status, 403);
+  assert.equal(forbiddenResponse.body.message, 'Missing required permissions');
+  assert.deepEqual(forbiddenResponse.body.data.missing, ['delete_profile']);
 });

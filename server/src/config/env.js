@@ -18,9 +18,8 @@ const envSchema = Joi.object({
   RATE_LIMIT_WINDOW_MS: Joi.number().integer().positive().default(15 * 60 * 1000),
   RATE_LIMIT_MAX: Joi.number().integer().positive().default(500),
   JWT_ACCESS_SECRET: Joi.string().min(24).default('development-access-secret-change-before-production'),
-  JWT_REFRESH_SECRET: Joi.string().min(24).default('development-refresh-secret-change-before-production'),
   JWT_ACCESS_TTL_SECONDS: Joi.number().integer().positive().default(15 * 60),
-  JWT_REFRESH_TTL_SECONDS: Joi.number().integer().positive().default(30 * 24 * 60 * 60),
+  REFRESH_TOKEN_TTL_SECONDS: Joi.number().integer().positive().default(30 * 24 * 60 * 60),
   JWT_ISSUER: Joi.string().allow('').default('baseline-api'),
   JWT_AUDIENCE: Joi.string().allow('').default('baseline-web'),
   REFRESH_COOKIE_NAME: Joi.string().pattern(/^[A-Za-z0-9_-]+$/).default('pb_refresh_token'),
@@ -77,18 +76,20 @@ export const buildConfig = (overrides = {}) => {
     throw new Error(`Invalid environment configuration: ${message}`);
   }
 
-  if (value.NODE_ENV === 'production') {
+  if (value.NODE_ENV === 'production' || value.NODE_ENV === 'staging') {
     if (value.JWT_ACCESS_SECRET === 'development-access-secret-change-before-production') {
-      throw new Error('JWT_ACCESS_SECRET must be set in production');
-    }
-
-    if (value.JWT_REFRESH_SECRET === 'development-refresh-secret-change-before-production') {
-      throw new Error('JWT_REFRESH_SECRET must be set in production');
+      throw new Error('JWT_ACCESS_SECRET must be set in production/staging');
     }
 
     if (value.DATABASE_ENABLED && !value.DATABASE_URL) {
-      throw new Error('DATABASE_URL must be set when DATABASE_ENABLED=true in production');
+      throw new Error('DATABASE_URL must be set when DATABASE_ENABLED=true in production/staging');
     }
+
+    if (value.NODE_ENV === 'production' && !value.CORS_CREDENTIALS) {
+      throw new Error('CORS_CREDENTIALS must be true when using cookie-based auth in production');
+    }
+
+
 
     if (value.OTP_MODE === 'production' && (!value.WHATSAPP_ACCESS_TOKEN || !value.WHATSAPP_PHONE_NUMBER_ID)) {
       throw new Error('WhatsApp credentials must be set when OTP_MODE=production');
@@ -128,9 +129,8 @@ export const buildConfig = (overrides = {}) => {
     },
     auth: {
       accessTokenSecret: value.JWT_ACCESS_SECRET,
-      refreshTokenSecret: value.JWT_REFRESH_SECRET,
       accessTokenTtlSeconds: value.JWT_ACCESS_TTL_SECONDS,
-      refreshTokenTtlSeconds: value.JWT_REFRESH_TTL_SECONDS,
+      refreshTokenTtlSeconds: value.REFRESH_TOKEN_TTL_SECONDS,
       issuer: value.JWT_ISSUER || undefined,
       audience: value.JWT_AUDIENCE || undefined,
       refreshCookieName: value.REFRESH_COOKIE_NAME,

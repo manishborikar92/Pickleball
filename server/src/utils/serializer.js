@@ -1,18 +1,15 @@
-const SENSITIVE_KEYS = new Set([
-  'password',
-  'passwordHash',
-  'refreshToken',
-  'refreshTokenHash',
-  'token',
-  'secret',
-  'apiKey',
-  'privateKey',
-]);
+const SENSITIVE_KEY_PATTERN = /(password|secret|token|authorization|cookie|api[_-]?key|private[_-]?key|otp|hash)/i;
 
-const shouldDropKey = (key) => (
-  SENSITIVE_KEYS.has(key)
-  || key.startsWith('$')
-);
+const shouldDropKey = (key) => {
+  const normalized = key.toLowerCase().replace(/[-_]/g, '');
+  if (normalized === 'accesstoken' || normalized === 'sandboxotp') {
+    return false;
+  }
+  return (
+    SENSITIVE_KEY_PATTERN.test(key)
+    || key.startsWith('$')
+  );
+};
 
 export const serialize = (value, seen = new WeakSet()) => {
   if (value === undefined) return undefined;

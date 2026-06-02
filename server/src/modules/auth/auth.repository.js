@@ -127,6 +127,17 @@ export const createAuthRepository = ({ prisma } = {}) => {
     });
   },
 
+  async unlockStaffCredential(id) {
+    return db().staffCredential.update({
+      where: { id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+        status: 'active',
+      },
+    });
+  },
+
   async createSession(record) {
     return db().authSession.create({
       data: record,

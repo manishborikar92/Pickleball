@@ -7,7 +7,6 @@ import { createPasswordHash, hashRefreshToken } from '../../src/modules/auth/aut
 const baseConfig = {
   auth: {
     accessTokenSecret: 'access-secret-with-at-least-32-characters',
-    refreshTokenSecret: 'refresh-secret-with-at-least-32-characters',
     accessTokenTtlSeconds: 900,
     refreshTokenTtlSeconds: 60 * 60 * 24 * 30,
     issuer: 'baseline-api',
@@ -76,6 +75,13 @@ function createMemoryRepository(clock = () => fixedNow) {
       credential.failedLoginAttempts = 0;
       credential.lastLoginIp = ipAddress;
       credential.lastLoginAt = fixedNow;
+      return credential;
+    },
+    async unlockStaffCredential(id) {
+      const credential = [...staffCredentials.values()].find((item) => item.id === id);
+      credential.failedLoginAttempts = 0;
+      credential.lockedUntil = null;
+      credential.status = 'active';
       return credential;
     },
     async createSession({ userId, expiresAt, ipAddress, userAgent }) {
@@ -325,5 +331,51 @@ test('verifyCustomerOtp blocks verification after maxAttempts limit is reached',
     () => service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' }),
     /Too many failed attempts/
   );
+});
+
+test('loginStaff automatically unlocks and resets attempts if lock has expired', async () => {
+  const repository = createMemoryRepository();
+  const staffUser = {
+    id: 'staff-user-1',
+    phone: '+919999999999',
+    name: 'Ravi Kumar',
+    isPhoneVerified: true,
+  };
+
+  const pastLockTime = new Date(fixedNow.getTime() - 60000);
+  repository.data.staffCredentials.set('manager@besanagpur.com', {
+    id: 'staff-credential-1',
+    email: 'manager@besanagpur.com',
+    passwordHash: await createPasswordHash('SecurePass123!'),
+    status: 'locked',
+    forcePasswordChange: false,
+    failedLoginAttempts: 10,
+    lockedUntil: pastLockTime,
+    user: staffUser,
+    roles: ['manager'],
+    permissions: ['manage_bookings'],
+  });
+
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 7),
+  });
+
+  const result = await service.loginStaff({
+    email: 'manager@besanagpur.com',
+    password: 'SecurePass123!',
+    ipAddress: '127.0.0.1',
+    userAgent: 'node-test',
+  });
+
+  assert.equal(result.user.email, 'manager@besanagpur.com');
+
+  const cred = repository.data.staffCredentials.get('manager@besanagpur.com');
+  assert.equal(cred.status, 'active');
+  assert.equal(cred.failedLoginAttempts, 0);
+  assert.equal(cred.lockedUntil, null);
 });
 

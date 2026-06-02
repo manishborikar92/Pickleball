@@ -27,13 +27,24 @@ export const createShutdownManager = ({
         });
       }
 
+      let cleanupFailed = false;
       for (const task of cleanup) {
-        await task();
+        try {
+          await task();
+        } catch (taskError) {
+          logger.error('Cleanup task failed', { error: taskError });
+          cleanupFailed = true;
+        }
       }
 
       clearTimeout(forceExitTimer);
-      logger.info('Graceful shutdown complete');
-      exit(0);
+      if (cleanupFailed) {
+        logger.error('Graceful shutdown completed with errors');
+        exit(1);
+      } else {
+        logger.info('Graceful shutdown complete');
+        exit(0);
+      }
     } catch (error) {
       clearTimeout(forceExitTimer);
       logger.error('Graceful shutdown failed', { error });
