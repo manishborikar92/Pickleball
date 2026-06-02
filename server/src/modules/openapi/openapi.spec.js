@@ -9,7 +9,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
       description: 'Versioned API for booking, authentication, onboarding, and operations.',
     },
     servers: [
-      { url: '/' },
+      { url: apiPrefix },
     ],
     components: {
       securitySchemes: {
@@ -124,7 +124,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/health`]: {
+      [`/health`]: {
         get: {
           tags: ['Health'],
           summary: 'Service health',
@@ -147,7 +147,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/live`]: {
+      [`/live`]: {
         get: {
           tags: ['Health'],
           summary: 'Liveness probe',
@@ -169,7 +169,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/ready`]: {
+      [`/ready`]: {
         get: {
           tags: ['Health'],
           summary: 'Readiness probe',
@@ -201,7 +201,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/otp/send`]: {
+      [`/auth/otp/send`]: {
         post: {
           tags: ['Auth'],
           summary: 'Send customer OTP',
@@ -247,7 +247,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/otp/verify`]: {
+      [`/auth/otp/verify`]: {
         post: {
           tags: ['Auth'],
           summary: 'Verify customer OTP and create session',
@@ -296,7 +296,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/staff/login`]: {
+      [`/auth/staff/login`]: {
         post: {
           tags: ['Auth'],
           summary: 'Login staff user and create session',
@@ -361,7 +361,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/refresh`]: {
+      [`/auth/refresh`]: {
         post: {
           tags: ['Auth'],
           summary: 'Rotate refresh token and issue a new access token',
@@ -396,7 +396,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/logout`]: {
+      [`/auth/logout`]: {
         post: {
           tags: ['Auth'],
           summary: 'Logout current device',
@@ -413,7 +413,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/logout-all`]: {
+      [`/auth/logout-all`]: {
         post: {
           tags: ['Auth'],
           summary: 'Logout all devices',
@@ -438,7 +438,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/auth/onboarding`]: {
+      [`/auth/onboarding`]: {
         post: {
           tags: ['Onboarding'],
           summary: 'Complete customer onboarding',
@@ -485,7 +485,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/users/me`]: {
+      [`/users/me`]: {
         get: {
           tags: ['Users'],
           summary: 'Get current user profile',
@@ -520,7 +520,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/docs/openapi.json`]: {
+      [`/docs/openapi.json`]: {
         get: {
           tags: ['Documentation'],
           summary: 'OpenAPI JSON specification',
@@ -531,7 +531,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`${apiPrefix}/docs`]: {
+      [`/docs`]: {
         get: {
           tags: ['Documentation'],
           summary: 'Swagger UI',
