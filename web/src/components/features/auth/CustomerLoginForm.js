@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
-import { authService } from "@/services/authService";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 
@@ -15,7 +14,7 @@ import { OtpForm } from "./steps/OtpForm";
 export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { loginCustomer } = useAuth();
+  const { sendCustomerOtp, loginCustomer } = useAuth();
   
   const [step, setStep] = useState("phone"); // "phone" | "otp"
   const [phone, setPhone] = useState("");
@@ -25,40 +24,40 @@ export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = f
   async function handlePhoneSubmit(verifiedPhone) {
     setLoading(true);
     setError("");
-    setTimeout(() => {
+    try {
+      await sendCustomerOtp(verifiedPhone);
       setPhone(verifiedPhone);
       setStep("otp");
+    } catch (err) {
+      setError("Failed to send OTP. Please try again.");
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   }
 
   async function handleOtpSubmit(otpCode) {
     setLoading(true);
     setError("");
 
-    setTimeout(async () => {
-      try {
-        const existingName = authService.getRegisteredName(phone) || "";
+    try {
+      const result = await loginCustomer(phone, otpCode);
 
-        // Invoke unified customer log-in
-        const result = await loginCustomer(phone, existingName);
-
-        if (onSuccess) {
-          onSuccess({ phone, isNew: !existingName });
+      if (onSuccess) {
+        onSuccess({ phone, isNew: result.nextStep === "complete_onboarding" });
+      } else {
+        const next = searchParams.get("next") || "/dashboard";
+        if (result.nextStep === "complete_onboarding") {
+          router.push(`/onboarding?next=${encodeURIComponent(next)}`);
         } else {
-          const next = searchParams.get("next") || "/dashboard";
-          if (!existingName) {
-            router.push(`/onboarding?next=${encodeURIComponent(next)}`);
-          } else {
-            router.push(next);
-          }
-          router.refresh();
+          router.push(next);
         }
-      } catch (err) {
-        setError("Failed to create customer session. Please try again.");
-        setLoading(false);
+        router.refresh();
       }
-    }, 400);
+    } catch (err) {
+      setError("Failed to verify OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const errorBanner = <FormAlert type="error" message={error} />;

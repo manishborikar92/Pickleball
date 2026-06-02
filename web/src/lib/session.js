@@ -2,8 +2,10 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { canAccessRoute, getRolePermissions, roles } from "@/lib/rbac";
+import { apiRequest } from "@/services/apiClient";
 
-export const SESSION_COOKIE = "pb_demo_role";
+export const SESSION_COOKIE = "pb_auth_role";
+const ACCESS_COOKIE = "pb_access_token";
 
 /**
  * getSession — Resolves the active authenticated session.
@@ -11,75 +13,29 @@ export const SESSION_COOKIE = "pb_demo_role";
  * Supports an optional preferredType ('customer' | 'staff') to target a specific scope,
  * and falls back to dynamic resolution based on available session cookies.
  * 
- * Staff session values are derived strictly from pb_staff_role / pb_staff_name / pb_staff_phone.
- * Customer session values are derived strictly from pb_demo_role / pb_user_name / pb_user_phone.
+ * Session values are resolved from backend-issued HTTP-only cookies and
+ * hydrated through the Express API.
  */
 export async function getSession(preferredType = null) {
   const cookieStore = await cookies();
-  
-  const staffRole = cookieStore.get("pb_staff_role")?.value || "";
-  const customerRole = cookieStore.get(SESSION_COOKIE)?.value || "";
+  const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
+  if (!accessToken) return null;
 
-  // 1. Preferred Staff Session
-  if (preferredType === "staff" && roles[staffRole] && staffRole !== "customer") {
-    const name = cookieStore.get("pb_staff_name")?.value || "Venue Operator";
-    const phone = cookieStore.get("pb_staff_phone")?.value || "+919876543210";
+  try {
+    const { payload } = await apiRequest("/api/v1/users/me", { accessToken });
+    const role = cookieStore.get(SESSION_COOKIE)?.value || "customer";
     return {
       user: {
-        id: "staff-demo",
-        name,
-        phone,
+        id: payload.data.id,
+        name: payload.data.name || "",
+        phone: payload.data.phone || "",
       },
-      role: staffRole,
-      permissions: getRolePermissions(staffRole),
+      role,
+      permissions: payload.data.permissions || getRolePermissions(role),
     };
+  } catch {
+    return null;
   }
-
-  // 2. Preferred Customer Session
-  if (preferredType === "customer" && customerRole === "customer") {
-    const name = cookieStore.get("pb_user_name")?.value || "";
-    const phone = cookieStore.get("pb_user_phone")?.value || "";
-    return {
-      user: {
-        id: "customer-demo",
-        name,
-        phone,
-      },
-      role: "customer",
-      permissions: getRolePermissions("customer"),
-    };
-  }
-
-  // 3. Fallback Dynamic Resolution (Prefer staff if present, otherwise customer)
-  if (roles[staffRole] && staffRole !== "customer") {
-    const name = cookieStore.get("pb_staff_name")?.value || "Venue Operator";
-    const phone = cookieStore.get("pb_staff_phone")?.value || "+919876543210";
-    return {
-      user: {
-        id: "staff-demo",
-        name,
-        phone,
-      },
-      role: staffRole,
-      permissions: getRolePermissions(staffRole),
-    };
-  }
-
-  if (customerRole === "customer") {
-    const name = cookieStore.get("pb_user_name")?.value || "";
-    const phone = cookieStore.get("pb_user_phone")?.value || "";
-    return {
-      user: {
-        id: "customer-demo",
-        name,
-        phone,
-      },
-      role: "customer",
-      permissions: getRolePermissions("customer"),
-    };
-  }
-
-  return null;
 }
 
 /**

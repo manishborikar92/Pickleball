@@ -1,15 +1,12 @@
-"use client";
-
-import { useState } from "react";
-import { Button, Card, FormField, Input, Textarea, FormAlert } from "@/components/shared";
+import { Card, FormField, Input, Textarea } from "@/components/shared";
 import { ManagerSurface } from "./ManagerSurface";
 
 /* ── Analytics ──────────────────────────────────── */
 
 const ANALYTICS_STATS = [
-  { label: "Peak Hour", value: "18:00" },
-  { label: "Avg Rating", value: "4.8" },
-  { label: "Coupon Use", value: "31%" },
+  { label: "Peak Hour", value: "No data" },
+  { label: "Avg Rating", value: "No data" },
+  { label: "Coupon Use", value: "No data" },
 ];
 
 export function AnalyticsView() {
@@ -41,49 +38,36 @@ function StatCard({ label, value }) {
 /* ── Settings ───────────────────────────────────── */
 
 export function SettingsView() {
-  const [saved, setSaved] = useState(false);
-
-  function handleSubmit(event) {
-    event.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
-  }
-
   return (
     <ManagerSurface
       title="Settings"
       description="Venue-level configuration is centralized and ready for super-admin governance."
     >
       <Card className="p-5 sm:p-6">
-        <form onSubmit={handleSubmit} className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 sm:grid-cols-2">
           <FormField label="Advance booking days">
             <Input
               defaultValue="7"
               type="number"
               inputMode="numeric"
+              readOnly
             />
           </FormField>
           <FormField label="Rollover time">
             <Input
               defaultValue="08:00"
               type="time"
+              readOnly
             />
           </FormField>
           <FormField label="Notification template" className="sm:col-span-2">
             <Textarea
               defaultValue="You are booked for {{court}} at {{time}}."
               rows={3}
+              readOnly
             />
           </FormField>
-          <div className="flex flex-col items-start gap-3 sm:col-span-2 sm:flex-row sm:items-center">
-            <Button type="submit" className="w-full py-3 sm:w-auto sm:py-2.5">
-              Save Settings
-            </Button>
-            {saved && (
-              <FormAlert type="success" message="Settings saved locally." />
-            )}
-          </div>
-        </form>
+        </div>
       </Card>
     </ManagerSurface>
   );

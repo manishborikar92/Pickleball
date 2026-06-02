@@ -24,15 +24,19 @@ export function AuthProvider({ children }) {
     initSession();
   }, []);
 
+  const sendCustomerOtp = useCallback(async (phone) => {
+    return authService.sendCustomerOtp(phone);
+  }, []);
+
   // Login customer (Phone + OTP stage)
-  const loginCustomer = useCallback(async (phone, name = "") => {
+  const loginCustomer = useCallback(async (phone, otp) => {
     setLoading(true);
     try {
-      await authService.signInCustomer(phone, name);
+      const result = await authService.verifyCustomerOtp(phone, otp);
       // Fetch the updated session
       const updatedSession = await authService.getSession("customer");
       setSession(updatedSession);
-      return { ok: true, isNew: !name };
+      return { ok: true, nextStep: result.next_step };
     } catch (err) {
       console.error("Customer login error in AuthProvider:", err);
       throw err;
@@ -116,13 +120,14 @@ export function AuthProvider({ children }) {
       isStaff,
       isOnboarded,
       loading,
+      sendCustomerOtp,
       loginCustomer,
       completeOnboarding,
       loginStaff,
       logoutCustomer,
       logoutStaff,
     };
-  }, [session, loading, loginCustomer, completeOnboarding, loginStaff, logoutCustomer, logoutStaff]);
+  }, [session, loading, sendCustomerOtp, loginCustomer, completeOnboarding, loginStaff, logoutCustomer, logoutStaff]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

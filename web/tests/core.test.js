@@ -12,11 +12,13 @@ import {
   validatePhone,
   validateOtp,
   validateReview,
+  validateCoupon,
 } from "../src/lib/validation.js";
 import {
   buildDateWindow,
   calculateMultiQuote,
   createBookingHold,
+  getCouponByCode,
 } from "../src/lib/booking-engine.js";
 
 test("role permissions are permission-key based and expandable", () => {
@@ -106,4 +108,14 @@ test("review validation requires a rating but keeps text and photo optional", ()
     ok: true,
     value: { rating: 5, comment: "Great court", photoName: "" },
   });
+});
+
+test("coupon validation is format-only until coupon APIs are available", () => {
+  assert.deepEqual(validateCoupon(" first50 "), {
+    ok: true,
+    value: "FIRST50",
+  });
+  assert.equal(validateCoupon("bad coupon").ok, false);
+  assert.equal(getCouponByCode("FIRST50"), null);
+  assert.equal(getCouponByCode("BESA100"), null);
 });

@@ -1,20 +1,9 @@
 "use client";
 
-import { useState, useId } from "react";
-import { Button, Card, FormField, Input } from "@/components/shared";
+import { Card } from "@/components/shared";
 import { DataTable, StatusBadge, DateTime } from "@/components/shared/Table";
 import { useTable } from "@/hooks/useTable";
 import { ManagerSurface } from "./ManagerSurface";
-
-const INITIAL_EXCEPTIONS = [
-  {
-    id: "exc-1",
-    date: "2026-05-18",
-    court: "All Courts",
-    type: "modified_hours",
-    note: "Tournament setup",
-  },
-];
 
 const COLUMNS = [
   {
@@ -43,30 +32,12 @@ const COLUMNS = [
 ];
 
 export function ScheduleManager() {
-  const [exceptions, setExceptions] = useState(INITIAL_EXCEPTIONS);
-  const [note, setNote] = useState("");
-
-  const table = useTable(exceptions, {
+  const table = useTable([], {
     columns: COLUMNS,
     defaultSortBy: "date",
     defaultSortOrder: "desc",
     defaultPageSize: 5,
   });
-
-  function handleAddException(event) {
-    event.preventDefault();
-    if (!note.trim()) return;
-    const newException = {
-      id: `exc-${Date.now()}`,
-      date: "2026-05-20",
-      court: "Court 1",
-      type: "blocked",
-      note: note.trim(),
-    };
-    
-    setExceptions((prev) => [newException, ...prev]);
-    setNote("");
-  }
 
   return (
     <ManagerSurface
@@ -75,11 +46,10 @@ export function ScheduleManager() {
     >
       <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <OperatingTemplate />
-        <AddExceptionForm
-          note={note}
-          onChange={setNote}
-          onSubmit={handleAddException}
-        />
+        <Card className="flex h-full flex-col justify-center p-5 sm:p-6">
+          <h3 className="text-lg font-black tracking-tight sm:text-xl">Schedule Exceptions</h3>
+          <p className="mt-3 text-sm font-medium text-muted">No schedule exceptions are available from the current backend APIs.</p>
+        </Card>
       </div>
 
       <div className="mt-5 sm:mt-6">
@@ -102,8 +72,8 @@ function OperatingTemplate() {
       <h3 className="text-lg font-black tracking-tight sm:text-xl">Operating Template</h3>
       <dl className="mt-4 grid gap-3 text-sm text-muted">
         <div className="flex justify-between border-b border-line pb-2">
-          <dt className="font-bold">Mon–Sun</dt>
-          <dd>06:00–23:00</dd>
+          <dt className="font-bold">Mon-Sun</dt>
+          <dd>07:00-23:59</dd>
         </div>
         <div className="flex justify-between border-b border-line pb-2">
           <dt className="font-bold">Slot duration</dt>
@@ -114,27 +84,6 @@ function OperatingTemplate() {
           <dd>08:00 Asia/Kolkata</dd>
         </div>
       </dl>
-    </Card>
-  );
-}
-
-function AddExceptionForm({ note, onChange, onSubmit }) {
-  return (
-    <Card className="flex flex-col p-5 sm:p-6 h-full">
-      <h3 className="text-lg font-black tracking-tight sm:text-xl">Add Exception</h3>
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <FormField label="Reason for exception" className="flex-1">
-          <Input
-            value={note}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Reason for exception..."
-            className="py-2.5 text-sm"
-          />
-        </FormField>
-        <Button type="submit" className="shrink-0 py-3 sm:py-2.5">
-          Add Rule
-        </Button>
-      </form>
     </Card>
   );
 }

@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 
 import { canAccessRoute } from "@/lib/rbac";
 
-export const SESSION_COOKIE_NAME = "pb_demo_role";
+export const SESSION_COOKIE_NAME = "pb_auth_role";
 export const STAFF_SESSION_COOKIE_NAME = "pb_staff_role";
-const USER_NAME_COOKIE_NAME = "pb_user_name";
+const ACCESS_COOKIE_NAME = "pb_access_token";
+const AUTH_ROLE_COOKIE_NAME = "pb_auth_role";
+const AUTH_ONBOARDED_COOKIE_NAME = "pb_user_onboarded";
 
 export function handleRouteAccess(request) {
   const { pathname } = request.nextUrl;
 
   // Resolve customer session cookies
-  const customerRole = request.cookies.get(SESSION_COOKIE_NAME)?.value || "";
-  const customerName = request.cookies.get(USER_NAME_COOKIE_NAME)?.value || "";
-  const isCustomerAuthenticated = customerRole === "customer";
-  const isCustomerFullyOnboarded = isCustomerAuthenticated && !!customerName;
+  const customerRole = request.cookies.get(AUTH_ROLE_COOKIE_NAME)?.value || "";
+  const isCustomerAuthenticated = !!request.cookies.get(ACCESS_COOKIE_NAME)?.value
+    && customerRole === "customer";
+  const isCustomerFullyOnboarded = isCustomerAuthenticated
+    && request.cookies.get(AUTH_ONBOARDED_COOKIE_NAME)?.value === "true";
 
   // Resolve staff session cookies
   const staffRole = request.cookies.get(STAFF_SESSION_COOKIE_NAME)?.value || "";
@@ -42,7 +45,7 @@ export function handleRouteAccess(request) {
     if (isCustomerFullyOnboarded) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
-    if (isCustomerAuthenticated && !customerName) {
+    if (isCustomerAuthenticated && !isCustomerFullyOnboarded) {
       return NextResponse.next();
     }
     // Unauthenticated user trying to access onboarding goes to customer login
@@ -71,7 +74,7 @@ export function handleRouteAccess(request) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (!customerName) {
+    if (!isCustomerFullyOnboarded) {
       const onboardingUrl = new URL("/onboarding", request.url);
       onboardingUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(onboardingUrl);

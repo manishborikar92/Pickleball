@@ -10,9 +10,7 @@ import {
 } from "@/data/platform";
 
 const wait = (value) =>
-  new Promise((resolve) => {
-    setTimeout(() => resolve(value), 80);
-  });
+  Promise.resolve(value);
 
 export async function getVenue() {
   return wait({ ...venue, courts });
@@ -31,9 +29,18 @@ export async function getUserBookings() {
 }
 
 export async function getWallet() {
-  return wait({ balance: 500, transactions: walletTransactions });
+  return wait({ balance: 0, transactions: [] });
 }
 
 export async function getAdminOverview() {
-  return wait({ stats: adminStats, bookings: adminBookings, courts });
+  return wait({
+    stats: {
+      revenueToday: 0,
+      utilization: "0%",
+      pendingBookings: 0,
+      activeCourts: courts.filter((court) => court.status === "active").length,
+    },
+    bookings: [],
+    courts,
+  });
 }

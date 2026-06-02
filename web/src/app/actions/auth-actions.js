@@ -3,127 +3,167 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { SESSION_COOKIE, getSession } from "@/lib/session";
-import { roles } from "@/lib/rbac";
+import { getSession } from "@/lib/session";
+import { apiRequest } from "@/services/apiClient";
 
-/**
- * getSessionAction — Server Action wrapper for resolving active session.
- */
+const ACCESS_COOKIE = "pb_access_token";
+const REFRESH_COOKIE = "pb_refresh_token";
+const AUTH_ROLE_COOKIE = "pb_auth_role";
+const STAFF_ROLE_COOKIE = "pb_staff_role";
+const AUTH_ONBOARDED_COOKIE = "pb_user_onboarded";
+
+function extractCookieValue(setCookie, name) {
+  if (!setCookie) return "";
+  const match = setCookie.match(new RegExp(`${name}=([^;]*)`));
+  return match?.[1] || "";
+}
+
+function resolveRole(user, fallback = "customer") {
+  const roles = Array.isArray(user?.roles) ? user.roles : [];
+  return roles.find((role) => role !== "customer") || roles[0] || fallback;
+}
+
+async function setSessionCookies({ accessToken, refreshToken, user, role = "customer" }) {
+  const cookieStore = await cookies();
+  const secure = process.env.NODE_ENV === "production";
+
+  if (accessToken) {
+    cookieStore.set(ACCESS_COOKIE, accessToken, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60,
+    });
+  }
+
+  if (refreshToken) {
+    cookieStore.set(REFRESH_COOKIE, refreshToken, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
+  if (user) {
+    cookieStore.set(AUTH_ROLE_COOKIE, role, {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+    if (role !== "customer") {
+      cookieStore.set(STAFF_ROLE_COOKIE, role, {
+        httpOnly: true,
+        secure,
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      });
+    }
+    cookieStore.set(AUTH_ONBOARDED_COOKIE, String(Boolean(user.name || user.onboarding_complete)), {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+}
+
+async function clearSessionCookies() {
+  const cookieStore = await cookies();
+  cookieStore.delete(ACCESS_COOKIE);
+  cookieStore.delete(REFRESH_COOKIE);
+  cookieStore.delete(AUTH_ROLE_COOKIE);
+  cookieStore.delete(STAFF_ROLE_COOKIE);
+  cookieStore.delete(AUTH_ONBOARDED_COOKIE);
+}
+
 export async function getSessionAction(preferredType = null) {
   return await getSession(preferredType);
 }
 
-/**
- * signInStaffAction — Handles staff/manager/admin authentication only.
- * Sets dedicated staff cookies.
- */
-export async function signInStaffAction(formData) {
-  const role = String(formData.get("role") || "staff");
-  const next = String(formData.get("next") || "/admin");
-
-  // Restrict to internal/staff roles only (staff, manager, super_admin)
-  const isStaffRole = role === "staff" || role === "manager" || role === "super_admin";
-  const selectedRole = isStaffRole ? role : "staff";
-  
-  const cookieStore = await cookies();
-
-  // Set the staff role session cookie
-  cookieStore.set("pb_staff_role", selectedRole, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
+export async function sendCustomerOtpAction(phone) {
+  const { payload } = await apiRequest("/api/v1/auth/otp/send", {
+    method: "POST",
+    body: { phone },
   });
-
-  // Set default staff metadata cookies to prevent reusing customer assumptions
-  cookieStore.set("pb_staff_name", "Venue Operator", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-
-  cookieStore.set("pb_staff_phone", "+919876543210", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-
-  redirect(next);
+  return payload.data;
 }
 
-/**
- * signInCustomerAction — Handles customer authentication session.
- */
-export async function signInCustomerAction(name, phone) {
-  const cookieStore = await cookies();
-
-  cookieStore.set(SESSION_COOKIE, "customer", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
+export async function verifyCustomerOtpAction(phone, otp) {
+  const { payload, setCookie } = await apiRequest("/api/v1/auth/otp/verify", {
+    method: "POST",
+    body: { phone, otp },
   });
 
-  if (name) {
-    cookieStore.set("pb_user_name", name, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
-  } else {
-    cookieStore.delete("pb_user_name");
-  }
-
-  cookieStore.set("pb_user_phone", phone, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
+  await setSessionCookies({
+    accessToken: payload.data.access_token,
+    refreshToken: extractCookieValue(setCookie, REFRESH_COOKIE),
+    user: payload.data.user,
   });
+
+  return payload.data;
 }
 
-/**
- * completeOnboardingAction — Customer name registration on onboarding completion.
- */
 export async function completeOnboardingAction(name) {
   const cookieStore = await cookies();
-
-  cookieStore.set("pb_user_name", name, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
+  const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
+  const { payload } = await apiRequest("/api/v1/auth/onboarding", {
+    method: "POST",
+    body: { name },
+    accessToken,
   });
+
+  await setSessionCookies({
+    accessToken,
+    user: payload.data.user,
+  });
+
+  return payload.data;
 }
 
-/**
- * signOutCustomerAction — Deletes all customer cookies.
- */
 export async function signOutCustomerAction() {
   const cookieStore = await cookies();
-  cookieStore.delete(SESSION_COOKIE);
-  cookieStore.delete("pb_user_name");
-  cookieStore.delete("pb_user_phone");
+  const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value || "";
+
+  if (refreshToken) {
+    await apiRequest("/api/v1/auth/logout", {
+      method: "POST",
+      refreshToken,
+    }).catch(() => null);
+  }
+
+  await clearSessionCookies();
   redirect("/");
 }
 
-/**
- * signOutStaffAction — Deletes all staff cookies.
- */
 export async function signOutStaffAction() {
-  const cookieStore = await cookies();
-  cookieStore.delete("pb_staff_role");
-  cookieStore.delete("pb_staff_name");
-  cookieStore.delete("pb_staff_phone");
+  await clearSessionCookies();
   redirect("/staff-login");
+}
+
+export async function signInStaffAction(formData) {
+  const email = String(formData?.get("email") || "");
+  const password = String(formData?.get("password") || "");
+  const next = String(formData?.get("next") || "/admin");
+
+  const { payload, setCookie } = await apiRequest("/api/v1/auth/staff/login", {
+    method: "POST",
+    body: { email, password },
+  });
+
+  const role = resolveRole(payload.data.user, "staff");
+  await setSessionCookies({
+    accessToken: payload.data.access_token,
+    refreshToken: extractCookieValue(setCookie, REFRESH_COOKIE),
+    user: payload.data.user,
+    role,
+  });
+
+  redirect(next.startsWith("/") ? next : "/admin");
 }

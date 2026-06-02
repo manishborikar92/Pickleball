@@ -25,23 +25,20 @@ export function CustomerOnboardingForm({ phone: phoneProp, onSuccess, inline = f
     setLoading(true);
     setError("");
 
-    setTimeout(async () => {
-      try {
-        // Complete onboarding via context action
-        await completeOnboarding(fullName, phone);
+    try {
+      await completeOnboarding(fullName, phone);
 
-        if (onSuccess) {
-          onSuccess({ name: fullName, phone });
-        } else {
-          const next = searchParams.get("next") || "/dashboard";
-          router.push(next);
-          router.refresh();
-        }
-      } catch (err) {
-        setError("Failed to save profile. Please try again.");
-        setLoading(false);
+      if (onSuccess) {
+        onSuccess({ name: fullName, phone });
+      } else {
+        const next = searchParams.get("next") || "/dashboard";
+        router.push(next);
+        router.refresh();
       }
-    }, 400);
+    } catch (err) {
+      setError("Failed to save profile. Please try again.");
+      setLoading(false);
+    }
   }
 
   const errorBanner = <FormAlert type="error" message={error} />;

@@ -5,7 +5,7 @@ import { InfoPageLayout } from "@/components/layout";
 import { venue } from "@/data/platform";
 import { Map } from "@/components/shared/Map";
 import { Button, Card } from "@/components/shared";
-import { Mail, Phone, Clock, MapPin, Send, CheckCircle2, ChevronDown } from "lucide-react";
+import { Mail, Phone, Clock, MapPin, Send, ChevronDown } from "lucide-react";
 
 const FAQS = [
   {
@@ -41,8 +41,6 @@ export function SupportClient() {
     phone: "",
     message: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [formError, setFormError] = useState("");
   const [openFAQIndex, setOpenFAQIndex] = useState(null);
 
@@ -65,13 +63,7 @@ export function SupportClient() {
       return;
     }
 
-    setIsSubmitting(true);
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setSubmitSuccess(true);
-      setFormState({ name: "", email: "", phone: "", message: "" });
-    }, 1000);
+    setFormError("Support form delivery is not configured yet. Please use the listed phone or email contact.");
   };
 
   return (
@@ -203,73 +195,63 @@ export function SupportClient() {
                 Have a question or request? Complete the form and our team will get back to you within 24 hours.
               </p>
               
-              {submitSuccess ? (
-                <div className="mt-6 flex items-start gap-3 rounded-xl border border-accent/20 bg-accent/5 p-4 text-accent">
-                  <CheckCircle2 className="h-5 w-5 shrink-0" />
-                  <div>
-                    <h4 className="font-bold text-sm">Message Sent!</h4>
-                    <p className="mt-0.5 text-xs text-muted-foreground">Thank you for reaching out. We will get in touch with you shortly.</p>
-                  </div>
-                </div>
-              ) : (
-                <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                  {formError && (
-                    <p className="text-xs font-bold text-destructive" role="alert">
-                      {formError}
-                    </p>
-                  )}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                      Your Name
-                      <input
-                        type="text"
-                        name="name"
-                        value={formState.name}
-                        onChange={handleInputChange}
-                        placeholder="John Doe"
-                        className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
-                      />
-                    </label>
-                    <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                      Email Address
-                      <input
-                        type="email"
-                        name="email"
-                        value={formState.email}
-                        onChange={handleInputChange}
-                        placeholder="john@example.com"
-                        className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
-                      />
-                    </label>
-                  </div>
+              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                {formError && (
+                  <p className="text-xs font-bold text-destructive" role="alert">
+                    {formError}
+                  </p>
+                )}
+                <div className="grid gap-4 sm:grid-cols-2">
                   <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                    Phone Number
+                    Your Name
                     <input
                       type="text"
-                      name="phone"
-                      value={formState.phone}
+                      name="name"
+                      value={formState.name}
                       onChange={handleInputChange}
-                      placeholder="9876543210"
+                      placeholder="John Doe"
                       className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
                   <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                    Message
-                    <textarea
-                      name="message"
-                      rows="4"
-                      value={formState.message}
+                    Email Address
+                    <input
+                      type="email"
+                      name="email"
+                      value={formState.email}
                       onChange={handleInputChange}
-                      placeholder="How can we help you?"
-                      className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent resize-none"
+                      placeholder="john@example.com"
+                      className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
                     />
                   </label>
-                  <Button type="submit" disabled={isSubmitting} className="w-full justify-center">
-                    <Send className="mr-2 h-4 w-4" />
-                    <span>{isSubmitting ? "Sending..." : "Send Message"}</span>
-                  </Button>
-                </form>
-              )}
+                </div>
+                <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
+                  Phone Number
+                  <input
+                    type="text"
+                    name="phone"
+                    value={formState.phone}
+                    onChange={handleInputChange}
+                    placeholder="9876543210"
+                    className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
+                  Message
+                  <textarea
+                    name="message"
+                    rows="4"
+                    value={formState.message}
+                    onChange={handleInputChange}
+                    placeholder="How can we help you?"
+                    className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent resize-none"
+                  />
+                </label>
+                <Button type="submit" className="w-full justify-center">
+                  <Send className="mr-2 h-4 w-4" />
+                  <span>Send Message</span>
+                </Button>
+              </form>
             </div>
           </div>
         </section>

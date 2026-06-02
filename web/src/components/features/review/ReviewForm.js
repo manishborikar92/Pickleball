@@ -13,8 +13,6 @@ export function ReviewForm({ bookingId }) {
   const [comment, setComment] = useState("");
   const [photoName, setPhotoName] = useState("");
   const [error, setError] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -26,18 +24,7 @@ export function ReviewForm({ bookingId }) {
       return;
     }
 
-    setIsSubmitting(true);
-    
-    // Simulating a network request for production-grade UX
-    // Replace this with your actual API call
-    await new Promise((resolve) => setTimeout(resolve, 600)); 
-    
-    setIsSubmitting(false);
-    setSubmitted(true);
-  }
-
-  if (submitted) {
-    return <ReviewSuccess bookingId={bookingId} />;
+    setError("Review submission is not available until the review API is enabled.");
   }
 
   return (
@@ -68,9 +55,8 @@ export function ReviewForm({ bookingId }) {
           <Button 
             type="submit" 
             className="w-full text-lg transition-transform active:scale-[0.98]"
-            disabled={isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Submit Review"}
+            Submit Review
           </Button>
         </div>
       </form>
@@ -235,30 +221,5 @@ function FormError({ message }) {
       <span aria-hidden="true" className="text-lg">⚠</span>
       <p>{message}</p>
     </div>
-  );
-}
-
-function ReviewSuccess({ bookingId }) {
-  return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 md:px-8">
-      <Card className="w-full max-w-md p-8 text-center sm:max-w-lg sm:p-10 animate-in zoom-in-95 duration-300">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent text-3xl text-black shadow-lg shadow-accent/20 sm:h-20 sm:w-20 sm:text-4xl">
-          ✓
-        </div>
-        <h1 className="mt-6 text-3xl font-black tracking-tight sm:mt-8 sm:text-4xl">
-          Review submitted
-        </h1>
-        <p className="mt-4 text-base text-muted sm:text-lg">
-          Thanks for rating booking{" "}
-          <span className="font-bold text-foreground">{bookingId}</span>. The review is now
-          ready for moderation and published venue feeds.
-        </p>
-        <div className="mt-8 sm:mt-10">
-          <Button href="/" className="w-full text-lg">
-            Back to Venue
-          </Button>
-        </div>
-      </Card>
-    </main>
   );
 }

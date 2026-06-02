@@ -33,12 +33,6 @@ export function OtpForm({
       return;
     }
 
-    // Validation constraints
-    if (validationResult.value !== "123456") {
-      setError("Invalid verification code. Please check and try again.");
-      return;
-    }
-
     onSubmit(validationResult.value);
   }
 

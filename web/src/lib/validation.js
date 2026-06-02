@@ -48,8 +48,8 @@ export function validateReview({ rating, comment = "", photoName = "" }) {
 export function validateCoupon(code) {
   const value = String(code || "").trim().toUpperCase();
   if (!value) return { ok: false, message: "Enter a promo code." };
-  if (value !== "FIRST50" && value !== "BESA100") {
-    return { ok: false, message: "This promo code is not active." };
+  if (!/^[A-Z0-9_-]{3,50}$/.test(value)) {
+    return { ok: false, message: "Enter a valid promo code." };
   }
   return { ok: true, value };
 }

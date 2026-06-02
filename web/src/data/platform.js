@@ -3,7 +3,7 @@ export const venue = {
   slug: "besa-nagpur",
   name: "Besa, Nagpur",
   brandName: "Baseline Arena",
-  address: "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
+  address: "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa-Manish Nagar Road, Nagpur",
   city: "Nagpur",
   timezone: "Asia/Kolkata",
   currency: "INR",

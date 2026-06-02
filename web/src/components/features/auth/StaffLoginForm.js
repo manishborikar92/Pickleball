@@ -1,16 +1,15 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Button, Card, FormField, Select } from "@/components/shared";
+import { Button, Card, FormField, Input } from "@/components/shared";
 import { signInStaffAction } from "@/app/actions/auth-actions";
-import { Shield } from "lucide-react";
+import { Lock, Mail, Shield } from "lucide-react";
 
 /**
  * StaffLoginForm — Staff authentication only.
  *
  * Responsibilities:
- *  - Role-based staff selection (Staff, Manager, Super Admin)
- *  - Form submission to signInStaffAction server action
+ *  - Email/password credential submission to signInStaffAction
  *
  * Does NOT handle:
  *  - Customer authentication
@@ -35,17 +34,27 @@ export function StaffLoginForm() {
 
       <form action={signInStaffAction} className="grid gap-5">
         <input type="hidden" name="next" value={next} />
-        
-        <FormField label="Select Role">
-          <Select 
-            name="role" 
-            defaultValue="staff"
-            className="rounded-xl py-3.5"
-          >
-            <option value="staff">Staff</option>
-            <option value="manager">Manager</option>
-            <option value="super_admin">Super Admin</option>
-          </Select>
+
+        <FormField label="Email" required>
+          <Input
+            name="email"
+            type="email"
+            autoComplete="email"
+            icon={Mail}
+            placeholder="manager@besanagpur.com"
+            required
+          />
+        </FormField>
+
+        <FormField label="Password" required>
+          <Input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            icon={Lock}
+            placeholder="Enter password"
+            required
+          />
         </FormField>
 
         <Button type="submit" className="w-full justify-center py-4 text-base">

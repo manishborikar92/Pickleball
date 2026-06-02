@@ -24,10 +24,11 @@ export function DatePicker({ dates, selectedDate, onSelect, onCalendarOpen }) {
           ))}
         </div>
 
-        {/* Fixed Calendar Button */}
-        <div className="shrink-0 pb-2">
-          <CalendarButton onClick={onCalendarOpen} />
-        </div>
+        {onCalendarOpen && (
+          <div className="shrink-0 pb-2">
+            <CalendarButton onClick={onCalendarOpen} />
+          </div>
+        )}
       </div>
     </div>
   );

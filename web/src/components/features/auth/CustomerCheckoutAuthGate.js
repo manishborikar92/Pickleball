@@ -20,7 +20,7 @@ export function CustomerCheckoutAuthGate({
   initialPhone = "",
   initialStep = "phone",
 }) {
-  const { loginCustomer, completeOnboarding } = useAuth();
+  const { sendCustomerOtp, loginCustomer, completeOnboarding } = useAuth();
   const [step, setStep] = useState(initialStep); // phone, otp, name
   const [phone, setPhone] = useState(initialPhone);
   const [loading, setLoading] = useState(false);
@@ -29,61 +29,58 @@ export function CustomerCheckoutAuthGate({
   async function handlePhoneSubmit(verifiedPhone) {
     setLoading(true);
     setError("");
-    setTimeout(() => {
+    try {
+      await sendCustomerOtp(verifiedPhone);
       setPhone(verifiedPhone);
       setStep("otp");
+    } catch (err) {
+      setError("Failed to send OTP.");
+    } finally {
       setLoading(false);
-    }, 400);
+    }
   }
 
   async function handleOtpSubmit(otpCode) {
     setLoading(true);
     setError("");
 
-    setTimeout(async () => {
-      try {
-        const existingName = authService.getRegisteredName(phone);
+    try {
+      const result = await loginCustomer(phone, otpCode);
+      const session = await authService.getSession("customer");
+      const existingName = session?.user?.name || "";
 
-        if (existingName) {
-          // Returning User - login immediately and trigger completion callback
-          await loginCustomer(phone, existingName);
-          if (onSuccess) {
-            onSuccess({ name: existingName, phone, isNew: false });
-          }
-        } else {
-          // First-Time User - transition to inline name collection or complete nameless session
-          if (collectName) {
-            setStep("name");
-            setLoading(false);
-          } else {
-            await loginCustomer(phone, "");
-            if (onSuccess) {
-              onSuccess({ name: "", phone, isNew: true });
-            }
-          }
+      if (result.nextStep !== "complete_onboarding" && existingName) {
+        if (onSuccess) {
+          onSuccess({ name: existingName, phone, isNew: false });
         }
-      } catch (err) {
-        setError("Failed to verify code and initialize session.");
-        setLoading(false);
+      } else {
+        if (collectName) {
+          setStep("name");
+        } else if (onSuccess) {
+          onSuccess({ name: "", phone, isNew: true });
+        }
       }
-    }, 400);
+    } catch (err) {
+      setError("Failed to verify code and initialize session.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleNameSubmit(fullName) {
     setLoading(true);
     setError("");
 
-    setTimeout(async () => {
-      try {
-        await completeOnboarding(fullName, phone);
-        if (onSuccess) {
-          onSuccess({ name: fullName, phone, isNew: true });
-        }
-      } catch (err) {
-        setError("Failed to save profile name.");
-        setLoading(false);
+    try {
+      await completeOnboarding(fullName, phone);
+      if (onSuccess) {
+        onSuccess({ name: fullName, phone, isNew: true });
       }
-    }, 400);
+    } catch (err) {
+      setError("Failed to save profile name.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   const errorBanner = <FormAlert type="error" message={error} />;

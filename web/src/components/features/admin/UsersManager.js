@@ -1,30 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, FormField, Input } from "@/components/shared";
+import { Card, EmptyState, FormField, Input } from "@/components/shared";
 import { ManagerSurface } from "./ManagerSurface";
 import { SimpleRows } from "./SimpleRows";
-import { formatCurrency } from "@/lib/booking-engine";
-
-// Mock API data
-const MOCK_RESULTS = [
-  { id: "usr-1", name: "Asha Mehta", phone: "+919876543210", bookings: 8, wallet: 500 },
-];
 
 export function UsersManager() {
   const [query, setQuery] = useState("");
 
   const results = useMemo(
-    () => (query.trim() ? MOCK_RESULTS : []),
-    [query],
+    () => [],
+    [],
   );
 
   const rows = results.map((user) => ({
     id: user.id,
     name: user.name,
     scope: user.phone,
-    value: `${user.bookings} bookings`,
-    status: formatCurrency(user.wallet),
+    value: `${user.bookings ?? 0} bookings`,
+    status: user.status ?? "active",
   }));
 
   return (
@@ -48,9 +42,12 @@ export function UsersManager() {
         {rows.length > 0 ? (
           <SimpleRows rows={rows} />
         ) : query.trim() ? (
-          <p className="px-2 text-sm font-medium text-muted text-center sm:text-left py-4">
-            No users found for that number.
-          </p>
+          <Card className="p-5 sm:p-6">
+            <EmptyState
+              title="No users found"
+              description="No matching user records are available from the current backend APIs."
+            />
+          </Card>
         ) : null}
       </div>
     </ManagerSurface>

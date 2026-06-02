@@ -198,9 +198,6 @@ export function BookingClient({ venue, courts, availability }) {
               dates={dates}
               selectedDate={selectedDate}
               onSelect={setSelectedDate}
-              onCalendarOpen={() =>
-                alert("Calendar picker is fully integrated with the date window above.")
-              }
             />
 
             {/* All courts always visible — no selection step required */}
