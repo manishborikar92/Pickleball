@@ -82,7 +82,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `key` | VARCHAR(100) | UNIQUE, NOT NULL | e.g., `edit_pricing`, `manage_bookings` |
 | `description` | TEXT | | |
 
-**Seed permissions at launch:** `manage_courts`, `edit_pricing`, `edit_schedule`, `manage_bookings`, `issue_credits`, `view_analytics`, `walk_in_entry`, `view_own_bookings`, `manage_venues`.
+**Seed permissions at launch:** `manage_courts`, `edit_pricing`, `edit_schedule`, `manage_bookings`, `issue_credits`, `walk_in_entry`, `view_own_bookings`, `manage_venues`.
 
 ---
 
@@ -103,7 +103,6 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `edit_schedule` | ✓ | ✓ | | |
 | `manage_bookings` | ✓ | ✓ | ✓ | |
 | `issue_credits` | ✓ | ✓ | | |
-| `view_analytics` | ✓ | ✓ | | |
 | `walk_in_entry` | ✓ | ✓ | ✓ | |
 | `view_own_bookings` | ✓ | ✓ | ✓ | ✓ |
 | `manage_venues` | ✓ | | | |

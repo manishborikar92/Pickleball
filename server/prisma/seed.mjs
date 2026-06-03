@@ -10,7 +10,6 @@ const permissions = [
   ['edit_schedule', 'Manage schedules and exceptions'],
   ['manage_bookings', 'View and manage venue bookings'],
   ['issue_credits', 'Issue wallet credits'],
-  ['view_analytics', 'View operational analytics'],
   ['walk_in_entry', 'Create walk-in and admin-block bookings'],
   ['view_own_bookings', 'View own bookings and wallet'],
   ['manage_venues', 'Manage venue-level settings'],
@@ -18,7 +17,7 @@ const permissions = [
 
 const rolePermissions = {
   super_admin: permissions.map(([key]) => key),
-  manager: ['edit_pricing', 'edit_schedule', 'manage_bookings', 'issue_credits', 'view_analytics', 'walk_in_entry', 'view_own_bookings'],
+  manager: ['edit_pricing', 'edit_schedule', 'manage_bookings', 'issue_credits', 'walk_in_entry', 'view_own_bookings'],
   staff: ['manage_bookings', 'walk_in_entry', 'view_own_bookings'],
   customer: ['view_own_bookings'],
 };

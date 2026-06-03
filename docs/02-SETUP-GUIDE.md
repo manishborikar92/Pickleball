@@ -282,18 +282,7 @@ Set the following based on your frontend framework:
 
 > **Docs:** https://developer.phonepe.com/v1/docs
 
----
 
-## Step 9 — Set Up PostHog (Analytics)
-
-**Link:** https://posthog.com
-**Cost:** Free (up to 1M events/month)
-
-1. Go to https://posthog.com → sign up → create a project named `Baseline Arena`
-2. Copy your **Project API Key**
-3. Add the PostHog SDK to your frontend (Cloudflare Pages) and backend (Dokploy)
-
-> **Docs:** https://posthog.com/docs
 
 ---
 
@@ -318,9 +307,6 @@ R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
 PHONEPE_MERCHANT_ID=
 PHONEPE_API_KEY=
 
-# PostHog
-POSTHOG_API_KEY=
-
 # App
 NODE_ENV=production
 PORT=3000
@@ -329,7 +315,6 @@ PORT=3000
 **Frontend — add in Cloudflare Pages → Settings → Environment Variables:**
 ```
 VITE_API_URL=https://api.baselinearena.in
-VITE_POSTHOG_API_KEY=
 ```
 
 ---
@@ -374,5 +359,4 @@ VITE_POSTHOG_API_KEY=
 - [ ] WhatsApp Cloud API phone number added and billing configured
 - [ ] PhonePe merchant account approved (KYC done)
 
-**Analytics**
-- [ ] PostHog project created and SDK integrated in frontend and backend
+

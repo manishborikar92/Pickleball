@@ -32,7 +32,7 @@
 - Staff activation endpoint backed by email delivery.
 - Staff reset-password request/confirm endpoints backed by email delivery.
 - Staff change-password endpoint and forced-password-change guard.
-- Booking availability, hold, waiver, payment, wallet, review, admin, and analytics API modules on top of the completed schema.
+- Booking availability, hold, waiver, payment, wallet, review, and admin API modules on top of the completed schema.
 - Staff admin provisioning endpoint and UI; the seed script can create the first admin only when `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` are provided.
 - Production WhatsApp OTP provider implementation behind the existing provider interface.
 - Production observability upgrades: structured log sink, uptime checks, error monitoring, audit events, and security alerts.

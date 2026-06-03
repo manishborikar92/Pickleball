@@ -12,7 +12,6 @@ export const roles = {
       "edit_pricing",
       "edit_schedule",
       "issue_credits",
-      "view_analytics",
     ],
   },
   staff: {
@@ -37,7 +36,6 @@ export const routeAccess = {
   "/admin/pricing": { auth: true, permission: "edit_pricing" },
   "/admin/courts": { auth: true, permission: "manage_courts" },
   "/admin/users": { auth: true, permission: "manage_bookings" },
-  "/admin/analytics": { auth: true, permission: "view_analytics" },
   "/admin/settings": { auth: true, permission: "manage_venues" },
 };
 

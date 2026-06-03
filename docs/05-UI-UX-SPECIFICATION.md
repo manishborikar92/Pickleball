@@ -643,4 +643,4 @@ The admin dashboard is a separate authenticated web application (accessible via 
 | **Staff Management** | Launch | Provision new staff accounts, manage status (activate/suspend/unlock), resend activation, force password reset |
 | **Settings** | Launch | Venue-level settings (rollover time, advance window, tax rate) |
 | **Reward Engine** | **Deferred** | Create/edit/activate reward mechanisms; edit prize pool config; view instances — activate when reward engine is enabled |
-| **Analytics — Advanced** | **Deferred** | Utilization heatmaps, revenue trends, coupon usage, CLV reporting — built after 3+ months of data |
+

@@ -63,7 +63,6 @@ export default function PrivacyPage() {
             <li>To dispatch booking confirmations, receipts, wallet credit updates, and closure alerts.</li>
             <li>To process secure checkout payments via PhonePe.</li>
             <li>To verify compliance with our mandatory Liability Waiver using logged IP and timestamp.</li>
-            <li>To analyze court utilization patterns and track interface performance using PostHog analytics (no personal data is exposed).</li>
           </ul>
         </section>
 
@@ -81,9 +80,6 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Meta Cloud API (WhatsApp):</strong> Phone numbers and session names are transmitted to Meta Cloud servers to deliver automated OTP codes, confirmation receipts, and wallet notifications.
-            </li>
-            <li>
-              <strong>PostHog:</strong> Technical events and booking funnel milestones are analyzed to monitor errors and improve interface speeds.
             </li>
           </ul>
         </section>

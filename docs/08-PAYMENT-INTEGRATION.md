@@ -148,7 +148,7 @@ When `credits_applied == total_payable`:
    - Insert `wallet_transactions` record (type: `credit_redeemed`).
    - Update `bookings.status` → `confirmed`.
    - Insert `payments` record with `gateway = 'wallet'`, `status = 'success'`, `amount = 0`.
-3. Trigger booking confirmation flow (WhatsApp notification, PostHog event).
+3. Trigger booking confirmation flow (WhatsApp notification).
 4. No PhonePe API call is made.
 
 ### 3.3 Standard UPI Payment Flow (Step by Step)
@@ -526,7 +526,6 @@ async function handlePaymentSuccess(merchantOrderId, payload) {
     // Finalize wallet deduction (was held optimistically)
     await finalizeWalletDeduction(trx, bookingId);
 
-    // Emit booking_confirmed event to PostHog (server-side)
     // Send WhatsApp confirmation to user
   });
 }

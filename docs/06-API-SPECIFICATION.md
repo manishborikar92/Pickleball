@@ -940,16 +940,7 @@ On success: creates `users` record (name pre-set), `staff_credentials` record (`
 
 Prize `probability` values must sum to exactly 1.0 — validated server-side on save.
 
-### Analytics
 
-| Method | Endpoint | Permission | Description |
-|---|---|---|---|
-| `GET` | `/admin/venues/:id/analytics/utilization` | `view_analytics` | Court utilization by hour and day |
-| `GET` | `/admin/venues/:id/analytics/revenue` | `view_analytics` | Revenue by court, date range |
-| `GET` | `/admin/venues/:id/analytics/reviews` | `view_analytics` | Average ratings, recent reviews |
-| `GET` | `/admin/venues/:id/analytics/rewards` | `view_analytics` | Instances issued, reveal rate, prize distribution, fulfillment status |
-
----
 
 ## 10. Reward Engine Endpoints
 

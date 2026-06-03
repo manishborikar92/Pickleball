@@ -59,7 +59,7 @@
 | Frontend Hosting | Cloudflare Pages (free, served from Indian edge) | ₹0 |
 | File & Image Storage | Cloudflare R2 (free: 10 GB / 10M reads) | ₹0 |
 | DNS + CDN + DDoS Protection | Cloudflare (free tier) | ₹0 |
-| Analytics & Error Monitoring | PostHog / Sentry (free tier) | ₹0 |
+
 | Deployment & Server Management | Dokploy (free, self-hosted) | ₹0 |
 
 ---

@@ -21,7 +21,6 @@ Four roles are seeded at launch. `super_admin` and `customer` are actively used 
 | `edit_schedule` | ✓ | ✓ | | |
 | `manage_bookings` | ✓ | ✓ | ✓ | |
 | `issue_credits` | ✓ | ✓ | | |
-| `view_analytics` | ✓ | ✓ | | |
 | `walk_in_entry` | ✓ | ✓ | ✓ | |
 | `view_own_bookings` | ✓ | ✓ | ✓ | ✓ |
 
@@ -631,14 +630,7 @@ The admin dashboard surfaces the following at launch:
 - Today's revenue total and booking count.
 - User lookup by phone: booking history, wallet balance.
 
-### 10.4 Business Intelligence — Deferred
 
-> **Future Enhancement — Advanced Analytics:** The relational schema is structured to support the following once sufficient booking history exists (typically 3+ months):
-> - Court utilization rate by hour and day — identifying empty slots for targeted Flash Sale pricing rules.
-> - Peak demand signals — flagging slots booked within minutes of opening consistently, prompting a price increase recommendation.
-> - Customer Lifetime Value (CLV) — ranked by confirmed booking value per verified phone number, enabling early-access booking windows for top players.
->
-> This reporting layer is built on top of the existing schema with no structural changes. PostHog analytics already captures the event data needed to begin identifying patterns from day one.
 
 ---
 
@@ -754,4 +746,4 @@ The `instance_expiry_days` is configured per mechanism (default: 7 days). A shor
 | View a user's reward instance history | `manage_bookings` |
 | Manually expire an instance | `manage_bookings` |
 | Fulfill pending `free_booking` prizes | `manage_bookings` |
-| View reward analytics (win rates, prize distribution) | `view_analytics` |
+

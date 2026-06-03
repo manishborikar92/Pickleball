@@ -21,7 +21,6 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 - Digital waiver and no-cancellation acknowledgment
 - Staff credential-based auth (email + password) with account provisioning, activation, and password reset flows
 - Reviews (stars + text; no photo upload at launch)
-- PostHog product analytics and booking funnel tracking
 - Reward Engine schema (architecture-ready; not activated until user base is established)
 
 ### Deferred — Architecture-Ready, Not Built at Launch
@@ -32,10 +31,8 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | Real-time slot sync (WebSockets / SSE) | Low concurrency; "slot taken" error on click is acceptable | When concurrent booking contention is noticeable |
 | WhatsApp T−24h / T−2h reminders | Requires reliable job scheduler; low impact at small scale | After launch stabilisation |
 | WhatsApp inbound support webhook | A contact phone number on the landing page is sufficient | When support volume justifies a structured inbox |
-| PostHog session replay | Not useful at low traffic; requires masking config | When weekly bookings exceed ~100 |
 | SMS fallback for OTP | WhatsApp penetration is very high in India | If OTP delivery failures are reported |
 | Automated settlement reconciliation | Manual review via PhonePe dashboard is sufficient | At ~50+ daily transactions |
-| Advanced BI / CLV analytics | No data to analyse at launch | After 3+ months of booking history |
 | Multi-venue operational layer | Schema is venue-aware from day one; operational UI waits for a second location | When a second venue is added |
 | Reward Engine (scratch cards) | No customer base to engage yet | When regular player volume warrants retention mechanics |
 | Review photo upload | Column exists in schema; feature is additive | Low-priority post-launch addition |
@@ -56,8 +53,6 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | File Storage | Cloudflare R2 | Court images. Review photo upload is deferred |
 | Background Jobs | Yet to be decided | Slot expiry sweeper (required at launch). Notification scheduler is deferred (options: BullMQ, pg-boss) |
 | Real-time Sync | **Deferred** | Socket.io or SSE when concurrent contention becomes a real problem |
-| Analytics | PostHog | Funnel tracking, product analytics, error tracking. **Session replay is deferred** — see `09-ANALYTICS.md` |
-| Error Monitoring | PostHog (launch) → Sentry (future) | |
 | Hosting / Infra | Yet to be decided | |
 
 ---

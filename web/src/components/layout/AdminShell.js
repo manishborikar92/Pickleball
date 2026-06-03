@@ -12,7 +12,6 @@ const ADMIN_LINKS = [
   { href: "/admin/pricing", label: "Pricing" },
   { href: "/admin/courts", label: "Courts" },
   { href: "/admin/users", label: "Users" },
-  { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/settings", label: "Settings" },
 ];
 
