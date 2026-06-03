@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+
 const DEFAULT_API_BASE_URL = "http://localhost:5000";
 
 export function getApiBaseUrl() {
@@ -6,30 +8,118 @@ export function getApiBaseUrl() {
     || DEFAULT_API_BASE_URL;
 }
 
+function extractCookieValue(setCookie, name) {
+  if (!setCookie) return "";
+  const match = setCookie.match(new RegExp(`${name}=([^;]*)`));
+  return match?.[1] || "";
+}
+
 export async function apiRequest(path, {
   method = "GET",
   body,
   accessToken,
   refreshToken,
-} = {}) {
+} = {}, _isRetry = false) {
   const headers = {
     "Content-Type": "application/json",
   };
 
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  let token = accessToken;
+  // If accessToken is not provided, try to read from cookies
+  if (!token) {
+    try {
+      const cookieStore = await cookies();
+      token = cookieStore.get("pb_access_token")?.value || "";
+    } catch {
+      // Ignore if called in a context where cookies() is not available
+    }
   }
 
-  if (refreshToken) {
-    headers.Cookie = `pb_refresh_token=${refreshToken}`;
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  // Use provided refreshToken or read from cookies
+  let rToken = refreshToken;
+  if (!rToken) {
+    try {
+      const cookieStore = await cookies();
+      rToken = cookieStore.get("pb_refresh_token")?.value || "";
+    } catch {}
+  }
+
+  if (rToken) {
+    headers.Cookie = `pb_refresh_token=${rToken}`;
+  }
+
+  let response = await fetch(`${getApiBaseUrl()}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
+
+  // Handle 401 or missing token, and try to refresh
+  if ((response.status === 401 || !token) && !_isRetry && rToken) {
+    try {
+      const refreshResponse = await fetch(`${getApiBaseUrl()}/api/v1/auth/refresh`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Cookie": `pb_refresh_token=${rToken}`,
+        },
+        cache: "no-store",
+      });
+
+      if (refreshResponse.ok) {
+        const refreshPayload = await refreshResponse.json();
+        const newAccessToken = refreshPayload.data.access_token;
+        const setCookieHeader = refreshResponse.headers.get("set-cookie");
+        const newRefreshToken = extractCookieValue(setCookieHeader, "pb_refresh_token") || rToken;
+
+        // Save new tokens to cookies
+        try {
+          const cookieStore = await cookies();
+          const secure = process.env.NODE_ENV === "production";
+          cookieStore.set("pb_access_token", newAccessToken, {
+            httpOnly: true,
+            secure,
+            sameSite: "lax",
+            path: "/",
+            maxAge: 15 * 60,
+          });
+          cookieStore.set("pb_refresh_token", newRefreshToken, {
+            httpOnly: true,
+            secure,
+            sameSite: "lax",
+            path: "/api",
+            maxAge: 60 * 60 * 24 * 30,
+          });
+        } catch (err) {
+          // If we are rendering and cannot set cookies, we still proceed with the newAccessToken
+          console.warn("Could not write refreshed cookies in current context:", err.message);
+        }
+
+        // Retry the original request with the new access token
+        const retryHeaders = {
+          ...headers,
+          Authorization: `Bearer ${newAccessToken}`,
+        };
+        if (newRefreshToken) {
+          retryHeaders.Cookie = `pb_refresh_token=${newRefreshToken}`;
+        }
+
+        response = await fetch(`${getApiBaseUrl()}${path}`, {
+          method,
+          headers: retryHeaders,
+          body: body === undefined ? undefined : JSON.stringify(body),
+          cache: "no-store",
+        });
+      }
+    } catch (refreshErr) {
+      console.error("Failed to automatically refresh token:", refreshErr);
+    }
+  }
 
   const payload = response.status === 204 ? null : await response.json();
   if (!response.ok) {

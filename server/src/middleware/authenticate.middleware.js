@@ -18,7 +18,7 @@ const extractBearerToken = (req) => {
   return token;
 };
 
-const resolveSessionId = (decoded) => decoded.session_id || decoded.sid || null;
+const resolveSessionId = (decoded) => decoded.sid || null;
 
 const validateDatabaseSession = async ({ config, decoded }) => {
   if (!config.database?.enabled) {

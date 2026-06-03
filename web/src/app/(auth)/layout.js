@@ -20,16 +20,7 @@ export const metadata = {
 
 export default function AuthLayout({ children }) {
   return (
-    <>
-      <head>
-        {/* Isolated Security CSP Header Hook for Auth Portal */}
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="frame-ancestors 'none'; object-src 'none';"
-        />
-      </head>
-      
-      <div className="flex min-h-screen flex-col bg-background text-foreground justify-between relative">
+    <div className="flex min-h-screen flex-col bg-background text-foreground justify-between relative">
         {/* Subtle glowing background pattern */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute top-1/2 left-1/2 h-[35rem] w-[35rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/5 blur-[125px]" />
@@ -65,6 +56,5 @@ export default function AuthLayout({ children }) {
           <p>© {new Date().getFullYear()} Baseline Arena. All rights reserved.</p>
         </footer>
       </div>
-    </>
   );
 }

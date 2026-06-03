@@ -29,7 +29,7 @@ const resolveOtpCode = (config) => {
   return String(crypto.randomInt(100000, 1000000));
 };
 
-const onboardingComplete = (user) => Boolean(user?.name);
+const onboardingComplete = (user) => Boolean(user?.onboardingCompletedAt);
 
 const determineNextStep = ({ user, roles = [] }) => {
   const nonCustomerRole = roles.find((role) => role !== 'customer');

@@ -19,7 +19,8 @@ const ACCESS_COOKIE = "pb_access_token";
 export async function getSession(preferredType = null) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
-  if (!accessToken) return null;
+  const refreshToken = cookieStore.get("pb_refresh_token")?.value || "";
+  if (!accessToken && !refreshToken) return null;
 
   try {
     const { payload } = await apiRequest("/api/v1/users/me", { accessToken });

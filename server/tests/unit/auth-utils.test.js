@@ -47,7 +47,6 @@ test('createAccessToken signs a user/session scoped JWT', () => {
   const decoded = jwt.decode(token);
   assert.equal(decoded.sub, 'user-1');
   assert.equal(decoded.sid, 'session-1');
-  assert.equal(decoded.session_id, 'session-1');
   assert.deepEqual(decoded.roles, ['customer']);
 });
 

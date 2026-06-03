@@ -48,9 +48,7 @@ export const createAccessToken = ({
 }) => {
   const payload = {
     sub: userId,
-    user_id: userId,
     sid: sessionId,
-    session_id: sessionId,
     roles,
     permissions,
   };

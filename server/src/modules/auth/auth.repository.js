@@ -1,19 +1,6 @@
 import { getPrisma } from '../../lib/prisma.js';
-
-const CUSTOMER_PERMISSIONS = ['view_own_bookings'];
-
-const flattenAuthContext = (user) => {
-  const roles = user.venueRoles?.map((assignment) => assignment.role.name) || [];
-  const permissions = user.venueRoles?.flatMap((assignment) => (
-    assignment.role.permissions.map((rolePermission) => rolePermission.permission.key)
-  )) || [];
-
-  return {
-    user,
-    roles: [...new Set(roles.length > 0 ? roles : ['customer'])],
-    permissions: [...new Set(permissions.length > 0 ? permissions : CUSTOMER_PERMISSIONS)],
-  };
-};
+import { flattenAuthContext } from '../../shared/auth-context.js';
+import { includeUserAuthContext } from '../../shared/auth-includes.js';
 
 export const createAuthRepository = ({ prisma } = {}) => {
   const db = () => prisma || getPrisma();
@@ -71,19 +58,7 @@ export const createAuthRepository = ({ prisma } = {}) => {
       where: { email: email.toLowerCase() },
       include: {
         user: {
-          include: {
-            venueRoles: {
-              include: {
-                role: {
-                  include: {
-                    permissions: {
-                      include: { permission: true },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          include: includeUserAuthContext,
         },
       },
     });
@@ -231,19 +206,7 @@ export const createAuthRepository = ({ prisma } = {}) => {
   async getUserAuthContext(userId) {
     const user = await db().user.findUnique({
       where: { id: userId },
-      include: {
-        venueRoles: {
-          include: {
-            role: {
-              include: {
-                permissions: {
-                  include: { permission: true },
-                },
-              },
-            },
-          },
-        },
-      },
+      include: includeUserAuthContext,
     });
 
     return flattenAuthContext(user);

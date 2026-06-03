@@ -61,7 +61,8 @@ export function handleRouteAccess(request) {
   if (pathname === "/staff-login") {
     if (isStaffAuthenticated) {
       const nextParam = request.nextUrl.searchParams.get("next") || "/admin";
-      return NextResponse.redirect(new URL(nextParam, request.url));
+      const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin";
+      return NextResponse.redirect(new URL(safeNext, request.url));
     }
     return NextResponse.next();
   }

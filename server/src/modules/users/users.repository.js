@@ -1,8 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../../lib/prisma.js';
 import { NotFoundError } from '../../utils/api-error.js';
-
-const CUSTOMER_PERMISSIONS = ['view_own_bookings'];
+import { DEFAULT_CUSTOMER_PERMISSIONS } from '../../shared/auth-constants.js';
+import { includeUserAuthContext } from '../../shared/auth-includes.js';
 
 const serializeAuthProfile = (user) => {
   const roles = user.venueRoles?.map((assignment) => ({
@@ -19,25 +19,10 @@ const serializeAuthProfile = (user) => {
     id: user.id,
     phone: user.phone,
     name: user.name,
-    onboarding_complete: Boolean(user.name),
+    onboarding_complete: Boolean(user.onboardingCompletedAt),
     roles,
-    permissions: [...new Set(permissions.length > 0 ? permissions : CUSTOMER_PERMISSIONS)],
+    permissions: [...new Set(permissions.length > 0 ? permissions : DEFAULT_CUSTOMER_PERMISSIONS)],
   };
-};
-
-const includeAuthContext = {
-  venueRoles: {
-    include: {
-      venue: true,
-      role: {
-        include: {
-          permissions: {
-            include: { permission: true },
-          },
-        },
-      },
-    },
-  },
 };
 
 export const createUsersRepository = ({ prisma } = {}) => {
@@ -47,7 +32,7 @@ export const createUsersRepository = ({ prisma } = {}) => {
     async getCurrentUser(userId) {
       const user = await db().user.findUnique({
         where: { id: userId },
-        include: includeAuthContext,
+        include: includeUserAuthContext,
       });
 
       if (!user) {
@@ -71,7 +56,7 @@ export const createUsersRepository = ({ prisma } = {}) => {
               name,
               onboardingCompletedAt: existing.onboardingCompletedAt || new Date(),
             },
-            include: includeAuthContext,
+            include: includeUserAuthContext,
           });
 
           return serializeAuthProfile(user);

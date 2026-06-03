@@ -3,7 +3,7 @@ const DEFAULT_HEADERS = ['Content-Type', 'Authorization', 'X-Request-Id'];
 
 export const createCorsOptions = (config) => ({
   origin(origin, callback) {
-    if (!origin) {
+    if (!origin && !config.isProduction) {
       callback(null, true);
       return;
     }

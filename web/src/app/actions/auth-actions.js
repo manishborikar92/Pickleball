@@ -42,7 +42,7 @@ async function setSessionCookies({ accessToken, refreshToken, user, role = "cust
       httpOnly: true,
       secure,
       sameSite: "lax",
-      path: "/",
+      path: "/api",
       maxAge: 60 * 60 * 24 * 30,
     });
   }
@@ -64,7 +64,7 @@ async function setSessionCookies({ accessToken, refreshToken, user, role = "cust
         maxAge: 60 * 60 * 24 * 30,
       });
     }
-    cookieStore.set(AUTH_ONBOARDED_COOKIE, String(Boolean(user.name || user.onboarding_complete)), {
+    cookieStore.set(AUTH_ONBOARDED_COOKIE, String(Boolean(user.onboarding_complete)), {
       httpOnly: true,
       secure,
       sameSite: "lax",
@@ -143,6 +143,16 @@ export async function signOutCustomerAction() {
 }
 
 export async function signOutStaffAction() {
+  const cookieStore = await cookies();
+  const refreshToken = cookieStore.get(REFRESH_COOKIE)?.value || "";
+
+  if (refreshToken) {
+    await apiRequest("/api/v1/auth/logout", {
+      method: "POST",
+      refreshToken,
+    }).catch(() => null);
+  }
+
   await clearSessionCookies();
   redirect("/staff-login");
 }
