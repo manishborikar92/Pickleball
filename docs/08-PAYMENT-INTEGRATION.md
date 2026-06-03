@@ -735,7 +735,7 @@ If the user takes longer than `expireAfter` (600 seconds / 10 minutes) to comple
 
 ## 10. The Stale Payment (Phantom Booking)
 
-This is the most critical edge case. See also `03-BUSINESS-LOGIC.md` Section 6.1 for the full description.
+This is the most critical edge case. See also `04-BUSINESS-LOGIC.md` Section 6.1 for the full description.
 
 **Trigger:** Payment success webhook arrives after the slot hold has expired AND the slot has been rebooked by another user.
 

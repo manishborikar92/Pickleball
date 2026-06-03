@@ -56,7 +56,7 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | File Storage | Cloudflare R2 | Court images. Review photo upload is deferred |
 | Background Jobs | Yet to be decided | Slot expiry sweeper (required at launch). Notification scheduler is deferred (options: BullMQ, pg-boss) |
 | Real-time Sync | **Deferred** | Socket.io or SSE when concurrent contention becomes a real problem |
-| Analytics | PostHog | Funnel tracking, product analytics, error tracking. **Session replay is deferred** — see `07-ANALYTICS.md` |
+| Analytics | PostHog | Funnel tracking, product analytics, error tracking. **Session replay is deferred** — see `09-ANALYTICS.md` |
 | Error Monitoring | PostHog (launch) → Sentry (future) | |
 | Hosting / Infra | Yet to be decided | |
 

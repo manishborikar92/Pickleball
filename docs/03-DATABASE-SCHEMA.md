@@ -35,7 +35,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | `venue_id` | UUID | FK → venues.id, NOT NULL | |
 | `name` | VARCHAR(100) | NOT NULL | e.g., "Court 1" |
 | `surface_type` | VARCHAR(50) | | e.g., "Hard", "Clay" |
-| `environment` | VARCHAR(20) | NOT NULL | "Indoor" or "Outdoor" |
+| `environment` | VARCHAR(20) | NOT NULL | "indoor" or "outdoor" |
 | `description` | TEXT | | |
 | `cover_image_url` | VARCHAR(500) | | Stored in Cloudflare R2 |
 | `status` | VARCHAR(20) | NOT NULL, default 'active' | Enum: active, maintenance, offline |
@@ -295,7 +295,7 @@ Dynamic pricing modifiers stored as JSONB for schema-free flexibility.
 ```json
 {
   "type": "court_modifier",
-  "environment": "Indoor",
+  "environment": "indoor",
   "adjustment_type": "percentage",
   "value": 10
 }

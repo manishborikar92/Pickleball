@@ -565,7 +565,7 @@ When the **business** must cancel (flood, power outage, court damage), the Admin
 
 ## 8. Automated Notification Matrix
 
-All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. All outbound messages use pre-approved Meta templates. See `06-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
+All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. All outbound messages use pre-approved Meta templates. See `07-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
 
 **Built at launch:**
 
