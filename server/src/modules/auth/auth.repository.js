@@ -127,10 +127,17 @@ export const createAuthRepository = ({ prisma } = {}) => {
 
   async rotateRefreshToken({ currentTokenId, nextToken }) {
     return db().$transaction(async (tx) => {
-      await tx.refreshToken.update({
-        where: { id: currentTokenId },
+      const updated = await tx.refreshToken.updateMany({
+        where: {
+          id: currentTokenId,
+          revokedAt: null,
+        },
         data: { revokedAt: new Date() },
       });
+
+      if (updated.count === 0) {
+        throw new Error('TOKEN_ALREADY_ROTATED');
+      }
 
       const created = await tx.refreshToken.create({
         data: nextToken,

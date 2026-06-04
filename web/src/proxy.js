@@ -1,7 +1,7 @@
 import { handleRouteAccess } from "@/lib/proxy-core";
 
-export function proxy(request) {
-  return handleRouteAccess(request);
+export async function proxy(request) {
+  return await handleRouteAccess(request);
 }
 
 export const config = {

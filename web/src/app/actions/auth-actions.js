@@ -42,7 +42,7 @@ async function setSessionCookies({ accessToken, refreshToken, user, role = "cust
       httpOnly: true,
       secure,
       sameSite: "lax",
-      path: "/api",
+      path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
   }
@@ -76,11 +76,11 @@ async function setSessionCookies({ accessToken, refreshToken, user, role = "cust
 
 async function clearSessionCookies() {
   const cookieStore = await cookies();
-  cookieStore.delete(ACCESS_COOKIE);
-  cookieStore.delete(REFRESH_COOKIE);
-  cookieStore.delete(AUTH_ROLE_COOKIE);
-  cookieStore.delete(STAFF_ROLE_COOKIE);
-  cookieStore.delete(AUTH_ONBOARDED_COOKIE);
+  cookieStore.delete({ name: ACCESS_COOKIE, path: "/" });
+  cookieStore.delete({ name: REFRESH_COOKIE, path: "/" });
+  cookieStore.delete({ name: AUTH_ROLE_COOKIE, path: "/" });
+  cookieStore.delete({ name: STAFF_ROLE_COOKIE, path: "/" });
+  cookieStore.delete({ name: AUTH_ONBOARDED_COOKIE, path: "/" });
 }
 
 export async function getSessionAction(preferredType = null) {

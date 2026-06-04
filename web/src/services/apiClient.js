@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 
 const DEFAULT_API_BASE_URL = "http://localhost:5000";
 
+const activeRefreshes = new Map();
+
 export function getApiBaseUrl() {
   return process.env.API_BASE_URL
     || process.env.NEXT_PUBLIC_API_BASE_URL
@@ -62,20 +64,35 @@ export async function apiRequest(path, {
   // Handle 401 or missing token, and try to refresh
   if ((response.status === 401 || !token) && !_isRetry && rToken) {
     try {
-      const refreshResponse = await fetch(`${getApiBaseUrl()}/api/v1/auth/refresh`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Cookie": `pb_refresh_token=${rToken}`,
-        },
-        cache: "no-store",
-      });
+      let refreshPromise = activeRefreshes.get(rToken);
+      if (!refreshPromise) {
+        refreshPromise = (async () => {
+          const refreshResponse = await fetch(`${getApiBaseUrl()}/api/v1/auth/refresh`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": `pb_refresh_token=${rToken}`,
+            },
+            cache: "no-store",
+          });
 
-      if (refreshResponse.ok) {
-        const refreshPayload = await refreshResponse.json();
-        const newAccessToken = refreshPayload.data.access_token;
-        const setCookieHeader = refreshResponse.headers.get("set-cookie");
-        const newRefreshToken = extractCookieValue(setCookieHeader, "pb_refresh_token") || rToken;
+          if (!refreshResponse.ok) {
+            throw new Error(`Refresh failed with status ${refreshResponse.status}`);
+          }
+
+          const refreshPayload = await refreshResponse.json();
+          const newAccessToken = refreshPayload.data.access_token;
+          const setCookieHeader = refreshResponse.headers.get("set-cookie");
+          const newRefreshToken = extractCookieValue(setCookieHeader, "pb_refresh_token") || rToken;
+
+          return { newAccessToken, newRefreshToken };
+        })();
+
+        activeRefreshes.set(rToken, refreshPromise);
+      }
+
+      try {
+        const { newAccessToken, newRefreshToken } = await refreshPromise;
 
         // Save new tokens to cookies
         try {
@@ -92,7 +109,7 @@ export async function apiRequest(path, {
             httpOnly: true,
             secure,
             sameSite: "lax",
-            path: "/api",
+            path: "/",
             maxAge: 60 * 60 * 24 * 30,
           });
         } catch (err) {
@@ -115,9 +132,21 @@ export async function apiRequest(path, {
           body: body === undefined ? undefined : JSON.stringify(body),
           cache: "no-store",
         });
+      } finally {
+        activeRefreshes.delete(rToken);
       }
     } catch (refreshErr) {
       console.error("Failed to automatically refresh token:", refreshErr);
+      try {
+        const cookieStore = await cookies();
+        cookieStore.delete({ name: "pb_access_token", path: "/" });
+        cookieStore.delete({ name: "pb_refresh_token", path: "/" });
+        cookieStore.delete({ name: "pb_auth_role", path: "/" });
+        cookieStore.delete({ name: "pb_staff_role", path: "/" });
+        cookieStore.delete({ name: "pb_user_onboarded", path: "/" });
+      } catch (cookieErr) {
+        console.warn("Failed to clear session cookies on refresh failure:", cookieErr.message);
+      }
     }
   }
 

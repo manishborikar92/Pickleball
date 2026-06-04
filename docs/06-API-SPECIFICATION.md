@@ -282,7 +282,7 @@ Implementation status: `POST /auth/staff/login` is implemented and shares the sa
 
 ### `POST /auth/refresh`
 
-*Refresh-cookie authenticated.* Rotates the current refresh token, returns a new access token, and sets the next refresh-token cookie. Reuse of a revoked refresh token revokes the session and returns `401`.
+*Refresh-cookie authenticated.* Rotates the current refresh token, returns a new access token, and sets the next refresh-token cookie. Reuse of a revoked refresh token revokes the session and returns `401`. Concurrent requests inside a grace window (10 seconds) of a normally rotated token return a new access token without rotating the refresh token or writing cookies.
 
 **Response `200`:**
 ```json

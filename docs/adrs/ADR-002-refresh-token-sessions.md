@@ -10,7 +10,7 @@ Earlier launch documentation used a 24-hour access token with client-side logout
 
 ## Decision
 
-Use short-lived JWT access tokens plus opaque refresh tokens stored in HTTP-only cookies. Store refresh-token hashes and auth-session records in PostgreSQL. Rotate refresh tokens on every refresh request. Revoke the active session on logout and all user sessions on logout-all. Treat reuse of a revoked refresh token as a compromised session and revoke the full session.
+Use short-lived JWT access tokens plus opaque refresh tokens stored in HTTP-only cookies. Store refresh-token hashes and auth-session records in PostgreSQL. Rotate refresh tokens on every refresh request. Revoke the active session on logout and all user sessions on logout-all. Treat reuse of a revoked refresh token as a compromised session and revoke the full session. To handle legitimate concurrent requests (such as SSR parallel data fetching or rapid navigation loads), implement a 10-second temporal grace window. Within 10 seconds of a normal token rotation, a request with the old revoked token will be granted a new access token (skipping refresh token rotation and cookie write), provided the parent session remains active.
 
 ## Alternatives Considered
 

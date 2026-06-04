@@ -103,6 +103,9 @@ function createMemoryRepository(clock = () => fixedNow) {
     },
     async rotateRefreshToken({ currentTokenId, nextToken }) {
       const current = refreshTokens.get(currentTokenId);
+      if (current.revokedAt) {
+        throw new Error('TOKEN_ALREADY_ROTATED');
+      }
       current.revokedAt = fixedNow;
       const created = { id: nextId('refresh'), revokedAt: null, ...nextToken };
       refreshTokens.set(created.id, created);
@@ -110,7 +113,13 @@ function createMemoryRepository(clock = () => fixedNow) {
       return created;
     },
     async findRefreshTokenByHash(tokenHash) {
-      return [...refreshTokens.values()].find((token) => token.tokenHash === tokenHash) || null;
+      const token = [...refreshTokens.values()].find((item) => item.tokenHash === tokenHash) || null;
+      if (!token) return null;
+      const session = sessions.get(token.sessionId);
+      return {
+        ...token,
+        session,
+      };
     },
     async revokeRefreshToken({ id, replacedByTokenId = null }) {
       const token = refreshTokens.get(id);
@@ -378,4 +387,217 @@ test('loginStaff automatically unlocks and resets attempts if lock has expired',
   assert.equal(cred.failedLoginAttempts, 0);
   assert.equal(cred.lockedUntil, null);
 });
+
+test('refreshSession allows concurrent refresh requests inside grace window', async () => {
+  const repository = createMemoryRepository();
+  let time = new Date('2026-06-02T00:00:00.000Z');
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => time,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Rotate once to generate a rotated token
+  await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  // Advance time by 5 seconds (inside 10s grace window)
+  time = new Date(time.getTime() + 5000);
+
+  // Parallel/concurrent refresh request using the original revoked token
+  const refreshed2 = await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  // It should successfully return the new access token and skip cookie update
+  assert.equal(refreshed2.skipCookieUpdate, true);
+  assert.equal(refreshed2.access_token.split('.').length, 3);
+});
+
+test('refreshSession rejects reuse of a revoked token outside grace window', async () => {
+  const repository = createMemoryRepository();
+  let time = new Date('2026-06-02T00:00:00.000Z');
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => time,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Rotate once
+  await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  // Advance time by 11 seconds (outside 10s grace window)
+  time = new Date(time.getTime() + 11000);
+
+  // Attempt reuse
+  await assert.rejects(
+    () => service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+    /Refresh token has been revoked/
+  );
+
+  // Parent session must be revoked now
+  const session = repository.data.sessions.get(repository.data.refreshTokens.values().next().value.sessionId);
+  assert.equal(session.status, 'revoked');
+  assert.equal(session.revokeReason, 'refresh_token_reuse');
+});
+
+test('refreshSession blocks refresh attempt after logout', async () => {
+  const repository = createMemoryRepository();
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Perform logout
+  await service.logoutCurrent({ refreshToken: verified.refreshToken.raw });
+
+  // Attempt refresh with the logged out token - should fail
+  await assert.rejects(
+    () => service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+    /Refresh token has been revoked/
+  );
+});
+
+test('refreshSession blocks refresh attempt after session is revoked', async () => {
+  const repository = createMemoryRepository();
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Revoke session manually (simulate admin revocation or logout all)
+  const session = repository.data.sessions.get(repository.data.refreshTokens.values().next().value.sessionId);
+  await repository.revokeSession({ sessionId: session.id, reason: 'admin_revocation' });
+
+  // Attempt refresh - should fail
+  await assert.rejects(
+    () => service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+    /Refresh token expired/
+  );
+});
+
+test('refreshSession handles multiple parallel refresh requests in grace window', async () => {
+  const repository = createMemoryRepository();
+  let time = new Date('2026-06-02T00:00:00.000Z');
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => time,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Rotate once to generate a rotated token
+  await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  // Advance time within grace window
+  time = new Date(time.getTime() + 2000);
+
+  // Execute multiple parallel refreshes using the original revoked token
+  const promises = [
+    service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+    service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+    service.refreshSession({ refreshToken: verified.refreshToken.raw }),
+  ];
+
+  const results = await Promise.all(promises);
+  for (const res of results) {
+    assert.equal(res.skipCookieUpdate, true);
+    assert.equal(res.access_token.split('.').length, 3);
+  }
+});
+
+test('refreshSession falls back to grace period when rotateRefreshToken throws TOKEN_ALREADY_ROTATED', async () => {
+  const repository = createMemoryRepository();
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Manually mock rotateRefreshToken to throw TOKEN_ALREADY_ROTATED during refreshSession.
+  // This simulates the race condition where two requests read it as active, but one commits first.
+  let throwRotated = false;
+  repository.rotateRefreshToken = async ({ currentTokenId, nextToken }) => {
+    if (throwRotated) {
+      // Simulate that the token was concurrently updated in the DB
+      const current = repository.data.refreshTokens.get(currentTokenId);
+      current.revokedAt = fixedNow;
+      current.replacedByTokenId = 'refresh-concurrent-successor';
+      throw new Error('TOKEN_ALREADY_ROTATED');
+    }
+    // Normal first rotation behavior
+    const current = repository.data.refreshTokens.get(currentTokenId);
+    current.revokedAt = fixedNow;
+    const created = { id: 'refresh-concurrent-successor', revokedAt: null, ...nextToken };
+    repository.data.refreshTokens.set(created.id, created);
+    current.replacedByTokenId = created.id;
+    return created;
+  };
+
+  // Turn on simulation of the race condition
+  throwRotated = true;
+
+  // This call will hit rotateRefreshToken, which throws TOKEN_ALREADY_ROTATED.
+  // It should catch the error, re-read the now-revoked token, and process it via the grace period path.
+  const refreshed = await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  assert.equal(refreshed.skipCookieUpdate, true);
+  assert.equal(refreshed.access_token.split('.').length, 3);
+});
+
+test('refreshSession allows concurrent refresh with negative clock skew within grace limit', async () => {
+  const repository = createMemoryRepository();
+  let time = new Date('2026-06-02T00:00:10.000Z');
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => time,
+    randomBytes: () => Buffer.alloc(32, 1),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const verified = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  // Rotate the token once, setting revokedAt in DB to 2026-06-02T00:00:10.000Z
+  await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  // Simulate a negative clock skew: the clock on the service evaluates currentNow to 2026-06-02T00:00:08.000Z (2 seconds in the past)
+  time = new Date('2026-06-02T00:00:08.000Z');
+
+  // Verify that the reuse of the revoked token is allowed because timeSinceRevocation (-2000ms) is >= -gracePeriodMs (-10000ms)
+  const refreshedSkew = await service.refreshSession({ refreshToken: verified.refreshToken.raw });
+
+  assert.equal(refreshedSkew.skipCookieUpdate, true);
+  assert.equal(refreshedSkew.access_token.split('.').length, 3);
+});
+
 

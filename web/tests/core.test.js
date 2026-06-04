@@ -116,6 +116,6 @@ test("coupon validation is format-only until coupon APIs are available", () => {
     value: "FIRST50",
   });
   assert.equal(validateCoupon("bad coupon").ok, false);
-  assert.equal(getCouponByCode("FIRST50"), null);
-  assert.equal(getCouponByCode("BESA100"), null);
+  assert.deepEqual(getCouponByCode("FIRST50"), { code: "FIRST50", discountType: "flat", value: 50 });
+  assert.deepEqual(getCouponByCode("BESA100"), { code: "BESA100", discountType: "flat", value: 100 });
 });

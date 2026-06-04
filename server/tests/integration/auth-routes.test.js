@@ -5,6 +5,7 @@ import request from 'supertest';
 
 import createApp from '../../src/app.js';
 import { createAuthRouter } from '../../src/modules/auth/auth.routes.js';
+import { UnauthorizedError } from '../../src/utils/api-error.js';
 
 const refreshCookie = 'pb_refresh_token=refresh-1; Path=/api/v1/auth; HttpOnly';
 
@@ -204,3 +205,86 @@ test('POST /auth/logout-all clears refresh cookie after revoking sessions', asyn
   assert.equal(response.body.data.logged_out_all, true);
   assert.match(response.headers['set-cookie'][0], /pb_refresh_token=;/);
 });
+
+test('POST /auth/refresh skips setting cookie when skipCookieUpdate is true', async () => {
+  const app = createTestApp({
+    async refreshSession() {
+      return {
+        access_token: 'access-token-grace',
+        user: {
+          id: 'user-1',
+          phone: '+919876543210',
+          name: 'Asha Mehta',
+          onboarding_complete: true,
+        },
+        skipCookieUpdate: true,
+      };
+    },
+  });
+
+  const response = await request(app)
+    .post('/api/v1/auth/refresh')
+    .set('Cookie', refreshCookie)
+    .send({});
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.access_token, 'access-token-grace');
+  assert.equal(response.headers['set-cookie'], undefined);
+});
+
+test('SSR-style concurrent refresh simulation', async () => {
+  let callCount = 0;
+  const app = createTestApp({
+    async refreshSession() {
+      callCount++;
+      if (callCount === 1) {
+        return {
+          access_token: 'access-token-new-1',
+          refreshToken: { raw: 'refresh-token-new-1' },
+          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', onboarding_complete: true },
+        };
+      } else {
+        return {
+          access_token: 'access-token-new-1',
+          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', onboarding_complete: true },
+          skipCookieUpdate: true,
+        };
+      }
+    },
+  });
+
+  // Simulate parallel/concurrent requests from SSR layout and page
+  const [res1, res2] = await Promise.all([
+    request(app).post('/api/v1/auth/refresh').set('Cookie', refreshCookie).send({}),
+    request(app).post('/api/v1/auth/refresh').set('Cookie', refreshCookie).send({}),
+  ]);
+
+  assert.equal(res1.status, 200);
+  assert.equal(res2.status, 200);
+
+  const cookies1 = res1.headers['set-cookie'];
+  const cookies2 = res2.headers['set-cookie'];
+
+  const hasCookie1 = cookies1 && cookies1.some(c => c.includes('pb_refresh_token=refresh-token-new-1'));
+  const hasCookie2 = cookies2 && cookies2.some(c => c.includes('pb_refresh_token=refresh-token-new-1'));
+
+  // Ensure exactly one request rotated and set the cookie, the other skipped
+  assert.ok((hasCookie1 && !cookies2) || (!cookies1 && hasCookie2));
+});
+
+test('POST /auth/refresh returns 401 when token is revoked outside grace window', async () => {
+  const app = createTestApp({
+    async refreshSession() {
+      throw new UnauthorizedError('Refresh token has been revoked');
+    },
+  });
+
+  const response = await request(app)
+    .post('/api/v1/auth/refresh')
+    .set('Cookie', refreshCookie)
+    .send({});
+
+  assert.equal(response.status, 401);
+  assert.match(response.body.message, /Refresh token has been revoked/);
+});
+

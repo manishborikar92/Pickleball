@@ -86,7 +86,9 @@ export const createAuthController = ({ authService }) => ({
       refreshToken: req.cookies?.[getRefreshCookieName(config)],
     });
 
-    setRefreshCookie(res, config, result.refreshToken.raw);
+    if (!result.skipCookieUpdate) {
+      setRefreshCookie(res, config, result.refreshToken.raw);
+    }
     res.json(ApiResponse.success(authPayload(result), 'Session refreshed'));
   }),
 

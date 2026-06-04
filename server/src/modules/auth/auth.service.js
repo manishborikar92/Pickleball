@@ -298,15 +298,62 @@ export const createAuthService = ({
         throw new UnauthorizedError('Invalid refresh token');
       }
 
-      if (existing.revokedAt) {
-        await repository.revokeSession({
-          sessionId: existing.sessionId,
-          reason: 'refresh_token_reuse',
-        });
-        throw new UnauthorizedError('Refresh token has been revoked');
+      if (existing.expiresAt <= now) {
+        throw new UnauthorizedError('Refresh token expired');
       }
 
-      if (existing.expiresAt <= now || existing.session?.status === 'revoked') {
+      const handleGracePeriod = async (tokenRecord) => {
+        const currentNow = clock();
+        const timeSinceRevocation = currentNow.getTime() - tokenRecord.revokedAt.getTime();
+        const gracePeriodMs = 10000; // 10 seconds
+        const clockSkewToleranceMs = 2000; // 2 seconds
+
+        const isLegitimateConcurrentRefresh =
+          tokenRecord.replacedByTokenId !== null &&
+          tokenRecord.replacedByTokenId !== undefined &&
+          tokenRecord.session?.status === 'active' &&
+          timeSinceRevocation >= -clockSkewToleranceMs &&
+          timeSinceRevocation <= gracePeriodMs;
+
+        const authContext = await repository.getUserAuthContext(tokenRecord.userId);
+        const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
+        const permissions = authContext.permissions.length > 0
+          ? authContext.permissions
+          : ['view_own_bookings'];
+
+        if (isLegitimateConcurrentRefresh) {
+          const accessToken = createAccessToken({
+            userId: tokenRecord.userId,
+            sessionId: tokenRecord.sessionId,
+            roles,
+            permissions,
+            config: config.auth,
+            now: currentNow,
+          });
+          return {
+            access_token: accessToken,
+            expires_in: config.auth.accessTokenTtlSeconds,
+            user: serializeUser({ user: authContext.user }),
+            skipCookieUpdate: true,
+          };
+        } else {
+          if (tokenRecord.session?.status === 'active') {
+            await repository.revokeSession({
+              sessionId: tokenRecord.sessionId,
+              reason: 'refresh_token_reuse',
+            });
+          }
+          throw new UnauthorizedError('Refresh token has been revoked');
+        }
+      };
+
+      // If the token is already revoked, we check if it qualifies for the grace period.
+      if (existing.revokedAt) {
+        return handleGracePeriod(existing);
+      }
+
+      // For unrevoked tokens, we enforce that the parent session must be active.
+      if (existing.session?.status !== 'active') {
         throw new UnauthorizedError('Refresh token expired');
       }
 
@@ -315,19 +362,30 @@ export const createAuthService = ({
       const permissions = authContext.permissions.length > 0
         ? authContext.permissions
         : ['view_own_bookings'];
-      const tokenPair = await issueTokenPair({
-        user: authContext.user,
-        roles,
-        permissions,
-        sessionId: existing.sessionId,
-        parentRefreshTokenId: existing.id,
-        replaceRefreshTokenId: existing.id,
-      });
 
-      return {
-        ...tokenPair,
-        user: serializeUser({ user: authContext.user }),
-      };
+      try {
+        const tokenPair = await issueTokenPair({
+          user: authContext.user,
+          roles,
+          permissions,
+          sessionId: existing.sessionId,
+          parentRefreshTokenId: existing.id,
+          replaceRefreshTokenId: existing.id,
+        });
+
+        return {
+          ...tokenPair,
+          user: serializeUser({ user: authContext.user }),
+        };
+      } catch (err) {
+        if (err.message === 'TOKEN_ALREADY_ROTATED') {
+          const updatedToken = await repository.findRefreshTokenByHash(hashRefreshToken(refreshToken));
+          if (updatedToken && updatedToken.revokedAt) {
+            return handleGracePeriod(updatedToken);
+          }
+        }
+        throw err;
+      }
     },
 
     async logoutCurrent({ refreshToken }) {
