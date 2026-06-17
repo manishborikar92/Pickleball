@@ -1,0 +1,16 @@
+# Pickleball Booking Platform Context
+
+This repository contains a Next.js frontend and an Express.js/PostgreSQL backend for a Pickleball Court Booking Platform.
+
+## Primary Documentation
+- Main Index: [docs/00-INDEX.md](docs/00-INDEX.md)
+- AI Context Overview: [docs/ai/01-IMPLEMENTATION-OVERVIEW.md](docs/ai/01-IMPLEMENTATION-OVERVIEW.md)
+- Codebase Navigation: [docs/ai/02-CODEBASE-MAP.md](docs/ai/02-CODEBASE-MAP.md)
+- Spec Build Status & Traceability: [docs/ai/03-IMPLEMENTATION-STATUS.md](docs/ai/03-IMPLEMENTATION-STATUS.md)
+- Active Issues & Tech Debt: [docs/ai/04-ISSUES-AND-DEBT.md](docs/ai/04-ISSUES-AND-DEBT.md)
+- Maintenance Rules & Authority: [docs/ai/05-MAINTENANCE-RULES.md](docs/ai/05-MAINTENANCE-RULES.md)
+
+## Core Files
+- Server Router: [server/src/app.js](server/src/app.js)
+- Database Schema: [server/prisma/schema.prisma](server/prisma/schema.prisma)
+- Frontend Pages Root: [web/src/app](web/src/app)

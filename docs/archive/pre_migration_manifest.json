@@ -1,0 +1,62 @@
+{
+  "01-PROJECT-OVERVIEW.md": {
+    "hash": "7421ceeab04284f1e881cbf478cc774bb805e757bb5b1b3f3d4e6b9c01d4a2d6",
+    "lines": 125,
+    "words": 1095,
+    "size": 7208
+  },
+  "02-SETUP-GUIDE.md": {
+    "hash": "298e8d5e252dc05c3a054d614db14e0279809a72cab6f42bfa85f8d537775b65",
+    "lines": 363,
+    "words": 1772,
+    "size": 12333
+  },
+  "03-DATABASE-SCHEMA.md": {
+    "hash": "74c96c64deeb9caad607e7b1455e6392bfe482b4aab71041fc31701ffa2d3024",
+    "lines": 626,
+    "words": 4960,
+    "size": 29923
+  },
+  "04-BUSINESS-LOGIC.md": {
+    "hash": "70e63a7ecae2187af4ebbbbf66a3fd88cb8a0b7a34eb0271b7f3a6958f75694d",
+    "lines": 750,
+    "words": 5394,
+    "size": 36766
+  },
+  "05-UI-UX-SPECIFICATION.md": {
+    "hash": "af7328dae638372b2968b9d4ad00d5d2a4c3d3f6bdf09cf7be5a0539f374e7ae",
+    "lines": 647,
+    "words": 4543,
+    "size": 30695
+  },
+  "06-API-SPECIFICATION.md": {
+    "hash": "6f51d72116088ac8116e0ef672c8f362f1b12c1545d3e91980c30cbee0b2aeaf",
+    "lines": 1093,
+    "words": 4582,
+    "size": 36008
+  },
+  "07-WHATSAPP-INTEGRATION.md": {
+    "hash": "2bb80d44bccb26948b36ed193f9597a61131de9c620b0129eb9c5147f29fc611",
+    "lines": 303,
+    "words": 2305,
+    "size": 15733
+  },
+  "08-PAYMENT-INTEGRATION.md": {
+    "hash": "9b8748f9d6e31d81dd21725632ea87ecfcba92ffb900ff861d14f8b05d4ccd06",
+    "lines": 877,
+    "words": 4134,
+    "size": 33905
+  },
+  "10-COSTING-ANALYSIS.md": {
+    "hash": "7a7ec0c361bc26a652a2c6e93117721c939bc26de9f063dcd10037507e42c621",
+    "lines": 198,
+    "words": 1208,
+    "size": 6947
+  },
+  "11-FUTURE-WORK.md": {
+    "hash": "030198ba5c259b7d9468b6114faafe4a5ecdb4ba30b26a5df94a7ca5b47a2dc9",
+    "lines": 47,
+    "words": 453,
+    "size": 3444
+  }
+}
