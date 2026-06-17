@@ -122,3 +122,11 @@ User Browser / Mobile
 | Payment webhook idempotency | Must handle duplicate signals without side effects |
 | Legal compliance | Digital liability waiver with logged timestamp, IP, and verified phone |
 | Accessibility | Yet to be decided |
+
+---
+
+## 7. Complementary Technical Indexes
+*   **Documentation Index**: Refer to [docs/00-INDEX.md](00-INDEX.md) for a map of other product specs.
+*   **Code Implementation Status**: Refer to [docs/ai/10-IMPLEMENTATION-STATUS.md](ai/10-IMPLEMENTATION-STATUS.md) to inspect which of these specifications are currently implemented, partially implemented, planned, or blocked in the codebase.
+
+
