@@ -1,112 +1,83 @@
 # Documentation Architecture Migration Report
 
-This report documents the execution and final validation of the documentation refactoring, renaming, and link cleanup migration.
+This report documents the execution, structure, and post-migration validation checks for the Option C documentation reorganization.
 
 ---
 
-## 1. Directory & File Rename Summary
+## 1. Directory Reorganization & Relocation Matrix
 
-All AI technical context files have been renamed to use the standard numbered uppercase hyphenated naming convention. The API endpoint files were relocated to a new `05-API/` directory.
+All documentation files have been relocated into distinct domain directories. The legacy `docs/ai/` folder has been pruned.
 
-### 1.1 Folder Rename
-*   **Moved**: `docs/ai/api/` $\rightarrow$ `docs/ai/05-API/`
+### 1.1 Files Moved
 
-### 1.2 File Rename Log
-*   `docs/ai/01_project_context.md` $\rightarrow$ `docs/ai/01-PROJECT-CONTEXT.md`
-*   `docs/ai/02_architecture.md` $\rightarrow$ `docs/ai/02-ARCHITECTURE.md`
-*   `docs/ai/03_business_rules.md` $\rightarrow$ `docs/ai/03-BUSINESS-RULES.md`
-*   `docs/ai/04_database.md` $\rightarrow$ `docs/ai/04-DATABASE.md`
-*   `docs/ai/api/_index.md` $\rightarrow$ `docs/ai/05-API/00-INDEX.md`
-*   `docs/ai/api/auth.md` $\rightarrow$ `docs/ai/05-API/01-AUTH.md`
-*   `docs/ai/api/users.md` $\rightarrow$ `docs/ai/05-API/02-USERS.md`
-*   `docs/ai/api/bookings.md` $\rightarrow$ `docs/ai/05-API/03-BOOKINGS.md`
-*   `docs/ai/api/payments.md` $\rightarrow$ `docs/ai/05-API/04-PAYMENTS.md`
-*   `docs/ai/api/admin.md` $\rightarrow$ `docs/ai/05-API/05-ADMIN.md`
-*   `docs/ai/06_frontend.md` $\rightarrow$ `docs/ai/06-FRONTEND.md`
-*   `docs/ai/07_backend.md` $\rightarrow$ `docs/ai/07-BACKEND.md`
-*   `docs/ai/08_integrations.md` $\rightarrow$ `docs/ai/08-INTEGRATIONS.md`
-*   `docs/ai/09_development_guide.md` $\rightarrow$ `docs/ai/09-DEVELOPMENT-GUIDE.md`
-*   `docs/ai/10_implementation_status.md` $\rightarrow$ `docs/ai/10-IMPLEMENTATION-STATUS.md`
-*   `docs/ai/11_active_issues.md` $\rightarrow$ `docs/ai/11-ACTIVE-ISSUES.md`
-*   `docs/ai/12_technical_debt_and_deferred_work.md` $\rightarrow$ `docs/ai/12-TECHNICAL-DEBT-AND-DEFERRED-WORK.md`
-*   `docs/ai/13_decision_history.md` $\rightarrow$ `docs/ai/13-DECISION-HISTORY.md`
-*   `docs/ai/14_maintenance_rules.md` $\rightarrow$ `docs/ai/14-MAINTENANCE-RULES.md`
+| Original Path | Target Path | Domain |
+|:---|:---|:---|
+| `docs/01-PROJECT-OVERVIEW.md` | `docs/product/01-PROJECT-OVERVIEW.md` | Product |
+| `docs/ai/01-PROJECT-CONTEXT.md` | `docs/product/02-PROJECT-CONTEXT.md` | Product |
+| `docs/04-BUSINESS-LOGIC.md` | `docs/product/03-BUSINESS-LOGIC.md` | Product |
+| `docs/05-UI-UX-SPECIFICATION.md` | `docs/product/04-UI-UX-SPECIFICATION.md` | Product |
+| `docs/10-COSTING-ANALYSIS.md` | `docs/product/05-COSTING-ANALYSIS.md` | Product |
+| `docs/11-FUTURE-WORK.md` | `docs/product/06-FUTURE-WORK.md` | Product |
+| `docs/ai/02-ARCHITECTURE.md` | `docs/architecture/01-SYSTEM-DESIGN.md` | Architecture |
+| `docs/03-DATABASE-SCHEMA.md` | `docs/architecture/02-DATABASE-SCHEMA.md` | Architecture |
+| `docs/ai/04-DATABASE.md` | `docs/architecture/03-DATABASE-MODEL.md` | Architecture |
+| `docs/ai/06-FRONTEND.md` | `docs/architecture/04-FRONTEND.md` | Architecture |
+| `docs/ai/07-BACKEND.md` | `docs/architecture/05-BACKEND.md` | Architecture |
+| `docs/ai/03-BUSINESS-RULES.md` | `docs/architecture/06-BUSINESS-RULES.md` | Architecture |
+| `docs/ai/05-API/00-INDEX.md` | `docs/architecture/api/00-INDEX.md` | Architecture (API) |
+| `docs/ai/05-API/01-AUTH.md` | `docs/architecture/api/01-AUTH.md` | Architecture (API) |
+| `docs/ai/05-API/02-USERS.md` | `docs/architecture/api/02-USERS.md` | Architecture (API) |
+| `docs/ai/05-API/03-BOOKINGS.md` | `docs/architecture/api/03-BOOKINGS.md` | Architecture (API) |
+| `docs/ai/05-API/04-PAYMENTS.md` | `docs/architecture/api/04-PAYMENTS.md` | Architecture (API) |
+| `docs/ai/05-API/05-ADMIN.md` | `docs/architecture/api/05-ADMIN.md` | Architecture (API) |
+| `docs/ai/09-DEVELOPMENT-GUIDE.md`| `docs/operations/01-DEVELOPMENT-GUIDE.md` | Operations |
+| `docs/02-SETUP-GUIDE.md` | `docs/operations/02-INFRASTRUCTURE-SETUP.md`| Operations |
+| `docs/ai/14-MAINTENANCE-RULES.md` | `docs/operations/03-MAINTENANCE-RULES.md` | Operations |
+| `docs/ai/10-IMPLEMENTATION-STATUS.md`| `docs/operations/04-IMPLEMENTATION-STATUS.md` | Operations |
+| `docs/ai/11-ACTIVE-ISSUES.md` | `docs/operations/05-ACTIVE-ISSUES.md` | Operations |
+| `docs/ai/12-TECHNICAL-DEBT-AND-DEFERRED-WORK.md` | `docs/operations/06-TECHNICAL-DEBT.md` | Operations |
+| `docs/ai/13-DECISION-HISTORY.md` | `docs/adrs/00-INDEX.md` | Historical |
 
----
+### 1.2 Files Merged
+*   `docs/07-WHATSAPP-INTEGRATION.md`, `docs/08-PAYMENT-INTEGRATION.md`, and `docs/ai/08-INTEGRATIONS.md` were merged into a single external service design document: **`docs/architecture/07-INTEGRATIONS.md`**.
 
-## 2. Link Update & Reference Cleanup Summary
+### 1.3 Files Archived
+*   All original legacy documentation files (direct files under `docs/` and the entire `docs/ai/` directory) have been copied to **`docs/archive/documentation-migration/`** for safety, review, and rollback capabilities.
 
-*   **Absolute Link Removal**: Run repository-wide search for patterns: `file:///`, `c:/`, `Users/manis`, and `Projects/Pickleball`. All absolute workspace links were replaced with repository-relative links.
-*   **Path Updates**: All file links in `llms.txt`, `docs/00-INDEX.md`, and `docs/ai/00-INDEX.md` were updated to point to the new uppercase filenames and the `05-API/` directory.
-
----
-
-## 3. Duplicate Content Cleanup Summary
-
-*   **Database Specifications**: Column layouts in `docs/ai/04-DATABASE.md` were pruned. It now maps the tables, references the actual schema in [schema.prisma](../../server/prisma/schema.prisma), and lists business meanings in [03-DATABASE-SCHEMA.md](../03-DATABASE-SCHEMA.md).
-*   **API Specification**: Duplicate payload blocks in `docs/06-API-SPECIFICATION.md` were pruned, redirecting developers to the canonical contracts in `docs/ai/05-API/`.
-*   **Development Instructions**: Local npm commands and database migration configurations were pruned from `docs/02-SETUP-GUIDE.md` and consolidated in [09-DEVELOPMENT-GUIDE.md](../ai/09-DEVELOPMENT-GUIDE.md).
-
----
-
-## 4. Final Ownership Matrix
-
-*   **Product Intent (`docs/`)**: Business specifications, user wireframes, legal regulations, costing analysis.
-*   **Technical Reality (`docs/ai/`)**: Active implementation maps, Mermaid relationship grids, development guides, API JSON payloads.
-*   **Historical Decisions (`docs/adrs/`)**: ADR logs detailing key architectural selections.
+### 1.4 Files Removed
+*   `docs/ai/00-INDEX.md` (pruned; superseded by root `docs/README.md` and domain indexes).
+*   `docs/06-API-SPECIFICATION.md` (pruned; superseded by modular specifications under `docs/architecture/api/`).
+*   `docs/ai/` directory (pruned completely).
 
 ---
 
-## 5. Final Documentation Structure
+## 2. Duplicate Content Cleanup
 
-```
-/ (Project Root)
-├── llms.txt                         # The root navigation map for AI engines
-├── README.md                        # Root developer & AI gateway README
-└── docs/
-    ├── 00-INDEX.md                  # Product Specification Index
-    ├── (Static product specs: 01-PROJECT-OVERVIEW.md, etc.)
-    ├── adrs/                        # Individual Architectural Decision Records
-    ├── reports/                     # Migration validation reports
-    │   └── DOCUMENTATION-MIGRATION-REPORT.md
-    └── ai/
-        ├── 00-INDEX.md              # Technical Context Index
-        ├── 01-PROJECT-CONTEXT.md    # Business objectives and user journeys
-        ├── 02-ARCHITECTURE.md       # Headless topology, vm deployment
-        ├── 03-BUSINESS-RULES.md     # Pricing waterfalls, RBAC matrix, slot locks
-        ├── 04-DATABASE.md           # Database model & schema file links
-        ├── 05-API/                  # Modular API Subdirectory
-        │   ├── 00-INDEX.md          # API headers, errors envelopes
-        │   ├── 01-AUTH.md           # Customer OTP & Staff login contracts
-        │   ├── 02-USERS.md          # Onboarding name collections
-        │   ├── 03-BOOKINGS.md       # Slot holdings & price preview
-        │   ├── 04-PAYMENTS.md       # PhonePe webhooks schemas
-        │   └── 05-ADMIN.md          # Walk-ins & override blocks
-        ├── 06-FRONTEND.md           # Next.js app routes, styling theme variables
-        ├── 07-BACKEND.md            # Express directories, middleware pipeline flow
-        ├── 08-INTEGRATIONS.md       # PhonePe webhook keys, WhatsApp templates
-        ├── 09-DEVELOPMENT-GUIDE.md  # Run scripts, testing suites, migrations
-        ├── 10-IMPLEMENTATION-STATUS.md # Current state tracking matrix
-        ├── 11-ACTIVE-ISSUES.md      # Sandbox limits, onboarding stubs
-        ├── 12-TECHNICAL-DEBT-AND-DEFERRED-WORK.md # Caching debt, deferred items
-        ├── 13-DECISION-HISTORY.md   # ADR links and index summaries
-        └── 14-MAINTENANCE-RULES.md  # Governance check matrices
-```
+*   **RBAC Permissions & Sessions**: Pruned the duplicate permissions mapping matrix table and session security parameters from product workflows (`docs/product/03-BUSINESS-LOGIC.md`), linking directly to `docs/architecture/06-BUSINESS-RULES.md`.
+*   **Database Specifications**: Split database definitions into business meanings (`docs/architecture/02-DATABASE-SCHEMA.md`) and technical Prisma mapping/ Mermaid ER structure (`docs/architecture/03-DATABASE-MODEL.md`), pruning columns definitions duplication.
+*   **Development Scripts**: Pruned local development run/migration commands from the infrastructure setup guide (`docs/operations/02-INFRASTRUCTURE-SETUP.md`), linking to the unified development guide (`docs/operations/01-DEVELOPMENT-GUIDE.md`).
 
 ---
 
-## 6. Validation Results
+## 3. References & Indexes Updated
 
-*   **Old Filenames References check**: Passed (0 occurrences found).
-*   **Old `docs/ai/api/` Path check**: Passed (0 occurrences found).
-*   **Lowercase AI Filenames check**: Passed (0 occurrences found).
-*   **file:/// absolute link check**: Passed (0 occurrences found).
-*   **Local absolute path check**: Passed (0 occurrences found).
-*   **Broken relative links check**: Passed (All relative paths resolve correctly).
-*   **Index verification**: Checked and verified for `README.md`, `llms.txt`, `docs/00-INDEX.md`, and `docs/ai/00-INDEX.md`.
+*   **`llms.txt`**: Completely rewritten to point to all new locations under the domain-based folders.
+*   **`README.md` (root)**: Updated to match the new Option C documentation directory topology.
+*   **`docs/README.md`**: Created new root human-friendly index Table of Contents.
+*   **`docs/00-INDEX.md`**: Retained and updated to index product-facing specs.
+*   **`docs/adrs/00-INDEX.md`**: Retained and updated to index ADR files.
+*   **Relative link fix execution**: Run Python script `fix_links.py` to recursively scan all markdown files and update relative cross-references.
 
 ---
 
-## 7. Remaining Manual Review Items
+## 4. Post-Migration Validation Results
 
-*   **Readmes Overwrites**: Audit completed for `server/README.md` and `web/README.md`. Awaiting user approval to deploy the replacement contents.
+Validation checks were run using `validate_links.py` across all documentation directories.
+
+*   **Broken Relative Links**: 0 found (all links resolve to existing, active files).
+*   **Legacy `docs/ai/` Path References**: 0 found (all paths successfully converted to new domain paths).
+*   **Forbidden `file:///` URLs**: 0 found.
+*   **Absolute Local Filesystem Paths / Drive letters**: 0 found.
+*   **Machine-specific Paths / Username mentions**: 0 found.
+*   **Lowercase AI filename patterns**: 0 found.
+*   **Duplicate Ownership Conflicts**: 0 found (every document maps to a single canonical folder domain).

@@ -6,43 +6,47 @@ This file acts as a structural index and entry point for LLMs, AI coding assista
 
 ## 1. Documentation Index Directories
 
-* **Product Index**: Refer to [docs/00-INDEX.md](docs/00-INDEX.md) for human-readable product requirements and business setup checklists.
-* **Technical Index**: Refer to [docs/ai/00-INDEX.md](docs/ai/00-INDEX.md) for AI-readable codebase maps, active statuses, and dev guides.
+*   **Human Developers Index**: Refer to [docs/README.md](docs/README.md) for the central Table of Contents.
+*   **Product Layer Index**: Refer to [docs/00-INDEX.md](docs/00-INDEX.md) for high-level business story maps and costing rules intent.
+*   **Decisions Log Index**: Refer to [docs/adrs/00-INDEX.md](docs/adrs/00-INDEX.md) for historical ADRs.
 
 ---
 
 ## 2. Directory Structure Map
 
-All technical context, architecture maps, and schemas are located in the repository under `docs/ai/`.
+All business and technical specifications are structured into domain-based directories inside `docs/`.
 
 | File | Relative Path | Purpose |
 |:---|:---|:---|
-| **Project Context** | [docs/ai/01-PROJECT-CONTEXT.md](docs/ai/01-PROJECT-CONTEXT.md) | Business goals, Besa Nagpur scope, customer & staff user flows. |
-| **Architecture** | [docs/ai/02-ARCHITECTURE.md](docs/ai/02-ARCHITECTURE.md) | Headless design (Next.js + Express + Postgres) & deployment model. |
-| **Business Rules** | [docs/ai/03-BUSINESS-RULES.md](docs/ai/03-BUSINESS-RULES.md) | State transitions, Pricing waterfall rules, and RBAC matrix. |
-| **Database Schema** | [docs/ai/04-DATABASE.md](docs/ai/04-DATABASE.md) | Prisma mappings, indexes, venue-tenant structure, and schema diagrams. |
-| **API Directory** | [docs/ai/05-API/](docs/ai/05-API/) | Directory containing modular endpoint definitions and authentication. |
-| **Frontend Layout** | [docs/ai/06-FRONTEND.md](docs/ai/06-FRONTEND.md) | Next.js route groups, proxy.js matchers, styling rules, and variables. |
-| **Backend Modules** | [docs/ai/07-BACKEND.md](docs/ai/07-BACKEND.md) | Express app structure, module divisions, and middleware pipelines. |
-| **Integrations** | [docs/ai/08-INTEGRATIONS.md](docs/ai/08-INTEGRATIONS.md) | PhonePe PG webhooks & Meta WhatsApp OTP configurations. |
-| **Development Guide**| [docs/ai/09-DEVELOPMENT-GUIDE.md](docs/ai/09-DEVELOPMENT-GUIDE.md) | Run scripts, testing suites, migrations, seed setups, and env vars. |
-| **Implementation Status**| [docs/ai/10-IMPLEMENTATION-STATUS.md](docs/ai/10-IMPLEMENTATION-STATUS.md) | Implemented, Partially Implemented, Planned, and Blocked features. |
-| **Active Issues** | [docs/ai/11-ACTIVE-ISSUES.md](docs/ai/11-ACTIVE-ISSUES.md) | Active bugs, failing test descriptions, and runtime anomalies. |
-| **Technical Debt** | [docs/ai/12-TECHNICAL-DEBT-AND-DEFERRED-WORK.md](docs/ai/12-TECHNICAL-DEBT-AND-DEFERRED-WORK.md) | Technical debt, stubs, and work deferred beyond the MVP. |
-| **Decision History** | [docs/ai/13-DECISION-HISTORY.md](docs/ai/13-DECISION-HISTORY.md) | ADR summary table and reference links. |
-| **Maintenance Rules** | [docs/ai/14-MAINTENANCE-RULES.md](docs/ai/14-MAINTENANCE-RULES.md) | The strict change matrix and completion checklist. |
+| **Product Specifications** | | |
+| Project Overview | [docs/product/01-PROJECT-OVERVIEW.md](docs/product/01-PROJECT-OVERVIEW.md) | Business goals, Nagpur Besa facility (2 courts), MVP vs. Deferred lists. |
+| Project Context | [docs/product/02-PROJECT-CONTEXT.md](docs/product/02-PROJECT-CONTEXT.md) | Customer and staff user journeys, roles overview, and contextual scoping rules. |
+| Business Logic | [docs/product/03-BUSINESS-LOGIC.md](docs/product/03-BUSINESS-LOGIC.md) | Customer login workflows, onboarding path intents, and refunds logic. |
+| UI/UX Specification | [docs/product/04-UI-UX-SPECIFICATION.md](docs/product/04-UI-UX-SPECIFICATION.md) | Design tokens, layouts grids, styling standards, and font guidelines. |
+| Costing Analysis | [docs/product/05-COSTING-ANALYSIS.md](docs/product/05-COSTING-ANALYSIS.md) | Monthly/yearly expense estimates (VM, WhatsApp API, domains, SSL). |
+| Future Work | [docs/product/06-FUTURE-WORK.md](docs/product/06-FUTURE-WORK.md) | Gamification ideas, loyalty rewards, WebSockets sync, and Redis limits. |
+| **Technical Design** | | |
+| System Design | [docs/architecture/01-SYSTEM-DESIGN.md](docs/architecture/01-SYSTEM-DESIGN.md) | Topology boundaries, hosting containers (Hetzner + Cloudflare), SSL. |
+| Database Schema | [docs/architecture/02-DATABASE-SCHEMA.md](docs/architecture/02-DATABASE-SCHEMA.md) | Table-level business meanings, columns descriptions, and relational prose. |
+| Database Model | [docs/architecture/03-DATABASE-MODEL.md](docs/architecture/03-DATABASE-MODEL.md) | Prisma client database mappings, schema index rules, and Mermaid ER diagram. |
+| Frontend Design | [docs/architecture/04-FRONTEND.md](docs/architecture/04-FRONTEND.md) | Next.js routing patterns, proxy matchers, and global styling tokens. |
+| Backend Design | [docs/architecture/05-BACKEND.md](docs/architecture/05-BACKEND.md) | Express app structure, folder divisions, and middleware execution flow. |
+| Business Rules | [docs/architecture/06-BUSINESS-RULES.md](docs/architecture/06-BUSINESS-RULES.md) | Technical pricing waterfalls, slot lock timer limits, and RBAC matrix. |
+| Integrations | [docs/architecture/07-INTEGRATIONS.md](docs/architecture/07-INTEGRATIONS.md) | Unified PhonePe API v2 redirected signatures, WhatsApp template parameters. |
+| API Specs Index | [docs/architecture/api/00-INDEX.md](docs/architecture/api/00-INDEX.md) | Entry point mapping modular API request/response payloads. |
+| **Operations Guides** | | |
+| Development Guide | [docs/operations/01-DEVELOPMENT-GUIDE.md](docs/operations/01-DEVELOPMENT-GUIDE.md) | Dev env setup, seed configurations, migrations, and test commands. |
+| Infrastructure Setup | [docs/operations/02-INFRASTRUCTURE-SETUP.md](docs/operations/02-INFRASTRUCTURE-SETUP.md) | Hetzner provisioning, Dokploy deployments, and environment keys. |
+| Maintenance Rules | [docs/operations/03-MAINTENANCE-RULES.md](docs/operations/03-MAINTENANCE-RULES.md) | Rule governance, documentation triggers checklist, anti-drift rule. |
+| Implementation Status | [docs/operations/04-IMPLEMENTATION-STATUS.md](docs/operations/04-IMPLEMENTATION-STATUS.md) | Matrix tracking implemented vs planned/deferred modules. |
+| Active Issues | [docs/operations/05-ACTIVE-ISSUES.md](docs/operations/05-ACTIVE-ISSUES.md) | Logs of active sandbox bugs, runtime warnings, or test issues. |
+| Technical Debt | [docs/operations/06-TECHNICAL-DEBT.md](docs/operations/06-TECHNICAL-DEBT.md) | Deferred optimizations, database index stubs, caching debt. |
 
 ---
 
 ## 3. Core Repository Hierarchy Rules
 
 1. **Codebase (`/server`, `/web`)**: The absolute source of truth for what is actually implemented and running.
-2. **AI Docs (`/docs/ai`)**: The source of truth for the codebase's current technical architecture and implementation state.
-3. **Product Docs (`/docs`)**: The source of truth for target product intent, business requirements, and specifications.
+2. **Architecture / Design (`/docs/architecture`)**: The source of truth for the codebase's current technical design and data structures.
+3. **Product Intent (`/docs/product`)**: The source of truth for target product intent, business requirements, and specifications.
 4. **ADRs (`/docs/adrs`)**: The source of truth for historical decisions and technical rationale.
-
----
-
-## 4. Quick Start (Onboarding)
-* Refer to [docs/ai/09-DEVELOPMENT-GUIDE.md](docs/ai/09-DEVELOPMENT-GUIDE.md) to launch the dev environment, run the database migrations, and execute tests.
-* Refer to [docs/ai/10-IMPLEMENTATION-STATUS.md](docs/ai/10-IMPLEMENTATION-STATUS.md) to inspect the current state of features before starting code modifications.
