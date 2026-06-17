@@ -3,7 +3,7 @@
 This repository contains a Next.js frontend and an Express.js/PostgreSQL backend for a Pickleball Court Booking Platform.
 
 ## Primary Documentation
-- Main Index: [docs/00-INDEX.md](docs/00-INDEX.md)
+- Main Index: [docs/INDEX.md](docs/INDEX.md)
 - AI Context Overview: [docs/ai/01-IMPLEMENTATION-OVERVIEW.md](docs/ai/01-IMPLEMENTATION-OVERVIEW.md)
 - Codebase Navigation: [docs/ai/02-CODEBASE-MAP.md](docs/ai/02-CODEBASE-MAP.md)
 - Spec Build Status & Traceability: [docs/ai/03-IMPLEMENTATION-STATUS.md](docs/ai/03-IMPLEMENTATION-STATUS.md)

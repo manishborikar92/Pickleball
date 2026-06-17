@@ -38,7 +38,7 @@ Any code modification must trigger updates to the corresponding documentation an
 - **Feature Completion/Modification**: Update checklists and status in `docs/ai/03-IMPLEMENTATION-STATUS.md`.
 - **Directory Restructuring / Package Updates**: Update `docs/ai/02-CODEBASE-MAP.md` and the root `llms.txt`.
 - **Known Bugs or Test Failures**: Update `docs/ai/04-ISSUES-AND-DEBT.md`.
-- **New Architecture Decisions**: Add a file to `docs/adrs/` and add a new row in the ADR registry section of `docs/00-INDEX.md`.
+- **New Architecture Decisions**: Add a file to `docs/adrs/` and add a new row in the ADR registry section of `docs/INDEX.md`.
 
 ---
 
