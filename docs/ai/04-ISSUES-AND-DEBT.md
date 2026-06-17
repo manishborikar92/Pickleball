@@ -1,33 +1,63 @@
 # 04-ISSUES-AND-DEBT
 
-This document tracks active bugs, test suite failures, environment anomalies, specification-to-code divergences, planned refactors, and technical compromises.
+This document logs active codebase issues, test suite statuses, environment sandbox behaviors, planned refactoring operations, and technical compromises (debt).
 
-## 1. Active Codebase Bugs
-*No active codebase bugs are reported.*
+---
 
-## 2. Test Suite Status
-- **Backend Tests (`server/tests/`)**: All 51 native Node.js unit and integration tests are passing successfully.
+## 1. Active Issues & Anomalies
+
+### 1.1 Codebase Bugs
+- *No active codebase bugs are reported.*
+- Bugs are logged here upon verification of unit/integration test failures or reports from staging environments. Resolving a bug and committing its fix removes it from this file.
+
+### 1.2 Environment Discrepancies
+- **Local OTP Provider Fallback**: The development environment logs OTP codes directly to the terminal console when Meta Cloud API credentials are unset. This allows local developer setup without Meta billing accounts.
+- **SQLite vs PostgreSQL Testing Constraints**: Development uses PostgreSQL, but testing utilizes in-memory databases or mock pools. Minor variations in SQL behavior (such as `SELECT FOR UPDATE` syntax) must be verified on local dev environments running PostgreSQL.
+
+---
+
+## 2. Test Suite Execution & Status
+
+Our QA gating requires all tests to pass prior to merging.
+
+### 2.1 Backend Tests (`server/tests/`)
+- **Framework**: Built using the native Node.js test runner (`node --test`), keeping testing free of third-party package dependencies like Jest.
+- **Pass Metrics**: All 51 native test cases are passing successfully.
   - Passes: 51
   - Failures: 0
-- **Frontend Tests (`web/tests/`)**: Standard build checks are passing. Next.js static builds compile without warnings.
+- **Execution Command**:
+  ```bash
+  cd server/
+  npm run test
+  ```
 
-## 3. Environment Discrepancies
-- **Local OTP Provider in Sandbox**: The local development server falls back to logging OTP codes directly to the terminal console when Meta Cloud API credentials are unset. This is expected behavior for local development.
-
----
-
-## 4. Specification-to-Code Divergences
-- **Dedicated Onboarding View Redirects**: The specifications ([03-UI-UX-SPECIFICATION.md](../product/03-UI-UX-SPECIFICATION.md)) did not explicitly outline the `next` redirect parameter behavior for returning to intermediate booking paths from `/onboarding`. The actual implementation uses a query-string parameter `?next=/dashboard` or `?next=/book` to preserve user paths.
-- **Roles in JWT**: To avoid queries on protected route verification, the user's role list is cached inside the JWT access token subject payload directly, which deviates from checking DB tables on *every* route, though permission tables are still queried.
-
----
-
-## 5. Planned Refactors
-- **Modular Scheduling Engine**: Once the scheduling engine is built, it must be isolated inside a dedicated backend module (`server/src/modules/scheduling`) rather than being attached to the `users` or `auth` modules.
-- **Unified OTP Flow in Frontend**: The frontend handles OTP onboarding prompts in both a global popup modal and a dedicated `/login` page. The shared steps should be thoroughly tested under a single automated end-to-end framework once Cypress or Playwright is introduced.
+### 2.2 Frontend Builds (`web/`)
+- Next.js static compilation checks pass with zero warnings.
+- **Execution Command**:
+  ```bash
+  cd web/
+  npm run build
+  ```
 
 ---
 
-## 6. Technical Compromises (Debt)
-- **PostgreSQL Session Revocation**: Session tracking is currently backed directly by PostgreSQL tables (`auth_sessions` and `refresh_tokens`). While suitable for launch, as traffic grows, database read/write volume for cookie rotation will increase. This should be migrated to Redis.
-- **Local In-Memory Grace Period**: Silent concurrent refresh requests are validated using an in-memory rotation log on the server instance. This limits scalability to a single server instance. Multi-instance scaling will require a shared Redis state store.
+## 3. Planned Refactoring Actions
+
+- **Scheduling Isolation**: When implementing the scheduling system, we will isolate it in `server/src/modules/scheduling/` instead of expanding `users` or `auth` modules. This preserves domain separation boundaries.
+- **Unified OTP Mock Testing**: The frontend handles OTP prompts in both a booking AuthModal bottom-sheet and a standalone `/login` page. Shared verification components should be tested using unified end-to-end integration tests (Cypress/Playwright) once added to the repository.
+
+---
+
+## 4. Technical Compromises & Debt
+
+As development progresses, we record architectural compromises to ensure they are addressed in future scaling cycles:
+
+### 4.1 Database-Backed Session Rotation
+- **Compromise**: Session tokens and refresh histories are stored directly in PostgreSQL tables (`auth_sessions` and `refresh_tokens`).
+- **Debt Impact**: Rotating refresh tokens on every API call increases database write IOPS.
+- **Remediation Plan**: As traffic scales, we will migrate these active session tables to a Redis cache layer, using PostgreSQL only for persistent user profile backups.
+
+### 4.2 In-Memory Silent Concurrent Refresh Grace Period
+- **Compromise**: To handle concurrent silent refresh requests from client applications, the Express backend verifies active refresh tokens using an in-memory rotation log.
+- **Debt Impact**: The grace period cache is instance-specific. If the backend scales horizontally to multiple VM instances, concurrent refreshes routed to different instances will fail.
+- **Remediation Plan**: Multi-instance scaling will require migrating the grace period cache from local in-memory stores to a shared Redis cluster.

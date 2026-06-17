@@ -1,8 +1,12 @@
 # 02-CODEBASE-MAP
 
-This document maps the repository layout, domain boundaries, module relationships, package dependencies, and requirement-to-file traceability.
+This document maps the repository layout, domain boundaries, module relationships, package dependencies, and requirement-to-file traceability mapping.
 
-## 1. Repository Layout & Navigation
+---
+
+## 1. Repository Layout & File Mapping
+
+The Pickleball platform uses a monorepo-adjacent layout split into Next.js App Router frontend and Express.js REST API backend:
 
 ```
 /
@@ -15,6 +19,8 @@ This document maps the repository layout, domain boundaries, module relationship
 │   └── adrs/                      # Architectural Decision Records
 ├── server/                        # Express.js REST API
 │   ├── prisma/                    # Schema definition and seeding
+│   │   ├── schema.prisma          # Database schemas and index designs
+│   │   └── seed.js                # Seed scripts for roles and venues
 │   ├── src/                       # Source files
 │   │   ├── config/                # Environment configuration
 │   │   ├── core/                  # Lifecycle hooks
@@ -22,6 +28,9 @@ This document maps the repository layout, domain boundaries, module relationship
 │   │   ├── middleware/            # Rate limiting, auth, logging guards
 │   │   └── modules/               # Domain-driven backend modules
 │   │       ├── auth/              # Customer OTP & staff password logic
+│   │       │   ├── auth.controller.js
+│   │       │   ├── auth.service.js
+│   │       │   └── otp.provider.js
 │   │       ├── health/            # Liveness/Readiness endpoints
 │   │       ├── openapi/           # OpenAPI routers and docs UI
 │   │       └── users/             # User profiles and wallet details
@@ -40,36 +49,50 @@ This document maps the repository layout, domain boundaries, module relationship
 
 ---
 
-## 2. Module Ownership & Dependencies
+## 2. Module Ownership & Maintenance Guidelines
 
-### 2.1 Backend Module Ownership (`server/package.json`)
-- **Database Connection**: Managed by `server/src/lib/prisma.js` (Prisma client instance).
-- **Authentication**: Managed by `server/src/modules/auth/` (OTP provider, JWT generation, password validation).
-- **User Profiles**: Managed by `server/src/modules/users/` (profile lookup, updates, and wallet transactional tables).
-- **Express Backend Dependencies**: `@prisma/client`, `prisma` CLI, `joi` (validation), `bcrypt` (staff security), `helmet` (HTTP headers), `express-rate-limit`, `cookie-parser`.
-- **Test Infrastructure**: Express modular service checks run via native `node --test` runner using `supertest` for REST request mocking.
+### 2.1 Backend Modules (`server/src/modules/`)
+- **Database Client Layer (`server/src/lib/prisma.js`)**: Configures the connection pool, handles transaction logging, and logs query metrics. *Owner: Database Architect*.
+- **Authentication Module (`server/src/modules/auth/`)**: Handles OTP dispatch via WhatsApp API, credential verification, and JSON Web Token (JWT) session cookies. *Owner: Security Engineer*.
+- **User Profile & Wallet Module (`server/src/modules/users/`)**: Manages user onboard states, user profile fields, and wallet ledger logs. *Owner: Core Developer*.
+- **API Spec & OpenAPI Modules (`server/src/modules/openapi/`)**: Compiles Swagger specs and serves OpenAPI schemas. *Owner: Tech Lead*.
 
-### 2.2 Frontend Module Ownership (`web/package.json`)
-- **Routing & Gatekeeping**: Managed by `web/proxy.js` (Next.js middleware-equivalent interceptor) and `web/src/lib/proxy-core.js`.
-- **Dashboard & Account Panels**: Managed by `web/src/app/(app)/dashboard` and subfolders.
-- **Booking & Slot Selection UI**: Managed by `web/src/app/(public)/booking` (React page state holds consecutive slot parameters).
-- **Staff Control Portals**: Managed by `web/src/app/(staff)/admin`.
-- **Next.js Frontend Dependencies**: `next` (React framework), `react`, `react-dom`, `tailwindcss` (CSS styling).
+### 2.2 Frontend Components (`web/src/`)
+- **Proxy Interception (`web/proxy.js` & `web/src/lib/proxy-core.js`)**: Extracts auth headers from incoming secure requests. *Owner: Security Engineer*.
+- **Onboarding Page (`web/src/app/(auth)/onboarding`)**: Handles onboarding flows. *Owner: Frontend Engineer*.
+- **Private Dashboard (`web/src/app/(app)/dashboard`)**: Renders bookings list, wallet balance, and transaction history. *Owner: Frontend Engineer*.
+- **Admin Panel (`web/src/app/(staff)/admin`)**: Operator interface for schedules. *Owner: Frontend Engineer*.
 
 ---
 
-## 3. Specification-to-Code Traceability Mapping
+## 3. Dependency Mapping & Rationales
 
-This table maps the product specifications to their database schemas, REST APIs, backend modules, and frontend pages.
+### 3.1 Backend Dependencies (`server/package.json`)
+- **Prisma Client (`@prisma/client`)**: Chosen for type-safe query generation, migrations, and declarative database schema definitions.
+- **Joi (`joi`)**: Enforces validation gating on all controllers, preventing dirty inputs from entering database queries.
+- **Bcrypt (`bcrypt`)**: Staff passwords are hashed using standard bcrypt rounds to satisfy security standards.
+- **Helmet (`helmet`)**: Configures HTTP headers (CSP, X-Frame-Options) to secure Express against web vulnerabilities.
+- **Cookie Parser (`cookie-parser`)**: Extracts HTTP-only session cookies in middleware before JWT verification.
+- **Supertest (`supertest`)**: Used in native Node tests to mock Express request handlers without binding to TCP ports.
 
-| Product Spec Section | DB Models | API Routes (v1) | Backend Module | Frontend Component |
-|---|---|---|---|---|
-| Domain A: Venues & Courts | `Venue`, `Court` | `/venues/*` | `modules/openapi` | `components/features/admin` |
-| Domain B: Customer Auth | `User`, `OtpRequest` | `/auth/otp/*` | `modules/auth` | `components/features/auth` |
-| Domain B: Staff Auth | `StaffCredential` | `/auth/staff/*` | `modules/auth` | `app/(auth)/staff-login` |
-| Domain C: Scheduling | `Schedule`, `ScheduleException` | `/venues/:id/availability` | `modules/scheduling (Planned)` | `components/features/booking` |
-| Domain D: Slot Locking | `Booking`, `BookingSlot` | `/bookings/hold` | `modules/bookings (Planned)` | `app/(public)/booking` |
-| Domain D: Payments | `Payment` | `/api/payment/*` | `modules/payments (Planned)` | `app/(app)/dashboard` |
-| Domain D: Wallet | `WalletTransaction` | `/users/me/wallet` | `modules/users` | `app/(app)/dashboard/wallet` |
-| Domain E: Reviews | `Review` | `/bookings/:id/review` | `modules/reviews (Planned)` | `components/features/review` |
-| Domain F: Rewards | `RewardMechanism`, `RewardInstance` | `/rewards/*` | `modules/rewards (Planned)` | `app/(app)/dashboard/rewards (Planned)` |
+### 3.2 Frontend Dependencies (`web/package.json`)
+- **Next.js (`next`)**: Used for Server-Side Rendering (SSR), App Router layouts, and edge API route proxying.
+- **Tailwind CSS (`tailwindcss`)**: Standard CSS framework chosen to construct a responsive, premium dark theme layout using custom colors (e.g., `#CBFF00` accent color).
+
+---
+
+## 4. Specification-to-Code Traceability Mapping
+
+This matrix establishes bidirectional mapping between product specifications and the corresponding codebase files.
+
+| Spec Area | Target Specification | Database Tables | Backend Module | Frontend Component |
+| :--- | :--- | :--- | :--- | :--- |
+| **Venues & Courts** | `docs/product/01-PROJECT-OVERVIEW.md` | `Venue`, `Court` | `server/src/modules/openapi` | `web/src/components/features/admin` |
+| **Customer Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `User`, `OtpRequest` | `server/src/modules/auth` | `web/src/components/features/auth` |
+| **Staff Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `StaffCredential` | `server/src/modules/auth` | `web/src/app/(auth)/staff-login` |
+| **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/scheduling (Planned)` | `web/src/components/features/booking` |
+| **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings (Planned)` | `web/src/app/(public)/booking` |
+| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments (Planned)` | `web/src/app/(app)/dashboard` |
+| **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(app)/dashboard/wallet` |
+| **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews (Planned)` | `web/src/components/features/review` |
+| **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(app)/dashboard/rewards` |

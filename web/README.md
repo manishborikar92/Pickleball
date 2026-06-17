@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Next.js App Router Frontend
 
-## Getting Started
+The Next.js App Router frontend provides the user interface, booking dashboard, and administrative console for the Pickleball booking platform.
 
-First, run the development server:
+---
 
+## 1. Responsibilities
+
+- **User Journeys**: Renders booking timelines, consecutive slot grids, onboarding wizards, and dashboards.
+- **Edge Routing & Session Proxying**: The Next.js custom `proxy.js` middleware intercepts client requests and coordinates authorization headers.
+- **Access Control (RBAC)**: Enforces page routing permissions via client guards and cookie checkers.
+- **Design Tokens**: Renders layouts matching design specifications using a dark theme sports aesthetic.
+
+---
+
+## 2. Codebase Structure
+
+All frontend source files reside in `web/src/`:
+- `app/`: Next.js App Router pages (organized by route groups `(app)`, `(auth)`, `(public)`, and `(staff)`).
+- `components/`: Reusable react layouts (UI, features, grids).
+- `hooks/`: Custom state hooks (e.g. `useAuth` session checks).
+- `lib/`: Edge proxy cores and client roles configurations.
+- `providers/`: Context provider wrappers.
+- `proxy.js`: Intercepts client fetch requests to forward auth tokens.
+
+---
+
+## 3. Local Development Quick Start
+
+### 3.1 Initial Setup
+1. Enter the web directory:
+   ```bash
+   cd web/
+   npm install
+   ```
+2. Copy environment keys:
+   ```bash
+   cp .env.example .env.local
+   ```
+   *Configure backend API proxy addresses if they deviate from defaults.*
+
+### 3.2 Running Development Server
+Start the dev server (runs on `http://localhost:3000`):
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3.3 Building for Production
+To verify page compilation and create the static export build:
+```bash
+npm run build
+```
+Start the production build server locally:
+```bash
+npm run start
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 4. Testing & Linting
 
-## Learn More
+Verify lint and coding guidelines before committing changes:
+- **Lint Verification**:
+  ```bash
+  npm run lint
+  ```
+- **Code Formatting**:
+  ```bash
+  npm run format
+  ```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 5. Deeper Documentation References
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **UI Screen layouts & Designs**: [docs/product/03-UI-UX-SPECIFICATION.md](../docs/product/03-UI-UX-SPECIFICATION.md)
+- **Role Permissions & Rules**: [docs/product/02-BUSINESS-LOGIC.md](../docs/product/02-BUSINESS-LOGIC.md)
+- **API Spec Route parameters**: [docs/specs/02-API-SPECIFICATION.md](../docs/specs/02-API-SPECIFICATION.md)
+- **Codebase Mappings**: [docs/ai/02-CODEBASE-MAP.md](../docs/ai/02-CODEBASE-MAP.md)

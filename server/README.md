@@ -1,96 +1,86 @@
-# Pickleball Platform Backend
+# Express API Backend Server
 
-Node.js + Express API for the Pickleball booking platform.
+The Express.js REST API server is the core business logic engine, database coordinator, and integration orchestrator for the Pickleball booking platform.
 
-## Design Choices
+---
 
-- Feature routes mount through one router factory, so modules can be added without changing `app.js`.
-- Request lifecycle is standardized: request id, Helmet, CORS, request logging, body parsers, rate limiting, routes, 404, global error handler.
-- Validation uses Joi and stores sanitized data in `req.validated` without mutating `req.body`, matching the cleaner pattern.
-- Auth uses short-lived JWT access tokens plus opaque rotating refresh tokens stored in HTTP-only cookies.
-- API responses use one envelope: `{ success, message, data, meta? }`.
-- PostgreSQL is the application database. Prisma owns schema generation and migration history.
+## 1. Responsibilities
 
-## Structure
+- **Authentication & Sessions**: Manages customer OTP delivery (WhatsApp) and verification, and staff credential logins. Handles JSON Web Token (JWT) session creation, verification, and rotation.
+- **Database Coordination**: Abstracts PostgreSQL queries using Prisma ORM. Encapsulates connection pools and transactional row-level slot locking.
+- **Validation**: Guards all endpoints via Joi schema validations, rejecting dirty payloads before processing.
+- **Integrations**: Connects to WhatsApp Business API and PhonePe gateway, and handles webhook security validation.
 
-```text
-server/
-  src/
-    app.js                    # Express app factory
-    server.js                 # Process startup and graceful shutdown
-    config/                   # Env, CORS, Helmet, database
-    lib/prisma.js             # Prisma client lifecycle
-    middleware/               # Request, validation, auth, error handling
-    modules/auth/             # OTP, token, refresh-session, logout APIs
-    modules/health/           # Health, liveness, readiness endpoints
-    modules/openapi/          # OpenAPI and Postman generation support
-    modules/users/            # Current-user and onboarding APIs
-    routes/                   # Router composition
-    utils/                    # Logger, responses, errors, serialization
-    validators/               # Reusable Joi schemas
-  prisma/
-    schema.prisma             # Prisma model source
-    migrations/               # SQL migration source of truth
-  postman/                    # Generated collection and environment
-  tests/
-```
+---
 
-## Commands
+## 2. Codebase Structure
 
+All server code resides in `server/src/`:
+- `config/`: System config loaders and validation guards.
+- `core/`: Application lifecycle hooks and server initializers.
+- `lib/`: Shared clients (e.g. Prisma client instance in `prisma.js`).
+- `middleware/`: Error loggers, request limits, and authorization checks.
+- `modules/`: Domain-driven component folders. Each folder contains its own route mappings, validators, controllers, and services.
+
+---
+
+## 3. Local Development Quick Start
+
+### 3.1 Initial Setup
+1. Open a shell and enter the server directory:
+   ```bash
+   cd server/
+   npm install
+   ```
+2. Create environment file:
+   ```bash
+   cp .env.example .env
+   ```
+   *Configure the `DATABASE_URL` with your local PostgreSQL credentials.*
+
+### 3.2 Initialize Database
+1. Run Prisma migration schemas:
+   ```bash
+   npx prisma db push
+   ```
+2. Seed the database with base venues, courts, roles, and pricing variables:
+   ```bash
+   npm run prisma:seed
+   ```
+3. Generate the Prisma client build:
+   ```bash
+   npm run prisma:generate
+   ```
+
+### 3.3 Running Development Server
+Start the Express server on port `5000`:
 ```bash
-npm install
-npm test
-npm run prisma:generate
-npm run prisma:migrate
-npm run prisma:seed
-npm run postman:generate
 npm run dev
-npm start
 ```
 
-## Endpoints
+---
 
-- `GET /`
-- `GET /api/v1/health`
-- `GET /api/v1/live`
-- `GET /api/v1/ready`
-- `POST /api/v1/auth/otp/send`
-- `POST /api/v1/auth/otp/verify`
-- `POST /api/v1/auth/staff/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
-- `POST /api/v1/auth/logout-all`
-- `POST /api/v1/auth/onboarding`
-- `GET /api/v1/users/me`
-- `GET /api/v1/docs/openapi.json`
-- `GET /api/v1/docs`
+## 4. Testing Instructions
 
-## Adding A Feature Module
+The server test suite utilizes the native Node.js test runner (`node --test`), keeping testing free of heavy third-party framework dependencies.
 
-Create a folder such as `src/modules/users/` with route, controller, service, repository, serializer, and validator files. Then mount it through `configureRoutes` or `src/routes/index.js`.
-
-```js
-import createApp from './src/app.js';
-import usersRoutes from './src/modules/users/users.routes.js';
-
-const app = createApp({
-  configureRoutes(router) {
-    router.use('/users', usersRoutes);
-  },
-});
+### 4.1 Run Tests
+To run all unit and integration tests:
+```bash
+npm run test
 ```
 
-## Provider Modules
+### 4.2 Coverage
+To run tests with code coverage metrics:
+```bash
+npm run test:coverage
+```
 
-Provider integrations remain separated from auth business logic:
+---
 
-- OTP providers are selected through `OTP_MODE`.
-- `sandbox` returns deterministic OTP `123456`.
-- `test` uses `OTP_TEST_CODE`.
-- `production` is reserved for the WhatsApp Cloud API provider.
+## 5. Deeper Documentation References
 
-Production PhonePe, WhatsApp, email, storage, and scheduler implementations are added as provider modules without changing core domain services.
-
-## Seed Data
-
-`npm run prisma:seed` is idempotent. It creates launch roles, permissions, role-permission mappings, the Besa venue, two courts, base prices, and standard schedules. To seed the first super-admin account, pass CLI arguments: `npm run prisma:seed -- --email <email> --password <password> [--name <name>] [--phone <phone>]`. If omitted, default credentials (email: `admin@baselinearena.in`, password: `SecurePass123!`) will be used.
+- **Database Schemas & Relations**: [docs/specs/01-DATABASE-SCHEMA.md](../docs/specs/01-DATABASE-SCHEMA.md)
+- **API Router Route Definitions**: [docs/specs/02-API-SPECIFICATION.md](../docs/specs/02-API-SPECIFICATION.md)
+- **Implementation Status checklists**: [docs/ai/03-IMPLEMENTATION-STATUS.md](../docs/ai/03-IMPLEMENTATION-STATUS.md)
+- **VM Setup & Deployment Runbook**: [docs/operations/02-SETUP-GUIDE.md](../docs/operations/02-SETUP-GUIDE.md)
