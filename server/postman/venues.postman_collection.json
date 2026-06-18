@@ -1,0 +1,96 @@
+{
+  "info": {
+    "name": "Venues",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Venues endpoints."
+  },
+  "item": [
+    {
+      "name": "Get venue by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/venues/:venueId",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "venues",
+            ":venueId"
+          ],
+          "variable": [
+            {
+              "key": "venueId",
+              "value": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get venue by slug",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/venues/slug/:slug",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "venues",
+            "slug",
+            ":slug"
+          ],
+          "variable": [
+            {
+              "key": "slug",
+              "value": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get venue court availability for a date",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/venues/:venueId/availability",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "venues",
+            ":venueId",
+            "availability"
+          ],
+          "variable": [
+            {
+              "key": "venueId",
+              "value": ""
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ]
+}

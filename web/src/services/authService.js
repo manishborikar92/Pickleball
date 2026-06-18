@@ -19,18 +19,23 @@ export const authService = {
 
   async sendCustomerOtp(phone) {
     sessionStorage.setItem("pb_pending_phone", phone);
-    return await sendCustomerOtpAction(phone);
+    const res = await sendCustomerOtpAction(phone);
+    if (!res.success) throw new Error(res.error);
+    return res.data;
   },
 
   async verifyCustomerOtp(phone, otp) {
     sessionStorage.setItem("pb_pending_phone", phone);
-    return await verifyCustomerOtpAction(phone, otp);
+    const res = await verifyCustomerOtpAction(phone, otp);
+    if (!res.success) throw new Error(res.error);
+    return res.data;
   },
 
   async completeOnboarding(name) {
-    const result = await completeOnboardingAction(name);
+    const res = await completeOnboardingAction(name);
+    if (!res.success) throw new Error(res.error);
     sessionStorage.removeItem("pb_pending_phone");
-    return result;
+    return res.data;
   },
 
   resolvePendingPhone() {

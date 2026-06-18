@@ -436,7 +436,7 @@ ON booking_slots (court_id, slot_date, slot_start_time)
 WHERE status IN ('pending_payment', 'confirmed', 'walk_in', 'admin_block');
 ```
 
-**Lock acquisition order:** Always sorted by `(court_id, slot_date, slot_start_time)` before acquiring `SELECT ... FOR UPDATE` locks. This deterministic order prevents deadlocks when two users are simultaneously trying to book overlapping slot sets.
+This partial unique index constraint is evaluated atomically during slot hold creation. When concurrent inserts for the same slot run inside a database transaction, PostgreSQL rejects the second insertion, throwing a unique constraint violation. The service layer catches this error and maps it to a structured selection conflict.
 
 ---
 

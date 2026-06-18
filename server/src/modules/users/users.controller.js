@@ -7,6 +7,23 @@ export const createUsersController = ({ userService }) => ({
     res.json(ApiResponse.success(user));
   }),
 
+  myBookings: asyncHandler(async (req, res) => {
+    const result = await userService.getMyBookings({
+      userId: req.auth.subject,
+      status: req.validated.query.status,
+      page: req.validated.query.page,
+      limit: req.validated.query.limit,
+    });
+    res.json(ApiResponse.success(result));
+  }),
+
+  myWallet: asyncHandler(async (req, res) => {
+    const result = await userService.getMyWallet({
+      userId: req.auth.subject,
+    });
+    res.json(ApiResponse.success(result));
+  }),
+
   completeOnboarding: asyncHandler(async (req, res) => {
     const result = await userService.completeOnboarding({
       userId: req.auth.subject,

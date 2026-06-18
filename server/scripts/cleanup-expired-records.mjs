@@ -1,6 +1,8 @@
 import { getPrisma } from '../src/lib/prisma.js';
+import { createDefaultBookingsService } from '../src/modules/bookings/index.js';
 
 const prisma = getPrisma();
+const bookingsService = createDefaultBookingsService();
 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -22,6 +24,13 @@ try {
     where: { revokedAt: { not: null, lt: thirtyDaysAgo } }
   });
   console.log(`Deleted ${deletedTokens.count} revoked refresh tokens.`);
+
+  const expiredBookings = await bookingsService.expirePendingHolds({
+    limit: 500,
+    requestContext: { requestId: 'cleanup-expired-records' },
+  });
+  console.log(`Expired ${expiredBookings.expired_count} pending booking holds.`);
+  console.log(`Rolled back ${expiredBookings.wallet_credits_rolled_back} wallet credits from expired holds.`);
 } catch (error) {
   console.error("Error running database cleanup:", error);
   process.exit(1);

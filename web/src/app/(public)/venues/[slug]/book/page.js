@@ -3,9 +3,11 @@ import { getAvailability, getVenue } from "@/lib/api";
 import { JsonLd } from "@/components/seo";
 import { getPageMetadata } from "@/config/metadata";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const venue = await getVenue();
+  const venue = await getVenue(slug);
 
   const name = venue.name || "Besa, Nagpur";
   const brandName = venue.brandName || "Baseline Arena";
@@ -19,10 +21,12 @@ export async function generateMetadata({ params }) {
 
 export default async function BookPage({ params }) {
   const { slug } = await params;
-  const [venue, availability] = await Promise.all([
-    getVenue(),
-    getAvailability(),
-  ]);
+  const initialDate = new Date().toISOString().slice(0, 10);
+  const venue = await getVenue(slug);
+  const availability = await getAvailability({
+    venueId: venue.id,
+    date: initialDate,
+  });
 
   const locationSchema = {
     "@context": "https://schema.org",
@@ -74,6 +78,7 @@ export default async function BookPage({ params }) {
         venue={venue}
         courts={venue.courts}
         availability={availability}
+        initialDate={initialDate}
       />
     </>
   );

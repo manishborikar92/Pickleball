@@ -29,7 +29,7 @@ const normalizeDatabaseError = (error) => {
 };
 
 export const errorHandler = (err, req, res, _next) => {
-  let normalized = err;
+  let normalized;
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     normalized = new BadRequestError('Invalid JSON payload');
   } else if (err.status === 413 || err.type === 'entity.too.large') {

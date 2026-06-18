@@ -56,6 +56,7 @@ export const createLogger = ({ level = process.env.LOG_LEVEL || 'info', service 
     } else if (logLevel === 'warn') {
       console.warn(line);
     } else {
+      // eslint-disable-next-line no-console
       console.log(line);
     }
   };

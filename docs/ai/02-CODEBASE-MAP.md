@@ -28,12 +28,12 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │   ├── middleware/            # Rate limiting, auth, logging guards
 │   │   └── modules/               # Domain-driven backend modules
 │   │       ├── auth/              # Customer OTP & staff password logic
-│   │       │   ├── auth.controller.js
-│   │       │   ├── auth.service.js
-│   │       │   └── otp.provider.js
+│   │       ├── bookings/          # Selection, holds, waivers, and pricing
 │   │       ├── health/            # Liveness/Readiness endpoints
-│   │       ├── openapi/           # OpenAPI routers and docs UI
-│   │       └── users/             # User profiles and wallet details
+│   │       ├── openapi/           # OpenAPI specs and Postman generation
+│   │       ├── payments/          # Gateway logic and sandbox provider
+│   │       ├── users/             # User profile, wallet, and history
+│   │       └── venues/            # Venues, courts, and availability
 │   └── tests/                     # Node.js native test suite
 └── web/                           # Next.js App Router Frontend
     └── src/
@@ -87,12 +87,12 @@ This matrix establishes bidirectional mapping between product specifications and
 
 | Spec Area | Target Specification | Database Tables | Backend Module | Frontend Component |
 | :--- | :--- | :--- | :--- | :--- |
-| **Venues & Courts** | `docs/product/01-PROJECT-OVERVIEW.md` | `Venue`, `Court` | `server/src/modules/openapi` | `web/src/components/features/admin` |
+| **Venues & Courts** | `docs/product/01-PROJECT-OVERVIEW.md` | `Venue`, `Court` | `server/src/modules/venues` | `web/src/components/features/admin` |
 | **Customer Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `User`, `OtpRequest` | `server/src/modules/auth` | `web/src/components/features/auth` |
 | **Staff Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `StaffCredential` | `server/src/modules/auth` | `web/src/app/(auth)/staff-login` |
-| **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/scheduling (Planned)` | `web/src/components/features/booking` |
-| **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings (Planned)` | `web/src/app/(public)/booking` |
-| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments (Planned)` | `web/src/app/(app)/dashboard` |
+| **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/venues` | `web/src/components/features/booking` |
+| **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(public)/booking` |
+| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(app)/dashboard` |
 | **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(app)/dashboard/wallet` |
 | **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews (Planned)` | `web/src/components/features/review` |
 | **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(app)/dashboard/rewards` |

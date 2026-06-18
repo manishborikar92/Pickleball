@@ -43,12 +43,13 @@ When a customer attempts to secure a court booking, the system coordinates avail
         │                       │                      │                      │
         │ 7. Tap Slot (Hold)    │                      │                      │
         ├──────────────────────>│                      │                      │
-        │                       │ 8. Acquire Slot Lock │                      │
+        │                       │ 8. Acquire Slot Hold │                      │
         │                       ├─────────────────────>│                      │
-        │                       │                      │ 9. SELECT FOR UPDATE │
-        │                       │                      │ (Set OtpRequest/Slot)│
+        │                       │                      │ 9. Write Slot Hold   │
+        │                       │                      │    (Atomic DB Trans) │
         │                       │                      ├─────────────────────>│
-        │                       │                      │ 10. Confirm Success  │
+        │                       │                      │ 10. Confirm Unique   │
+        │                       │                      │     Constraint Success
         │                       │                      │<─────────────────────┤
         │                       │ 11. Return Hold Data │                      │
         │                       │<─────────────────────┤                      │
@@ -58,9 +59,9 @@ When a customer attempts to secure a court booking, the system coordinates avail
 ```
 
 1. **Availability Generation**: The Express scheduling service checks operating hours templates, overlays overrides/exceptions for the target date, and subtracts confirmed bookings and active/expired slot holds.
-2. **Atomic Hold Acquisition**: When a slot is clicked, the Express backend acquires a slot lock. To prevent race conditions from concurrent bookings, the database runs a raw transaction executing:
-   `SELECT * FROM "BookingSlot" WHERE "courtId" = $1 AND "startTime" = $2 FOR UPDATE;`
-   If the slot is unlocked, a temporary hold instance is written (valid for 10 minutes).
+2. **Atomic Hold Acquisition**: When slots are requested, the Express backend writes booking slot instances in a single database transaction. Concurrency safety is enforced by a PostgreSQL partial unique index:
+   `CREATE UNIQUE INDEX "booking_slots_no_double_book" ON "booking_slots" ("court_id", "slot_date", "slot_start_time") WHERE "status" IN ('pending_payment', 'confirmed', 'walk_in', 'admin_block');`
+   If any slot is already locked in an active state, the transaction fails, and the system reports the conflicting units. If free, a temporary hold is written (status `pending_payment` with a 10-minute TTL).
 3. **Session Verification**: The Next.js edge proxy injects authenticated headers. If the user session is expired, the client opens the bottom-sheet AuthModal.
 
 ---

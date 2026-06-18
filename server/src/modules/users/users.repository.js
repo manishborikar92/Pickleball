@@ -3,6 +3,7 @@ import { getPrisma } from '../../lib/prisma.js';
 import { NotFoundError } from '../../utils/api-error.js';
 import { DEFAULT_CUSTOMER_PERMISSIONS } from '../../shared/auth-constants.js';
 import { includeUserAuthContext } from '../../shared/auth-includes.js';
+import { formatTime, toDateOnly } from '../bookings/booking-time.js';
 
 const serializeAuthProfile = (user) => {
   const roles = user.venueRoles?.map((assignment) => ({
@@ -24,6 +25,39 @@ const serializeAuthProfile = (user) => {
     permissions: [...new Set(permissions.length > 0 ? permissions : DEFAULT_CUSTOMER_PERMISSIONS)],
   };
 };
+
+const money = (value) => Number(value || 0);
+
+const serializeBookingSummary = (booking) => {
+  const firstSlot = booking.slots?.[0] || null;
+
+  return {
+    id: booking.id,
+    court: firstSlot?.court ? {
+      id: firstSlot.court.id,
+      name: firstSlot.court.name,
+    } : null,
+    venue: booking.venue ? {
+      id: booking.venue.id,
+      name: booking.venue.name,
+    } : null,
+    slot_date: toDateOnly(booking.slotDate),
+    slot_start_time: formatTime(booking.sessionStartTime),
+    slot_end_time: formatTime(booking.sessionEndTime),
+    status: booking.status,
+    total_amount: money(booking.totalAmount),
+    has_review: Boolean(booking.review),
+  };
+};
+
+const serializeWalletTransaction = (transaction) => ({
+  id: transaction.id,
+  type: transaction.type,
+  amount: money(transaction.amount),
+  balance_after: money(transaction.balanceAfter),
+  reason: transaction.reason,
+  created_at: transaction.createdAt.toISOString(),
+});
 
 export const createUsersRepository = ({ prisma } = {}) => {
   const db = () => prisma || getPrisma();
@@ -67,6 +101,74 @@ export const createUsersRepository = ({ prisma } = {}) => {
         }
         throw error;
       }
+    },
+
+    async getMyBookings({ userId, status, page = 1, limit = 20 }) {
+      const where = {
+        userId,
+        ...(status ? { status } : {}),
+      };
+      const skip = (page - 1) * limit;
+
+      const [rows, total] = await db().$transaction([
+        db().booking.findMany({
+          where,
+          orderBy: [
+            { slotDate: 'desc' },
+            { sessionStartTime: 'desc' },
+          ],
+          skip,
+          take: limit,
+          include: {
+            venue: {
+              select: { id: true, name: true },
+            },
+            slots: {
+              orderBy: [
+                { slotDate: 'asc' },
+                { slotStartTime: 'asc' },
+              ],
+              take: 1,
+              include: {
+                court: {
+                  select: { id: true, name: true },
+                },
+              },
+            },
+            review: {
+              select: { id: true },
+            },
+          },
+        }),
+        db().booking.count({ where }),
+      ]);
+
+      return {
+        data: rows.map(serializeBookingSummary),
+        pagination: { page, limit, total },
+      };
+    },
+
+    async getMyWallet({ userId }) {
+      const user = await db().user.findUnique({
+        where: { id: userId },
+        select: {
+          walletCredits: true,
+          walletTransactions: {
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+          },
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundError('User not found');
+      }
+
+      return {
+        balance: money(user.walletCredits),
+        transactions: user.walletTransactions.map(serializeWalletTransaction),
+      };
     },
   };
 };

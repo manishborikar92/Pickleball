@@ -1,0 +1,109 @@
+{
+  "info": {
+    "name": "Payments",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Payments endpoints."
+  },
+  "item": [
+    {
+      "name": "Get payment status",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/status/:merchantOrderId",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "payments",
+            "status",
+            ":merchantOrderId"
+          ],
+          "variable": [
+            {
+              "key": "merchantOrderId",
+              "value": ""
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Complete a sandbox payment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/sandbox/:merchantOrderId/complete",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "payments",
+            "sandbox",
+            ":merchantOrderId",
+            "complete"
+          ],
+          "variable": [
+            {
+              "key": "merchantOrderId",
+              "value": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Fail a sandbox payment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/sandbox/:merchantOrderId/fail",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "payments",
+            "sandbox",
+            ":merchantOrderId",
+            "fail"
+          ],
+          "variable": [
+            {
+              "key": "merchantOrderId",
+              "value": ""
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ]
+}

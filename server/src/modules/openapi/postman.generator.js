@@ -15,13 +15,17 @@ const extractPathVariables = (path) => {
   }));
 };
 
-const pathToUrl = (path) => {
+const pathToUrl = (path, apiPrefix = '') => {
+  const isRoot = path === '/';
+  const prefix = isRoot ? '' : apiPrefix;
   const cleanPath = path.replace(/\{([^}]+)\}/g, ':$1');
+  const hasPrefix = prefix && cleanPath.startsWith(prefix);
+  const fullPath = hasPrefix ? cleanPath : `${prefix}${cleanPath}`;
   const variables = extractPathVariables(path);
   return {
-    raw: `{{baseUrl}}${cleanPath}`,
+    raw: `{{baseUrl}}${fullPath}`,
     host: ['{{baseUrl}}'],
-    path: cleanPath.replace(/^\//, '').split('/'),
+    path: fullPath.replace(/^\//, '').split('/'),
     ...(variables ? { variable: variables } : {}),
   };
 };
@@ -46,7 +50,7 @@ const buildBody = (operation) => {
   };
 };
 
-const buildRequest = ({ path, method, operation }) => {
+const buildRequest = ({ path, method, operation, apiPrefix = '' }) => {
   const body = buildBody(operation);
   
   // Automatic extraction of JWT access token upon successful auth callback
@@ -84,7 +88,7 @@ const buildRequest = ({ path, method, operation }) => {
           type: 'text',
         },
       ] : [],
-      url: pathToUrl(path),
+      url: pathToUrl(path, apiPrefix),
       ...(body ? { body } : {}),
       ...(operation.security?.some((item) => item.bearerAuth) ? {
         auth: {
@@ -99,6 +103,7 @@ const buildRequest = ({ path, method, operation }) => {
 
 const extractRequestsByTag = (spec) => {
   const groups = new Map();
+  const apiPrefix = spec.servers?.[0]?.url || '';
 
   for (const [path, pathItem] of Object.entries(spec.paths || {})) {
     for (const method of methodNames) {
@@ -108,7 +113,7 @@ const extractRequestsByTag = (spec) => {
       if (!groups.has(tag)) {
         groups.set(tag, []);
       }
-      groups.get(tag).push(buildRequest({ path, method, operation }));
+      groups.get(tag).push(buildRequest({ path, method, operation, apiPrefix }));
     }
   }
 

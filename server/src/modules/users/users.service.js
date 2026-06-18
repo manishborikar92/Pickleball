@@ -3,6 +3,19 @@ export const createUsersService = ({ repository }) => ({
     return repository.getCurrentUser(userId);
   },
 
+  async getMyBookings({ userId, status, page = 1, limit = 20 }) {
+    return repository.getMyBookings({
+      userId,
+      status,
+      page,
+      limit,
+    });
+  },
+
+  async getMyWallet({ userId }) {
+    return repository.getMyWallet({ userId });
+  },
+
   async completeOnboarding({ userId, name }) {
     const user = await repository.completeOnboarding({
       userId,

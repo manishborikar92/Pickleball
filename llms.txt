@@ -14,3 +14,9 @@ This repository contains a Next.js frontend and an Express.js/PostgreSQL backend
 - Server Router: [server/src/app.js](server/src/app.js)
 - Database Schema: [server/prisma/schema.prisma](server/prisma/schema.prisma)
 - Frontend Pages Root: [web/src/app](web/src/app)
+
+## Core Architecture Snapshot
+- **Availability Ownership**: Handled fully inside the `venues` module; availability slots are generated dynamically from base schedules and exception overlays.
+- **Concurrency Safety**: Double-bookings are prevented atomically at slot hold creation time by a PostgreSQL partial unique index (`booking_slots_no_double_book`) on the `booking_slots` table.
+- **Booking Holds**: Active holds are represented as pending bookings (status `pending_payment`) with a 10-minute expiration TTL.
+- **Payment Gateway Abstraction**: Integrations use a common payment provider interface. Local development and test environments run on the mock `sandbox` payment provider.

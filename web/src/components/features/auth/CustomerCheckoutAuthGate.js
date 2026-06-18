@@ -34,7 +34,7 @@ export function CustomerCheckoutAuthGate({
       setPhone(verifiedPhone);
       setStep("otp");
     } catch (err) {
-      setError("Failed to send OTP.");
+      setError(err.message || "Failed to send OTP.");
     } finally {
       setLoading(false);
     }
@@ -61,7 +61,7 @@ export function CustomerCheckoutAuthGate({
         }
       }
     } catch (err) {
-      setError("Failed to verify code and initialize session.");
+      setError(err.message || "Failed to verify code and initialize session.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +77,7 @@ export function CustomerCheckoutAuthGate({
         onSuccess({ name: fullName, phone, isNew: true });
       }
     } catch (err) {
-      setError("Failed to save profile name.");
+      setError(err.message || "Failed to save profile name.");
     } finally {
       setLoading(false);
     }

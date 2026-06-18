@@ -3,6 +3,10 @@ generator client {
   output   = "../src/generated"
 }
 
+generator clientJs {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
 }
@@ -64,6 +68,7 @@ enum BookingType {
 enum PaymentGateway {
   phonepe
   wallet
+  sandbox
 }
 
 enum PaymentStatus {

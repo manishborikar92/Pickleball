@@ -26,6 +26,9 @@ export function OrderSummary({
   quote,
   couponCode,
   couponMessage,
+  quoteLoading = false,
+  quoteError = "",
+  canCheckout = hasSelection,
   onCouponCodeChange,
   onApplyCoupon,
   onCheckout,
@@ -57,6 +60,12 @@ export function OrderSummary({
           onApply={onApplyCoupon}
         />
 
+        {quoteError && (
+          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-semibold text-red-200">
+            {quoteError}
+          </p>
+        )}
+
         {/* Grand total */}
         <TotalRow totalAmount={quote.totalAmount} />
 
@@ -65,10 +74,10 @@ export function OrderSummary({
           <Button
             type="button"
             onClick={onCheckout}
-            disabled={!hasSelection}
+            disabled={!canCheckout}
             className="w-full py-4 text-base font-bold shadow-md disabled:opacity-50"
           >
-            Proceed to Pay
+            {quoteLoading ? "Checking price..." : "Proceed to Pay"}
           </Button>
           <div className="flex items-center justify-center gap-4 text-xs text-muted">
             <span className="flex items-center gap-1">
@@ -107,7 +116,7 @@ function BookingItems({ selectedCourtsData, selectedDate, quote }) {
         const startTime = slots[0]?.startTime;
         const endTime = slots[slots.length - 1]?.endTime;
         const slotCount = slots.length;
-        const durationMins = slotCount * 30;
+        const durationMins = slotCount * 60;
         const courtTotal = slots.reduce(
           (sum, s) => sum + Number(s.price || 0),
           0,

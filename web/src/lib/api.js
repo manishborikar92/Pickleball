@@ -1,23 +1,31 @@
 import {
-  adminBookings,
-  adminStats,
-  availability,
-  bookings,
   courts,
   reviews,
-  venue,
-  walletTransactions,
 } from "@/data/platform";
+import {
+  getVenueAvailabilityAction,
+  getVenueBySlugAction,
+  getUserBookingsAction,
+  getWalletAction,
+} from "@/app/actions/booking-actions";
 
 const wait = (value) =>
   Promise.resolve(value);
 
-export async function getVenue() {
-  return wait({ ...venue, courts });
+export async function getVenue(slug = "besa-nagpur") {
+  const res = await getVenueBySlugAction(slug);
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load venue");
+  }
+  return res.data;
 }
 
-export async function getAvailability() {
-  return wait(availability);
+export async function getAvailability({ venueId, date }) {
+  const res = await getVenueAvailabilityAction(venueId, date);
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load availability");
+  }
+  return res.data;
 }
 
 export async function getPublishedReviews() {
@@ -25,11 +33,19 @@ export async function getPublishedReviews() {
 }
 
 export async function getUserBookings() {
-  return wait(bookings);
+  const res = await getUserBookingsAction();
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load bookings");
+  }
+  return res.data;
 }
 
 export async function getWallet() {
-  return wait({ balance: 0, transactions: [] });
+  const res = await getWalletAction();
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load wallet");
+  }
+  return res.data;
 }
 
 export async function getAdminOverview() {

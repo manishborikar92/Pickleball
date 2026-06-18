@@ -12,7 +12,7 @@ This document logs active codebase issues, test suite statuses, environment sand
 
 ### 1.2 Environment Discrepancies
 - **Local OTP Provider Fallback**: The development environment logs OTP codes directly to the terminal console when Meta Cloud API credentials are unset. This allows local developer setup without Meta billing accounts.
-- **SQLite vs PostgreSQL Testing Constraints**: Development uses PostgreSQL, but testing utilizes in-memory databases or mock pools. Minor variations in SQL behavior (such as `SELECT FOR UPDATE` syntax) must be verified on local dev environments running PostgreSQL.
+- **Test Environment Database Bypass**: Integration tests run with `DATABASE_ENABLED=false` configured in `.env.test`, mocking repository queries and database constraints (such as mapping unique error codes like `P2002` for slot conflicts). The code must still be verified with a live PostgreSQL instance.
 
 ---
 
@@ -22,8 +22,8 @@ Our QA gating requires all tests to pass prior to merging.
 
 ### 2.1 Backend Tests (`server/tests/`)
 - **Framework**: Built using the native Node.js test runner (`node --test`), keeping testing free of third-party package dependencies like Jest.
-- **Pass Metrics**: All 51 native test cases are passing successfully.
-  - Passes: 51
+- **Pass Metrics**: All 79 native test cases are passing successfully.
+  - Passes: 79
   - Failures: 0
 - **Execution Command**:
   ```bash

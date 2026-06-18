@@ -27,6 +27,9 @@ export function AuthFlow({
   quote,
   waiver,
   setWaiver,
+  checkoutError = "",
+  checkoutLoading = false,
+  confirmedBookingId = "",
   onAuthSuccess,
   confirmPayment,
   onClose,
@@ -88,10 +91,12 @@ export function AuthFlow({
               quote={quote}
               waiver={waiver}
               setWaiver={setWaiver}
+              checkoutError={checkoutError}
+              checkoutLoading={checkoutLoading}
               onConfirm={confirmPayment}
             />
           )}
-          {auth.step === "success" && <SuccessStep />}
+          {auth.step === "success" && <SuccessStep bookingId={confirmedBookingId} />}
         </div>
       </div>
     </div>
@@ -118,6 +123,8 @@ function WaiverStep({
   quote,
   waiver,
   setWaiver,
+  checkoutError,
+  checkoutLoading,
   onConfirm,
 }) {
   const allChecked = waiver?.time && waiver?.policy;
@@ -149,7 +156,7 @@ function WaiverStep({
             const startTime = slots[0]?.startTime;
             const endTime = slots[slots.length - 1]?.endTime;
             const slotCount = slots.length;
-            const durationMins = slotCount * 30;
+            const durationMins = slotCount * 60;
             const courtTotal = slots.reduce(
               (sum, s) => sum + Number(s.price || 0),
               0,
@@ -218,12 +225,18 @@ function WaiverStep({
       {/* Pay CTA */}
       <Button
         type="button"
-        disabled={!allChecked}
+        disabled={!allChecked || checkoutLoading}
         onClick={onConfirm}
         className="w-full py-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Pay {formatCurrency(quote?.totalAmount ?? 0)}
+        {checkoutLoading ? "Confirming..." : `Pay ${formatCurrency(quote?.totalAmount ?? 0)}`}
       </Button>
+
+      {checkoutError && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-center text-sm font-semibold text-red-200">
+          {checkoutError}
+        </p>
+      )}
 
       {/* Trust signal */}
       <p className="flex items-center justify-center gap-1.5 text-xs text-muted">
@@ -234,7 +247,7 @@ function WaiverStep({
   );
 }
 
-function SuccessStep() {
+function SuccessStep({ bookingId }) {
   return (
     <div className="space-y-5 py-6 text-center">
       <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent text-black">
@@ -245,7 +258,7 @@ function SuccessStep() {
         A WhatsApp confirmation and receipt will be sent after the payment
         webhook confirms the transaction.
       </p>
-      <Button href="/booking/confirmed" className="mt-2 w-full py-4 text-base">
+      <Button href={`/booking/confirmed${bookingId ? `?bookingId=${bookingId}` : ""}`} className="mt-2 w-full py-4 text-base">
         View Confirmation
       </Button>
     </div>

@@ -1,0 +1,234 @@
+{
+  "info": {
+    "name": "Bookings",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Bookings endpoints."
+  },
+  "item": [
+    {
+      "name": "Preview authoritative booking price",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/bookings/price-preview",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bookings",
+            "price-preview"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"venue_id\": \"11111111-1111-4111-8111-111111111111\",\n  \"court_ids\": \"\",\n  \"slot_date\": \"2026-06-18\",\n  \"slot_start_times\": \"\",\n  \"coupon_code\": \"FIRST10\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Create an atomic pending booking hold",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/bookings/hold",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bookings",
+            "hold"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"venue_id\": \"11111111-1111-4111-8111-111111111111\",\n  \"court_ids\": \"\",\n  \"slot_date\": \"2026-06-18\",\n  \"slot_start_times\": \"\",\n  \"coupon_code\": \"FIRST10\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get an owner-scoped booking",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/bookings/:bookingId",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bookings",
+            ":bookingId"
+          ],
+          "variable": [
+            {
+              "key": "bookingId",
+              "value": ""
+            }
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Record liability waiver acceptance",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/bookings/:bookingId/waiver",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bookings",
+            ":bookingId",
+            "waiver"
+          ],
+          "variable": [
+            {
+              "key": "bookingId",
+              "value": ""
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"time_acknowledged\": true,\n  \"policy_accepted\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Initiate wallet or sandbox payment for a held booking",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/bookings/:bookingId/initiate-payment",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "bookings",
+            ":bookingId",
+            "initiate-payment"
+          ],
+          "variable": [
+            {
+              "key": "bookingId",
+              "value": ""
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"use_wallet_credits\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{accessToken}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    }
+  ]
+}

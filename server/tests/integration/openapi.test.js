@@ -17,6 +17,16 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.ok(response.body.paths['/auth/refresh']);
   assert.ok(response.body.paths['/auth/onboarding']);
   assert.ok(response.body.paths['/users/me']);
+  assert.ok(response.body.paths['/users/me/bookings']);
+  assert.ok(response.body.paths['/users/me/wallet']);
+  assert.ok(response.body.paths['/venues/{venueId}']);
+  assert.ok(response.body.paths['/venues/slug/{slug}']);
+  assert.ok(response.body.paths['/venues/{venueId}/availability']);
+  assert.ok(response.body.paths['/bookings/price-preview']);
+  assert.ok(response.body.paths['/bookings/hold']);
+  assert.ok(response.body.paths['/bookings/{bookingId}/waiver']);
+  assert.ok(response.body.paths['/bookings/{bookingId}/initiate-payment']);
+  assert.ok(response.body.paths['/payments/status/{merchantOrderId}']);
   assert.ok(response.body.components.securitySchemes.bearerAuth);
 });
 
@@ -55,6 +65,19 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'POST /api/v1/auth/logout-all',
     'POST /api/v1/auth/onboarding',
     'GET /api/v1/users/me',
+    'GET /api/v1/users/me/bookings',
+    'GET /api/v1/users/me/wallet',
+    'GET /api/v1/venues/{venueId}',
+    'GET /api/v1/venues/slug/{slug}',
+    'GET /api/v1/venues/{venueId}/availability',
+    'POST /api/v1/bookings/price-preview',
+    'POST /api/v1/bookings/hold',
+    'GET /api/v1/bookings/{bookingId}',
+    'POST /api/v1/bookings/{bookingId}/waiver',
+    'POST /api/v1/bookings/{bookingId}/initiate-payment',
+    'GET /api/v1/payments/status/{merchantOrderId}',
+    'GET /api/v1/payments/sandbox/{merchantOrderId}/complete',
+    'GET /api/v1/payments/sandbox/{merchantOrderId}/fail',
     'GET /api/v1/docs/openapi.json',
     'GET /api/v1/docs',
   ].forEach((route) => {

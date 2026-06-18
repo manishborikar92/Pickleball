@@ -16,10 +16,12 @@ import {
 } from "../src/lib/validation.js";
 import {
   buildDateWindow,
-  calculateMultiQuote,
-  createBookingHold,
-  getCouponByCode,
 } from "../src/lib/booking-engine.js";
+import {
+  buildBookingSelectionPayload,
+  normalizeAvailabilityResponse,
+  normalizePricePreviewResponse,
+} from "../src/services/bookingService.js";
 
 test("role permissions are permission-key based and expandable", () => {
   assert.equal(hasPermission("manager", "edit_pricing"), true);
@@ -59,47 +61,77 @@ test("date window respects configured advance booking days", () => {
   assert.equal(days[3].iso, "2026-05-16");
 });
 
-test("multi-quote calculation sums courts and handles coupons", () => {
-  const quote = calculateMultiQuote({
-    selectedCourts: [
+test("booking API normalization maps server availability and price preview shapes", () => {
+  const availability = normalizeAvailabilityResponse({
+    date: "2026-06-18",
+    slot_duration_mins: 60,
+    courts: [{
+      court_id: "court-1",
+      court_name: "Court 1",
+      environment: "outdoor",
+      slots: [{ start_time: "09:00", end_time: "10:00", status: "available", unit_price: 500 }],
+    }],
+  });
+
+  assert.equal(availability[0].courtId, "court-1");
+  assert.equal(availability[0].slots[0].startTime, "09:00");
+  assert.equal(availability[0].slots[0].price, 500);
+
+  const quote = normalizePricePreviewResponse({
+    price_breakdown: {
+      units: [
+        { court_id: "court-1", court_name: "Court 1", slot_start_time: "09:00", unit_price: 500 },
+        { court_id: "court-1", court_name: "Court 1", slot_start_time: "10:00", unit_price: 500 },
+      ],
+      subtotal: 1000,
+      coupon_discount: 50,
+      tax: 171,
+      total: 1121,
+    },
+  });
+
+  assert.equal(quote.totalAmount, 1121);
+  assert.equal(quote.discountAmount, 50);
+  assert.deepEqual(quote.breakdown, [{ label: "Court 1", amount: 1000, slotCount: 2 }]);
+});
+
+test("booking selection payload requires courts to share one slot range", () => {
+  const result = buildBookingSelectionPayload({
+    venueId: "venue-1",
+    selectedDate: "2026-06-18",
+    selectedCourtsData: [
       {
         courtId: "court-1",
-        courtName: "Court 1",
-        slots: [{ price: 200 }, { price: 200 }],
+        slots: [
+          { startTime: "09:00" },
+          { startTime: "10:00" },
+        ],
       },
       {
         courtId: "court-2",
-        courtName: "Court 2",
-        slots: [{ price: 300 }],
+        slots: [
+          { startTime: "09:00" },
+          { startTime: "10:00" },
+        ],
       },
     ],
-    coupon: { code: "FIRST50", discountType: "flat", value: 50 },
+    couponCode: "first10",
   });
 
-  assert.equal(quote.courtFee, 700);
-  assert.equal(quote.subtotal, 700);
-  assert.equal(quote.discountAmount, 50);
-  assert.equal(quote.totalAmount, 650);
-  assert.deepEqual(quote.breakdown, [
-    { label: "Court 1", amount: 400, slotCount: 2 },
-    { label: "Court 2", amount: 300, slotCount: 1 },
-  ]);
-});
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.value.slot_start_times, ["09:00", "10:00"]);
+  assert.equal(result.value.coupon_code, "FIRST10");
 
-test("booking hold creates a pending payment lock with expiry metadata", () => {
-  const hold = createBookingHold({
-    now: new Date("2026-05-13T10:00:00.000Z"),
-    venueId: "venue-besa",
-    courtId: "court-1",
-    slotDate: "2026-05-14",
-    startTime: "18:00",
-    endTime: "19:00",
-    totalAmount: 590,
+  const mismatch = buildBookingSelectionPayload({
+    venueId: "venue-1",
+    selectedDate: "2026-06-18",
+    selectedCourtsData: [
+      { courtId: "court-1", slots: [{ startTime: "09:00" }] },
+      { courtId: "court-2", slots: [{ startTime: "10:00" }] },
+    ],
   });
 
-  assert.equal(hold.status, "pending_payment");
-  assert.equal(hold.expiresAt, "2026-05-13T10:10:00.000Z");
-  assert.equal(hold.slot.label, "18:00 - 19:00");
+  assert.equal(mismatch.ok, false);
 });
 
 test("review validation requires a rating but keeps text and photo optional", () => {
@@ -110,12 +142,10 @@ test("review validation requires a rating but keeps text and photo optional", ()
   });
 });
 
-test("coupon validation is format-only until coupon APIs are available", () => {
+test("coupon validation is format-only before server preview applies it", () => {
   assert.deepEqual(validateCoupon(" first50 "), {
     ok: true,
     value: "FIRST50",
   });
   assert.equal(validateCoupon("bad coupon").ok, false);
-  assert.deepEqual(getCouponByCode("FIRST50"), { code: "FIRST50", discountType: "flat", value: 50 });
-  assert.deepEqual(getCouponByCode("BESA100"), { code: "BESA100", discountType: "flat", value: 100 });
 });

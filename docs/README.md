@@ -65,6 +65,7 @@ We document major technology selections and designs through ADRs.
 | **ADR-001** | Selection of PostgreSQL database and Prisma ORM | Accepted | 2026-06-15 | [ADR-001 PostgreSQL/Prisma](adrs/ADR-001-postgresql-prisma.md) |
 | **ADR-002** | Database-backed auth sessions for refresh token rotation | Accepted | 2026-06-15 | [ADR-002 Session Revocation](adrs/ADR-002-refresh-token-sessions.md) |
 | **ADR-003** | Abstraction of OTP provider interface for sandbox fallback | Accepted | 2026-06-16 | [ADR-003 OTP Abstraction](adrs/ADR-003-otp-provider-abstraction.md) |
+| **ADR-004** | Booking Consistency, Payment Abstraction, and Compliance Logging | Approved | 2026-06-17 | [ADR-004 Booking Lifecycle](adrs/ADR-004-booking-lifecycle-payments.md) |
 
 ---
 *For quick startup, see the root [README.md](../README.md).*

@@ -88,43 +88,55 @@ export async function getSessionAction(preferredType = null) {
 }
 
 export async function sendCustomerOtpAction(phone) {
-  const { payload } = await apiRequest("/api/v1/auth/otp/send", {
-    method: "POST",
-    body: { phone },
-  });
-  return payload.data;
+  try {
+    const { payload } = await apiRequest("/api/v1/auth/otp/send", {
+      method: "POST",
+      body: { phone },
+    });
+    return { success: true, data: payload.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 export async function verifyCustomerOtpAction(phone, otp) {
-  const { payload, setCookie } = await apiRequest("/api/v1/auth/otp/verify", {
-    method: "POST",
-    body: { phone, otp },
-  });
+  try {
+    const { payload, setCookie } = await apiRequest("/api/v1/auth/otp/verify", {
+      method: "POST",
+      body: { phone, otp },
+    });
 
-  await setSessionCookies({
-    accessToken: payload.data.access_token,
-    refreshToken: extractCookieValue(setCookie, REFRESH_COOKIE),
-    user: payload.data.user,
-  });
+    await setSessionCookies({
+      accessToken: payload.data.access_token,
+      refreshToken: extractCookieValue(setCookie, REFRESH_COOKIE),
+      user: payload.data.user,
+    });
 
-  return payload.data;
+    return { success: true, data: payload.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 export async function completeOnboardingAction(name) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
-  const { payload } = await apiRequest("/api/v1/auth/onboarding", {
-    method: "POST",
-    body: { name },
-    accessToken,
-  });
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
+    const { payload } = await apiRequest("/api/v1/auth/onboarding", {
+      method: "POST",
+      body: { name },
+      accessToken,
+    });
 
-  await setSessionCookies({
-    accessToken,
-    user: payload.data.user,
-  });
+    await setSessionCookies({
+      accessToken,
+      user: payload.data.user,
+    });
 
-  return payload.data;
+    return { success: true, data: payload.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 }
 
 export async function signOutCustomerAction() {

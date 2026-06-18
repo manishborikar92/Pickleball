@@ -14,7 +14,7 @@ Booking court slots for Pickleball historically suffers from:
 
 ### 1.2 Our Solution
 This platform solves these friction points through:
-1. **Atomic Booking holds**: Utilizing raw PostgreSQL row-level locks (`SELECT ... FOR UPDATE`) to temporarily reserve slots for 10 minutes during checkout, preventing double bookings.
+1. **Atomic Booking holds**: Utilizing a PostgreSQL partial unique index (`booking_slots_no_double_book`) to enforce slot exclusivity atomically at hold time, preventing double bookings.
 2. **In-Context Authentication**: A client-side state preservation architecture utilizing pop-up/bottom-sheet modal OTP validations. The user never navigates away from their booking configuration during registration.
 3. **Role-Based Access Control (RBAC)**: Custom routing proxy mapping roles contextualized per venue, allowing operators to manage schedules dynamically.
 
@@ -84,7 +84,7 @@ This platform solves these friction points through:
    *Modify database connection string and credentials.*
 3. Generate Prisma client & seed database:
    ```bash
-   npx prisma generate
+   npx prisma migrate dev
    npm run prisma:seed
    ```
 4. Run tests to confirm configuration:

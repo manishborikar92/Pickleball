@@ -7,7 +7,7 @@ The Express.js REST API server is the core business logic engine, database coord
 ## 1. Responsibilities
 
 - **Authentication & Sessions**: Manages customer OTP delivery (WhatsApp) and verification, and staff credential logins. Handles JSON Web Token (JWT) session creation, verification, and rotation.
-- **Database Coordination**: Abstracts PostgreSQL queries using Prisma ORM. Encapsulates connection pools and transactional row-level slot locking.
+- **Database Coordination**: Abstracts PostgreSQL queries using Prisma ORM. Encapsulates connection pools and atomic database-level unique constraint checks (partial unique index).
 - **Validation**: Guards all endpoints via Joi schema validations, rejecting dirty payloads before processing.
 - **Integrations**: Connects to WhatsApp Business API and PhonePe gateway, and handles webhook security validation.
 
@@ -39,10 +39,11 @@ All server code resides in `server/src/`:
    *Configure the `DATABASE_URL` with your local PostgreSQL credentials.*
 
 ### 3.2 Initialize Database
-1. Run Prisma migration schemas:
+1. Run Prisma migrations:
    ```bash
-   npx prisma db push
+   npx prisma migrate dev
    ```
+   *Note: Do NOT use `npx prisma db push` as it will drop custom PostgreSQL partial indexes (such as the double-booking concurrency index).*
 2. Seed the database with base venues, courts, roles, and pricing variables:
    ```bash
    npm run prisma:seed

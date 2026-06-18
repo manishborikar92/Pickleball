@@ -18,12 +18,14 @@ We classify codebase features using the following lifecycle states:
 | Edge Route Proxy | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
 | Customer Profiles | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
 | Staff Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
-| Scheduling & Hours | **Planned** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/scheduling` |
-| Slot Locking Engine | **Planned** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/bookings` |
+| Scheduling & Hours | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/venues` |
+| Slot Locking Engine | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/bookings` |
+| Payment Abstraction | **Built** | `docs/adrs/ADR-004-booking-lifecycle-payments.md` | `server/src/modules/payments` |
+| Sandbox Payment Provider | **Built** | `docs/adrs/ADR-004-booking-lifecycle-payments.md` | `server/src/modules/payments/sandbox-payment.provider.js` |
 | PhonePe Payments | **Planned** | `docs/integrations/02-PAYMENT-INTEGRATION.md` | `server/src/modules/payments` |
-| Wallet Transaction Logic | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
+| Wallet Transaction Logic | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
 | Reviews Submission | **Planned** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/reviews` |
-| Reward Scratch Cards | **Deferred** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/rewards` |
+| Reward Scratch Cards | **Planned** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/rewards` |
 
 ---
 
@@ -43,19 +45,19 @@ We classify codebase features using the following lifecycle states:
 - [ ] **Provisioning Engine**: Invite-only registration flow. (*Planned*)
 - [ ] **Reset Flows**: Password reset token mailers. (*Planned*)
 
-### 2.3 Booking & Scheduling Engine (Planned)
-- [ ] **Hours Template Manager**: Admin interfaces for managing opening slots and venue schedules.
-- [ ] **Slot Grid Generator**: Merges templates and exception calendars.
-- [ ] **PostgreSQL Hold Lock**: Reserves slot using `SELECT FOR UPDATE` queries.
-- [ ] **Expiry Daemon**: Scheduled cron sweeper clearing abandoned holds.
+### 2.3 Booking & Scheduling Engine (Built)
+- [x] **Hours Template Manager**: Core venue/court/schedule models.
+- [x] **Slot Grid Generator**: Merges templates and exception calendars to generate live availability in the Venues service.
+- [x] **PostgreSQL Hold Lock**: Reserves slots inside transactions, guarded by partial unique index constraints.
+- [x] **Expiry Daemon**: Background sweeper script (`cleanup-expired-records.mjs`) and lazy hold expiration on payment initiation.
 
-### 2.4 Payments & Webhooks (Planned)
-- [ ] **PhonePe API Redirection**: Redirects checkout flows to PhonePe.
-- [ ] **Webhook Signature Verification**: Computes SHA256 hashes to verify payment webhook payloads.
+### 2.4 Payments & Webhooks (Built)
+- [x] **Neutral Payment Provider Abstraction**: Isolated interface under `server/src/modules/payments/`.
+- [x] **Sandbox Payment Gateway**: deterministic provider facilitating mock checkouts, status tracking, and callbacks without credentials.
 
-### 2.5 Wallet & Cancellations (Partial)
+### 2.5 Wallet & Cancellations (Built)
 - [x] **Wallet Credits Schema**: Prisma balance tracks (`User.walletCredits`).
-- [ ] **Refund Credit workflows**: Cancellations credit wallet balances instead of card refunds.
+- [x] **Refund Credit workflows**: Transactions reserve credits at initiation and roll back credits to user wallets immediately upon hold expiration.
 
 ### 2.6 Review & Rewards (Planned / Deferred)
 - [ ] **Review Ratings API**: Submits ratings.

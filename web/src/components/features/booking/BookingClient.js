@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Card } from "@/components/shared";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,12 +10,17 @@ import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
-import {
-  buildDateWindow,
-  calculateMultiQuote,
-  getCouponByCode,
-} from "@/lib/booking-engine";
+import { buildDateWindow } from "@/lib/booking-engine";
 import { validateCoupon } from "@/lib/validation";
+import {
+  acceptBookingWaiverAction,
+  completeSandboxPaymentAction,
+  createBookingHoldAction,
+  getVenueAvailabilityAction,
+  initiateBookingPaymentAction,
+  previewBookingPriceAction,
+} from "@/app/actions/booking-actions";
+import { buildBookingSelectionPayload } from "@/services/bookingService";
 
 const INITIAL_AUTH = {
   step: "closed",
@@ -25,87 +30,164 @@ const INITIAL_AUTH = {
   error: "",
 };
 
-/**
- * Primary client-side booking page controller.
- * All courts are always visible — users select time slots per court independently.
- * Manages slot selections, quote calculation, coupon state, and checkout flow.
- *
- * @param {Object} props
- * @param {Object} props.venue        - Venue configuration object
- * @param {Array}  props.courts       - Array of court config objects
- * @param {Array}  props.availability - Per-court slot availability array
- */
-export function BookingClient({ venue, courts, availability }) {
+const EMPTY_QUOTE = {
+  subtotal: 0,
+  courtFee: 0,
+  discountAmount: 0,
+  taxAmount: 0,
+  totalAmount: 0,
+  units: [],
+  breakdown: [],
+};
+
+export function BookingClient({
+  venue,
+  courts,
+  availability,
+  initialDate,
+}) {
   const { session: activeSession } = useAuth();
 
   const dates = useMemo(
-    () =>
-      buildDateWindow({
-        startDate: "2026-05-13",
-        advanceBookingDays: venue.advanceBookingDays,
-      }),
-    [venue.advanceBookingDays],
+    () => buildDateWindow({
+      startDate: initialDate,
+      advanceBookingDays: venue.advanceBookingDays,
+    }),
+    [initialDate, venue.advanceBookingDays],
   );
 
-  const [selectedDate, setSelectedDate] = useState(
-    dates[2]?.iso ?? dates[0].iso,
-  );
-
-  // Map<courtId, { startTime, endTime } | null>
+  const [selectedDate, setSelectedDate] = useState(dates[0]?.iso ?? initialDate);
+  const [availabilityData, setAvailabilityData] = useState(availability || []);
+  const [availabilityError, setAvailabilityError] = useState("");
   const [courtSelections, setCourtSelections] = useState(new Map());
-
   const [couponCode, setCouponCode] = useState("");
-  const [coupon, setCoupon] = useState(null);
+  const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [auth, setAuth] = useState(INITIAL_AUTH);
   const [waiver, setWaiver] = useState({ time: false, policy: false });
+  const [serverQuote, setServerQuote] = useState(EMPTY_QUOTE);
+  const [quoteRequestError, setQuoteRequestError] = useState("");
+  const [quoteLoading, setQuoteLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [confirmedBookingId, setConfirmedBookingId] = useState("");
 
-  /* ── Derived state ─────────────────────────────── */
+  useEffect(() => {
+    let active = true;
 
-  /**
-   * Build the selected courts array for quote calculation.
-   * Iterates over all courts — only courts with a completed slot selection are included.
-   */
+    getVenueAvailabilityAction(venue.id, selectedDate)
+      .then((res) => {
+        if (!active) return;
+        if (res.success) {
+          setAvailabilityData(res.data);
+          setAvailabilityError("");
+        } else {
+          setAvailabilityData([]);
+          setAvailabilityError(res.error || "Could not load availability.");
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setAvailabilityData([]);
+        setAvailabilityError(error.message || "Could not load availability.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedDate, venue.id]);
+
   const selectedCourtsData = useMemo(() => {
     const result = [];
+
     for (const court of courts) {
-      const sel = courtSelections.get(court.id);
-      if (!sel) continue;
+      const selection = courtSelections.get(court.id);
+      if (!selection) continue;
 
-      const courtAvail = availability.find((ca) => ca.courtId === court.id);
-      if (!courtAvail) continue;
+      const courtAvailability = availabilityData.find((item) => item.courtId === court.id);
+      if (!courtAvailability) continue;
 
-      const startIdx = courtAvail.slots.findIndex(
-        (s) => s.startTime === sel.startTime,
-      );
-      const endIdx = courtAvail.slots.findIndex(
-        (s) => s.endTime === sel.endTime,
-      );
-      if (startIdx === -1 || endIdx === -1) continue;
+      const startIdx = courtAvailability.slots.findIndex((slot) => slot.startTime === selection.startTime);
+      const endIdx = courtAvailability.slots.findIndex((slot) => slot.endTime === selection.endTime);
+      if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) continue;
 
       result.push({
         courtId: court.id,
         courtName: court.name,
-        slots: courtAvail.slots.slice(startIdx, endIdx + 1),
+        slots: courtAvailability.slots.slice(startIdx, endIdx + 1),
       });
     }
+
     return result;
-  }, [courtSelections, availability, courts]);
+  }, [availabilityData, courtSelections, courts]);
 
-  const hasSelection = selectedCourtsData.length > 0;
-
-  const quote = useMemo(
-    () =>
-      calculateMultiQuote({
-        selectedCourts: selectedCourtsData,
-        coupon,
-      }),
-    [selectedCourtsData, coupon],
+  const selectionPayload = useMemo(
+    () => buildBookingSelectionPayload({
+      venueId: venue.id,
+      selectedDate,
+      selectedCourtsData,
+      couponCode: appliedCouponCode,
+    }),
+    [appliedCouponCode, selectedCourtsData, selectedDate, venue.id],
   );
 
-  /* ── Handlers ─────────────────────────────────── */
+  const hasSelection = selectedCourtsData.length > 0;
+  const quote = hasSelection && selectionPayload.ok ? serverQuote : EMPTY_QUOTE;
+  const quoteError = !hasSelection
+    ? ""
+    : (!selectionPayload.ok ? selectionPayload.message : quoteRequestError);
+  const canCheckout = hasSelection && selectionPayload.ok && !quoteError && !quoteLoading;
+
+  useEffect(() => {
+    let active = true;
+
+    if (!hasSelection) {
+      return () => {
+        active = false;
+      };
+    }
+
+    if (!selectionPayload.ok) {
+      return () => {
+        active = false;
+      };
+    }
+
+    previewBookingPriceAction(selectionPayload.value)
+      .then((res) => {
+        if (!active) return;
+        if (res.success) {
+          setServerQuote(res.data);
+          setQuoteRequestError("");
+          if (appliedCouponCode) setCouponMessage(`${appliedCouponCode} applied.`);
+        } else {
+          setServerQuote(EMPTY_QUOTE);
+          setQuoteRequestError(res.error || "Could not calculate price.");
+          if (appliedCouponCode) {
+            setCouponMessage(res.error || "Promo code could not be applied.");
+          }
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        setServerQuote(EMPTY_QUOTE);
+        setQuoteRequestError(error.message || "Could not calculate price.");
+        if (appliedCouponCode) {
+          setCouponMessage(error.message || "Promo code could not be applied.");
+        }
+      })
+      .finally(() => {
+        if (active) setQuoteLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [appliedCouponCode, hasSelection, selectionPayload]);
 
   const handleSlotSelect = useCallback((courtId, slotOrAction) => {
+    setServerQuote(EMPTY_QUOTE);
+    setQuoteRequestError("");
     setCourtSelections((prev) => {
       const next = new Map(prev);
 
@@ -115,18 +197,17 @@ export function BookingClient({ venue, courts, availability }) {
       }
 
       if (slotOrAction.startSlot && slotOrAction.endSlot) {
-        // Range extension
         next.set(courtId, {
           startTime: slotOrAction.startSlot.startTime,
           endTime: slotOrAction.endSlot.endTime,
         });
       } else {
-        // Single slot start
         next.set(courtId, {
           startTime: slotOrAction.startTime,
           endTime: slotOrAction.endTime,
         });
       }
+
       return next;
     });
   }, []);
@@ -134,18 +215,33 @@ export function BookingClient({ venue, courts, availability }) {
   function handleApplyCoupon() {
     const validation = validateCoupon(couponCode);
     if (!validation.ok) {
-      setCoupon(null);
+      setAppliedCouponCode("");
       setCouponMessage(validation.message);
       return;
     }
-    const nextCoupon = getCouponByCode(validation.value);
-    setCoupon(nextCoupon);
-    setCouponMessage(`${nextCoupon.code} applied.`);
+
+    setAppliedCouponCode(validation.value);
+    setServerQuote(EMPTY_QUOTE);
+    setQuoteRequestError("");
+    setCouponMessage("Checking promo with server pricing.");
   }
 
+  const handleDateSelect = useCallback((date) => {
+    setSelectedDate(date);
+    setAvailabilityError("");
+    setCourtSelections(new Map());
+    setServerQuote(EMPTY_QUOTE);
+    setQuoteRequestError("");
+    setCheckoutError("");
+  }, []);
+
   function handleStartCheckout() {
-    if (!hasSelection) return;
-    
+    setCheckoutError("");
+    if (!canCheckout || !selectionPayload.ok) {
+      setCheckoutError(selectionPayload.message || quoteError || "Complete a valid selection first.");
+      return;
+    }
+
     if (activeSession?.user && activeSession.user.name) {
       setAuth({
         step: "waiver",
@@ -168,8 +264,8 @@ export function BookingClient({ venue, courts, availability }) {
   }
 
   const handleAuthSuccess = useCallback((userData) => {
-    setAuth((a) => ({
-      ...a,
+    setAuth((current) => ({
+      ...current,
       step: "waiver",
       name: userData.name,
       phone: userData.phone,
@@ -177,19 +273,64 @@ export function BookingClient({ venue, courts, availability }) {
     }));
   }, []);
 
-  function handleConfirmPayment() {
+  async function handleConfirmPayment() {
     if (!waiver.time || !waiver.policy) return;
-    setAuth((a) => ({ ...a, step: "success" }));
-  }
+    if (!selectionPayload.ok) {
+      setCheckoutError(selectionPayload.message);
+      return;
+    }
 
-  /* ── Render ───────────────────────────────────── */
+    setCheckoutLoading(true);
+    setCheckoutError("");
+
+    try {
+      const holdRes = await createBookingHoldAction(selectionPayload.value);
+      if (!holdRes.success) {
+        setCheckoutError(holdRes.error || "Could not create booking hold.");
+        return;
+      }
+      const hold = holdRes.data;
+
+      const waiverRes = await acceptBookingWaiverAction(hold.booking_id);
+      if (!waiverRes.success) {
+        setCheckoutError(waiverRes.error || "Could not accept booking waiver.");
+        return;
+      }
+
+      const paymentRes = await initiateBookingPaymentAction(hold.booking_id, {
+        useWalletCredits: true,
+      });
+      if (!paymentRes.success) {
+        setCheckoutError(paymentRes.error || "Could not initiate payment.");
+        return;
+      }
+      const payment = paymentRes.data;
+
+      if (payment.type === "sandbox" && payment.merchant_order_id) {
+        const completeRes = await completeSandboxPaymentAction(payment.merchant_order_id);
+        if (!completeRes.success) {
+          setCheckoutError(completeRes.error || "Could not complete sandbox payment.");
+          return;
+        }
+      } else if (payment.redirect_url) {
+        window.location.assign(payment.redirect_url);
+        return;
+      }
+
+      setConfirmedBookingId(hold.booking_id);
+      setAuth((current) => ({ ...current, step: "success" }));
+    } catch (error) {
+      setCheckoutError(error.message || "Could not complete booking.");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  }
 
   return (
     <main className="min-h-screen bg-background pb-24 text-foreground sm:pb-32">
       <BookingHeader />
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px]">
-        {/* Left column — date picker + all court slot grids */}
         <div className="min-w-0 space-y-5 sm:space-y-6">
           <VenueHero venue={venue} />
 
@@ -197,12 +338,17 @@ export function BookingClient({ venue, courts, availability }) {
             <DatePicker
               dates={dates}
               selectedDate={selectedDate}
-              onSelect={setSelectedDate}
+              onSelect={handleDateSelect}
             />
 
-            {/* All courts always visible — no selection step required */}
+            {availabilityError && (
+              <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+                {availabilityError}
+              </div>
+            )}
+
             <SlotGrid
-              availability={availability}
+              availability={availabilityData}
               courts={courts}
               courtSelections={courtSelections}
               onSlotSelect={handleSlotSelect}
@@ -210,7 +356,6 @@ export function BookingClient({ venue, courts, availability }) {
           </Card>
         </div>
 
-        {/* Right column — sticky order summary */}
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <OrderSummary
             selectedCourtsData={selectedCourtsData}
@@ -219,6 +364,9 @@ export function BookingClient({ venue, courts, availability }) {
             quote={quote}
             couponCode={couponCode}
             couponMessage={couponMessage}
+            quoteLoading={quoteLoading}
+            quoteError={quoteError || checkoutError}
+            canCheckout={canCheckout}
             onCouponCodeChange={setCouponCode}
             onApplyCoupon={handleApplyCoupon}
             onCheckout={handleStartCheckout}
@@ -226,7 +374,6 @@ export function BookingClient({ venue, courts, availability }) {
         </aside>
       </div>
 
-      {/* Checkout auth modal */}
       {auth.step !== "closed" && (
         <AuthFlow
           auth={auth}
@@ -235,6 +382,9 @@ export function BookingClient({ venue, courts, availability }) {
           quote={quote}
           waiver={waiver}
           setWaiver={setWaiver}
+          checkoutError={checkoutError}
+          checkoutLoading={checkoutLoading}
+          confirmedBookingId={confirmedBookingId}
           onAuthSuccess={handleAuthSuccess}
           confirmPayment={handleConfirmPayment}
           onClose={() => setAuth(INITIAL_AUTH)}

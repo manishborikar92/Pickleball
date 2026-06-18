@@ -520,6 +520,246 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
+      [`/users/me/bookings`]: {
+        get: {
+          tags: ['Users'],
+          summary: 'List current user bookings',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending_payment', 'confirmed', 'expired', 'cancelled'] } },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          ],
+          responses: {
+            200: {
+              description: 'Owner-scoped booking history',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } },
+            },
+            401: { description: 'Unauthorized access', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/users/me/wallet`]: {
+        get: {
+          tags: ['Users'],
+          summary: 'Get wallet balance and transactions',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Wallet balance and transaction history',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } },
+            },
+            401: { description: 'Unauthorized access', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/venues/{venueId}`]: {
+        get: {
+          tags: ['Venues'],
+          summary: 'Get venue by ID',
+          parameters: [
+            { name: 'venueId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Venue details', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Venue not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/venues/slug/{slug}`]: {
+        get: {
+          tags: ['Venues'],
+          summary: 'Get venue by slug',
+          parameters: [
+            { name: 'slug', in: 'path', required: true, schema: { type: 'string', example: 'besa-nagpur' } },
+          ],
+          responses: {
+            200: { description: 'Venue details', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Venue not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/venues/{venueId}/availability`]: {
+        get: {
+          tags: ['Venues'],
+          summary: 'Get venue court availability for a date',
+          parameters: [
+            { name: 'venueId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'date', in: 'query', required: true, schema: { type: 'string', format: 'date', example: '2026-06-18' } },
+          ],
+          responses: {
+            200: { description: 'Generated availability with server prices', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Invalid date or outside booking window', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/bookings/price-preview`]: {
+        post: {
+          tags: ['Bookings'],
+          summary: 'Preview authoritative booking price',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['venue_id', 'court_ids', 'slot_date', 'slot_start_times'],
+                  properties: {
+                    venue_id: { type: 'string', format: 'uuid', example: '11111111-1111-4111-8111-111111111111' },
+                    court_ids: { type: 'array', items: { type: 'string', format: 'uuid' } },
+                    slot_date: { type: 'string', format: 'date', example: '2026-06-18' },
+                    slot_start_times: { type: 'array', items: { type: 'string', example: '09:00' } },
+                    coupon_code: { type: 'string', example: 'FIRST10' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Authoritative quote', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Invalid selection', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/bookings/hold`]: {
+        post: {
+          tags: ['Bookings'],
+          summary: 'Create an atomic pending booking hold',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['venue_id', 'court_ids', 'slot_date', 'slot_start_times'],
+                  properties: {
+                    venue_id: { type: 'string', format: 'uuid', example: '11111111-1111-4111-8111-111111111111' },
+                    court_ids: { type: 'array', items: { type: 'string', format: 'uuid' } },
+                    slot_date: { type: 'string', format: 'date', example: '2026-06-18' },
+                    slot_start_times: { type: 'array', items: { type: 'string', example: '09:00' } },
+                    coupon_code: { type: 'string', example: 'FIRST10' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Hold created', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            409: { description: 'Slot conflict', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            429: { description: 'Active hold limit exceeded', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/bookings/{bookingId}`]: {
+        get: {
+          tags: ['Bookings'],
+          summary: 'Get an owner-scoped booking',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'bookingId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Booking details', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Booking not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/bookings/{bookingId}/waiver`]: {
+        post: {
+          tags: ['Bookings'],
+          summary: 'Record liability waiver acceptance',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'bookingId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['time_acknowledged', 'policy_accepted'],
+                  properties: {
+                    time_acknowledged: { type: 'boolean', example: true },
+                    policy_accepted: { type: 'boolean', example: true },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Waiver accepted', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Waiver fields must both be true', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/bookings/{bookingId}/initiate-payment`]: {
+        post: {
+          tags: ['Bookings'],
+          summary: 'Initiate wallet or sandbox payment for a held booking',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'bookingId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    use_wallet_credits: { type: 'boolean', example: true },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Payment initiated or booking confirmed by wallet', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            410: { description: 'Booking hold expired', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            422: { description: 'Waiver required', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/payments/status/{merchantOrderId}`]: {
+        get: {
+          tags: ['Payments'],
+          summary: 'Get payment status',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'merchantOrderId', in: 'path', required: true, schema: { type: 'string', example: 'SANDBOX-order-1' } },
+          ],
+          responses: {
+            200: { description: 'Payment status', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Payment not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/payments/sandbox/{merchantOrderId}/complete`]: {
+        get: {
+          tags: ['Payments'],
+          summary: 'Complete a sandbox payment',
+          parameters: [
+            { name: 'merchantOrderId', in: 'path', required: true, schema: { type: 'string', example: 'SANDBOX-order-1' } },
+          ],
+          responses: {
+            200: { description: 'Sandbox payment completed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+          },
+        },
+      },
+      [`/payments/sandbox/{merchantOrderId}/fail`]: {
+        get: {
+          tags: ['Payments'],
+          summary: 'Fail a sandbox payment',
+          parameters: [
+            { name: 'merchantOrderId', in: 'path', required: true, schema: { type: 'string', example: 'SANDBOX-order-1' } },
+          ],
+          responses: {
+            200: { description: 'Sandbox payment failed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+          },
+        },
+      },
       [`/docs/openapi.json`]: {
         get: {
           tags: ['Documentation'],
