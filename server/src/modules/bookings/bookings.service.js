@@ -254,11 +254,12 @@ export const createBookingsService = ({
           type: existingPayment.gateway,
           booking_id: booking.id,
           merchant_order_id: existingPayment.merchantOrderId,
-          redirect_url: existingPayment.redirectUrl,
+          redirect_url: existingPayment.rawWebhookPayload?.redirect_url || null,
           credits_applied: Number(booking.creditsApplied || 0),
           phonepe_amount: Number(existingPayment.amount || 0),
           total_amount: Number(booking.totalAmount || 0),
           expires_at: booking.expiresAt,
+          payment_id: existingPayment.id,
         };
       }
 
@@ -295,26 +296,46 @@ export const createBookingsService = ({
         currency: 'INR',
       });
 
-      const initiated = await repository.initiateProviderPayment({
-        bookingId,
-        userId,
-        providerOrder,
-        creditsApplied,
-        providerAmount,
-        now,
-      });
+      try {
+        const initiated = await repository.initiateProviderPayment({
+          bookingId,
+          userId,
+          providerOrder,
+          creditsApplied,
+          providerAmount,
+          now,
+        });
 
-      return {
-        type: providerOrder.gateway,
-        booking_id: booking.id,
-        merchant_order_id: providerOrder.merchant_order_id,
-        redirect_url: providerOrder.redirect_url,
-        credits_applied: creditsApplied,
-        phonepe_amount: providerAmount,
-        total_amount: totalAmount,
-        expires_at: booking.expiresAt,
-        payment_id: initiated.payment.id,
-      };
+        return {
+          type: providerOrder.gateway,
+          booking_id: booking.id,
+          merchant_order_id: providerOrder.merchant_order_id,
+          redirect_url: providerOrder.redirect_url,
+          credits_applied: creditsApplied,
+          phonepe_amount: providerAmount,
+          total_amount: totalAmount,
+          expires_at: booking.expiresAt,
+          payment_id: initiated.payment.id,
+        };
+      } catch (error) {
+        if (error.code === 'P2002') {
+          const concurrentPayment = await repository.findReusableInitiatedPayment?.({ bookingId });
+          if (concurrentPayment) {
+            return {
+              type: concurrentPayment.gateway,
+              booking_id: booking.id,
+              merchant_order_id: concurrentPayment.merchantOrderId,
+              redirect_url: concurrentPayment.rawWebhookPayload?.redirect_url || providerOrder.redirect_url,
+              credits_applied: Number(booking.creditsApplied || 0),
+              phonepe_amount: Number(concurrentPayment.amount || 0),
+              total_amount: Number(booking.totalAmount || 0),
+              expires_at: booking.expiresAt,
+              payment_id: concurrentPayment.id,
+            };
+          }
+        }
+        throw error;
+      }
     },
 
     async handleProviderPaymentEvent({
@@ -328,20 +349,18 @@ export const createBookingsService = ({
       }
 
       const booking = payment.booking;
-      if (payment.status === 'success' && booking.status === 'confirmed') {
+      if (payment.status !== 'initiated') {
         return {
           merchant_order_id: merchantOrderId,
           booking_id: booking.id,
-          booking_status: 'confirmed',
-          payment_status: 'success',
+          booking_status: booking.status,
+          payment_status: payment.status,
           idempotent: true,
         };
       }
 
       if (state === 'COMPLETED') {
-        if (booking.expiresAt && booking.expiresAt <= clock()) {
-          throw new AppError('Booking hold has expired', 410, { code: 'BOOKING_EXPIRED' });
-        }
+        const isLatePayment = booking.status === 'expired' || (booking.expiresAt && booking.expiresAt <= clock());
 
         const result = await repository.confirmProviderPayment({
           paymentId: payment.id,
@@ -349,6 +368,17 @@ export const createBookingsService = ({
           payload,
           now: clock(),
         });
+
+        if (isLatePayment && this.onLatePayment) {
+          this.onLatePayment({
+            paymentId: payment.id,
+            bookingId: booking.id,
+            merchantOrderId,
+            amount: Number(payment.amount),
+          }).catch((err) => {
+            console.error('Reconciliation failed for late payment', { paymentId: payment.id, err });
+          });
+        }
 
         return {
           merchant_order_id: merchantOrderId,
@@ -396,6 +426,8 @@ export const createBookingsService = ({
       };
     },
 
+    onLatePayment: null,
+
     async expirePendingHolds({ limit = 100 } = {}) {
       const now = clock();
       return repository.expirePendingHolds({ now, limit });
@@ -409,5 +441,18 @@ export const createBookingsService = ({
 
       return serializeBooking(booking);
     },
+
+    async getBookingForReconciliation({ bookingId }) {
+      return repository.getBookingForReconciliation({ bookingId });
+    },
+
+    async confirmBooking({ bookingId }) {
+      return repository.confirmBooking({ bookingId });
+    },
+
+    async restoreWalletCredits({ bookingId }) {
+      return repository.restoreWalletCredits({ bookingId });
+    },
   };
 };
+

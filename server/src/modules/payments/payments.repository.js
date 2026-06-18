@@ -20,5 +20,54 @@ export const createPaymentsRepository = ({ prisma } = {}) => {
         },
       });
     },
+
+    async getPayment(paymentId) {
+      return db().payment.findUnique({
+        where: { id: paymentId },
+        include: {
+          booking: true,
+        },
+      });
+    },
+
+    async getPaymentByRefundId(merchantRefundId) {
+      return db().payment.findUnique({
+        where: { merchantRefundId },
+        include: {
+          booking: true,
+        },
+      });
+    },
+
+    async updatePaymentRefundInitiated({ paymentId, merchantRefundId, amount, now }) {
+      return db().payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'refund_pending',
+          merchantRefundId,
+          refundAmount: amount,
+          refundInitiatedAt: now,
+        },
+      });
+    },
+
+    async updatePaymentRefundSuccess({ paymentId, completedAt }) {
+      return db().payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'refunded',
+          refundCompletedAt: completedAt,
+        },
+      });
+    },
+
+    async updatePaymentRefundFailed({ paymentId }) {
+      return db().payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'refund_failed',
+        },
+      });
+    },
   };
 };

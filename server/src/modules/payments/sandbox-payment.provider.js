@@ -28,4 +28,12 @@ export const createSandboxPaymentProvider = ({
     if (payment.status === 'failed') return 'FAILED';
     return 'PENDING';
   },
+
+  async refundPayment({ merchantRefundId, amount }) {
+    return {
+      status: 'SUCCESS',
+      merchant_refund_id: merchantRefundId,
+      refund_amount: amount,
+    };
+  },
 });

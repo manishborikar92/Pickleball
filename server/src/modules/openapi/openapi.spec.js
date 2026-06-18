@@ -760,6 +760,49 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
+      [`/payments/{paymentId}/refund`]: {
+        post: {
+          tags: ['Payments'],
+          summary: 'Initiate a refund for a payment',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'paymentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid', example: 'e3f01901-cc0a-4fb4-9c4c-4e89791448b1' } },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    amount: { type: 'number', example: 500.00 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Refund initiated successfully', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Payment not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'Invalid payment state for refund', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/payments/{paymentId}/refund/retry`]: {
+        post: {
+          tags: ['Payments'],
+          summary: 'Retry a failed refund',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'paymentId', in: 'path', required: true, schema: { type: 'string', format: 'uuid', example: 'e3f01901-cc0a-4fb4-9c4c-4e89791448b1' } },
+          ],
+          responses: {
+            200: { description: 'Refund retry initiated', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Payment not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'Invalid payment state for retry', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
       [`/docs/openapi.json`]: {
         get: {
           tags: ['Documentation'],

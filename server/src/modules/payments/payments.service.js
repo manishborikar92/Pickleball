@@ -10,6 +10,7 @@ const serializePaymentStatus = (payment) => ({
 export const createPaymentsService = ({
   repository,
   bookingsService,
+  reconciliationService,
 } = {}) => {
   if (!repository) throw new Error('repository is required');
   if (!bookingsService) throw new Error('bookingsService is required');
@@ -50,6 +51,20 @@ export const createPaymentsService = ({
         },
         requestContext,
       });
+    },
+
+    async refundPayment({ paymentId, amount }) {
+      if (!reconciliationService) {
+        throw new Error('reconciliationService is required for refunds');
+      }
+      return reconciliationService.initiateRefund({ paymentId, amount });
+    },
+
+    async retryRefund({ paymentId }) {
+      if (!reconciliationService) {
+        throw new Error('reconciliationService is required for retries');
+      }
+      return reconciliationService.retryRefund({ paymentId });
     },
   };
 };

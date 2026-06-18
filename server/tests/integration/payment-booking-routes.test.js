@@ -131,3 +131,58 @@ test('payment routes expose protected status and sandbox terminal callbacks', as
   assert.equal(fail.body.data.payment_status, 'failed');
   assert.deepEqual(calls.map(([name]) => name), ['status', 'complete', 'fail']);
 });
+
+test('payment routes expose refund and retry refund endpoints', async () => {
+  const calls = [];
+  const app = createApp({
+    configureRoutes(router) {
+      router.use('/payments', createPaymentsRouter({
+        authMiddleware,
+        paymentsService: {
+          async refundPayment({ paymentId, amount }) {
+            calls.push(['refund', paymentId, amount]);
+            return {
+              status: 'refund_pending',
+              paymentId,
+              amount,
+            };
+          },
+          async retryRefund({ paymentId }) {
+            calls.push(['retry', paymentId]);
+            return {
+              status: 'refund_pending',
+              paymentId,
+            };
+          },
+        },
+      }));
+    },
+  });
+
+  const paymentId = '55555555-5555-5555-8555-555555555555';
+
+  // 1. Post to refund route
+  const refundRes = await request(app)
+    .post(`/api/v1/payments/${paymentId}/refund`)
+    .set('Authorization', 'Bearer test')
+    .send({ amount: 300 });
+
+  assert.equal(refundRes.status, 200);
+  assert.equal(refundRes.body.data.status, 'refund_pending');
+  assert.equal(refundRes.body.data.paymentId, paymentId);
+
+  // 2. Post to refund retry route
+  const retryRes = await request(app)
+    .post(`/api/v1/payments/${paymentId}/refund/retry`)
+    .set('Authorization', 'Bearer test');
+
+  assert.equal(retryRes.status, 200);
+  assert.equal(retryRes.body.data.status, 'refund_pending');
+  assert.equal(retryRes.body.data.paymentId, paymentId);
+
+  assert.deepEqual(calls, [
+    ['refund', paymentId, 300],
+    ['retry', paymentId],
+  ]);
+});
+

@@ -32,4 +32,19 @@ export const createPaymentsController = ({ paymentsService }) => ({
     });
     res.json(ApiResponse.success(result, 'Sandbox payment failed'));
   }),
+
+  refundPayment: asyncHandler(async (req, res) => {
+    const result = await paymentsService.refundPayment({
+      paymentId: req.validated.params.paymentId,
+      amount: req.validated.body.amount,
+    });
+    res.json(ApiResponse.success(result, 'Refund initiated'));
+  }),
+
+  retryRefund: asyncHandler(async (req, res) => {
+    const result = await paymentsService.retryRefund({
+      paymentId: req.validated.params.paymentId,
+    });
+    res.json(ApiResponse.success(result, 'Refund retry initiated'));
+  }),
 });

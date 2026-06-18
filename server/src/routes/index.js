@@ -24,7 +24,7 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   router.use('/users', createDefaultUsersRouter());
   router.use('/venues', createDefaultVenuesRouter());
   router.use('/bookings', createBookingsRouter({ bookingsService }));
-  router.use('/payments', createDefaultPaymentsRouter({ bookingsService }));
+  router.use('/payments', createDefaultPaymentsRouter({ bookingsService, config }));
   router.use('/docs', createOpenApiRouter({ config }));
 
   return router;

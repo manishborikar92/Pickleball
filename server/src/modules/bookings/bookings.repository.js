@@ -381,8 +381,15 @@ export const createBookingsRepository = ({ prisma } = {}) => {
         const payment = await tx.payment.findUnique({ where: { id: paymentId } });
 
         if (!booking || !payment) throw new NotFoundError('Payment not found');
-        if (booking.status === 'confirmed' && payment.status === 'success') {
+        
+        // Idempotency: If already success, return immediately
+        if (payment.status === 'success') {
           return { booking, payment };
+        }
+
+        // Terminal state protection: A payment can never transition to success if it is already failed or refunded
+        if (payment.status !== 'initiated') {
+          throw new ConflictError(`Payment cannot transition from ${payment.status} to success`, { code: 'INVALID_PAYMENT_STATE' });
         }
 
         const updatedPayment = await tx.payment.update({
@@ -394,15 +401,20 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           },
         });
 
-        const updatedBooking = await tx.booking.update({
-          where: { id: bookingId },
-          data: { status: 'confirmed' },
-        });
+        // Booking domain invariants: only pending_payment can transition to confirmed.
+        // If already confirmed, it's a no-op. If expired or cancelled, we DO NOT resurrect it.
+        let updatedBooking = booking;
+        if (booking.status === 'pending_payment') {
+          updatedBooking = await tx.booking.update({
+            where: { id: bookingId },
+            data: { status: 'confirmed' },
+          });
 
-        await tx.bookingSlot.updateMany({
-          where: { bookingId },
-          data: { status: 'confirmed' },
-        });
+          await tx.bookingSlot.updateMany({
+            where: { bookingId },
+            data: { status: 'confirmed' },
+          });
+        }
 
         return { booking: updatedBooking, payment: updatedPayment };
       });
@@ -417,8 +429,15 @@ export const createBookingsRepository = ({ prisma } = {}) => {
         const payment = await tx.payment.findUnique({ where: { id: paymentId } });
 
         if (!booking || !payment) throw new NotFoundError('Payment not found');
+        
+        // Idempotency: If already failed, return immediately
         if (payment.status === 'failed') {
           return { booking, payment };
+        }
+
+        // Terminal state protection: A payment can never transition to failed if it is already success or refunded
+        if (payment.status !== 'initiated') {
+          throw new ConflictError(`Payment cannot transition from ${payment.status} to failed`, { code: 'INVALID_PAYMENT_STATE' });
         }
 
         if (rollbackCredits && toMoney(booking.creditsApplied) > 0) {
@@ -449,10 +468,14 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           },
         });
 
-        const updatedBooking = await tx.booking.update({
-          where: { id: bookingId },
-          data: { creditsApplied: 0 },
-        });
+        // Booking domain invariants: only pending_payment can transition to expired/cancelled.
+        let updatedBooking = booking;
+        if (booking.status === 'pending_payment') {
+          updatedBooking = await tx.booking.update({
+            where: { id: bookingId },
+            data: { creditsApplied: 0 },
+          });
+        }
 
         return { booking: updatedBooking, payment: updatedPayment };
       });
@@ -651,5 +674,82 @@ export const createBookingsRepository = ({ prisma } = {}) => {
         },
       });
     },
+
+    async getBookingForReconciliation({ bookingId }) {
+      return db().booking.findUnique({
+        where: { id: bookingId },
+      });
+    },
+
+    async confirmBooking({ bookingId }) {
+      return db().$transaction(async (tx) => {
+        const booking = await tx.booking.findUnique({ where: { id: bookingId } });
+        if (!booking) throw new NotFoundError('Booking not found');
+        
+        if (booking.status === 'confirmed') {
+          return booking;
+        }
+
+        if (booking.status !== 'pending_payment') {
+          throw new ConflictError('Booking cannot be confirmed in this state', { code: 'INVALID_BOOKING_STATE' });
+        }
+
+        const confirmed = await tx.booking.update({
+          where: { id: bookingId },
+          data: { status: 'confirmed' },
+        });
+
+        await tx.bookingSlot.updateMany({
+          where: { bookingId },
+          data: { status: 'confirmed' },
+        });
+
+        return confirmed;
+      });
+    },
+
+    async restoreWalletCredits({ bookingId }) {
+      return db().$transaction(async (tx) => {
+        const booking = await tx.booking.findUnique({
+          where: { id: bookingId },
+          include: { user: true },
+        });
+
+        if (!booking) throw new NotFoundError('Booking not found');
+        const creditsToRestore = toMoney(booking.creditsApplied);
+
+        if (creditsToRestore > 0) {
+          // Zero out on booking first
+          await tx.booking.update({
+            where: { id: bookingId },
+            data: { creditsApplied: 0 },
+          });
+
+          // Increment user balance
+          const updatedUser = await tx.user.update({
+            where: { id: booking.userId },
+            data: { walletCredits: { increment: creditsToRestore } },
+            select: { walletCredits: true },
+          });
+
+          // Create transaction log
+          await tx.walletTransaction.create({
+            data: {
+              userId: booking.userId,
+              bookingId,
+              type: 'credit_issued',
+              amount: creditsToRestore,
+              balanceAfter: updatedUser.walletCredits,
+              reason: 'Reconciliation refund for expired booking wallet credits',
+            },
+          });
+
+          return { restoredAmount: creditsToRestore, balanceAfter: updatedUser.walletCredits };
+        }
+
+        return { restoredAmount: 0, balanceAfter: toMoney(booking.user?.walletCredits) };
+      });
+    },
   };
 };
+
