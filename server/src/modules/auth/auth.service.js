@@ -410,5 +410,16 @@ export const createAuthService = ({
         reason: 'logout_all',
       });
     },
+
+    async hasPermission({ userId, venueId, permission }) {
+      if (!userId || !venueId || !permission) {
+        return false;
+      }
+      return repository.hasVenuePermission({
+        userId,
+        venueId,
+        permissionKey: permission,
+      });
+    },
   };
 };

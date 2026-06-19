@@ -7,7 +7,7 @@ import request from 'supertest';
 import createApp from '../../src/app.js';
 import { validate } from '../../src/middleware/validate.middleware.js';
 import { authenticate } from '../../src/middleware/authenticate.middleware.js';
-import { authorize, requirePermissions } from '../../src/middleware/authorize.middleware.js';
+import { requireVenuePermission } from '../../src/middleware/authorize.middleware.js';
 import { ApiResponse } from '../../src/utils/api-response.js';
 
 test('createApp wires root and health endpoints with a consistent response envelope', async () => {
@@ -103,10 +103,10 @@ test('validation failures include field-level errors', async () => {
   assert.ok(response.body.data.errors.length > 0);
 });
 
-test('authenticate verifies JWTs and authorize enforces roles', async () => {
+test('authenticate verifies JWTs and sets req.auth principal', async () => {
   const secret = 'test-access-secret-with-enough-length';
   const token = jwt.sign(
-    { sub: 'user_123', role: 'admin', permissions: ['users:read'] },
+    { sub: 'user_123' },
     secret,
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
@@ -116,7 +116,7 @@ test('authenticate verifies JWTs and authorize enforces roles', async () => {
       auth: { accessTokenSecret: secret },
     },
     configureRoutes(router) {
-      router.get('/secure', authenticate(), authorize('admin'), (req, res) => {
+      router.get('/secure', authenticate(), (req, res) => {
         res.json(ApiResponse.success({ auth: req.auth }));
       });
     },
@@ -128,13 +128,12 @@ test('authenticate verifies JWTs and authorize enforces roles', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.auth.subject, 'user_123');
-  assert.equal(response.body.data.auth.role, 'admin');
 });
 
 test('authenticate rejects tokens for revoked sessions', async () => {
   const secret = 'test-access-secret-with-enough-length';
   const token = jwt.sign(
-    { sub: 'user_123', session_id: 'session_revoked', roles: ['admin'] },
+    { sub: 'user_123', session_id: 'session_revoked' },
     secret,
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
@@ -162,10 +161,51 @@ test('authenticate rejects tokens for revoked sessions', async () => {
   assert.equal(response.body.message, 'Session is no longer active');
 });
 
-test('authorize accepts role arrays from access-token claims', async () => {
+test('requireVenuePermission permits authorized users and rejects unauthorized users', async () => {
   const secret = 'test-access-secret-with-enough-length';
   const token = jwt.sign(
-    { sub: 'user_123', roles: ['admin'], permissions: ['users:read'] },
+    { sub: 'user_123' },
+    secret,
+    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
+  );
+
+  const mockAuthService = {
+    async hasPermission({ userId, venueId, permission }) {
+      return userId === 'user_123' && venueId === 'venue-1' && permission === 'edit_pricing';
+    },
+  };
+
+  const app = createApp({
+    configOverrides: {
+      auth: { accessTokenSecret: secret },
+    },
+    configureRoutes(router) {
+      router.get('/admin/:venueId/pricing', (req, res, next) => {
+        req.app.set('authService', mockAuthService);
+        next();
+      }, authenticate(), requireVenuePermission('edit_pricing'), (req, res) => {
+        res.json(ApiResponse.success({ ok: true }));
+      });
+    },
+  });
+
+  const successResponse = await request(app)
+    .get('/api/v1/admin/venue-1/pricing')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(successResponse.status, 200);
+
+  const forbiddenResponse = await request(app)
+    .get('/api/v1/admin/venue-2/pricing')
+    .set('Authorization', `Bearer ${token}`);
+
+  assert.equal(forbiddenResponse.status, 403);
+});
+
+test('requireVenuePermission rejects requests without venue context', async () => {
+  const secret = 'test-access-secret-with-enough-length';
+  const token = jwt.sign(
+    { sub: 'user_123' },
     secret,
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
@@ -175,76 +215,16 @@ test('authorize accepts role arrays from access-token claims', async () => {
       auth: { accessTokenSecret: secret },
     },
     configureRoutes(router) {
-      router.get('/roles-secure', authenticate(), authorize('admin'), (_req, res) => {
-        res.json(ApiResponse.success());
+      router.get('/admin/pricing', authenticate(), requireVenuePermission('edit_pricing'), (req, res) => {
+        res.json(ApiResponse.success({ ok: true }));
       });
     },
   });
 
   const response = await request(app)
-    .get('/api/v1/roles-secure')
-    .set('Authorization', `Bearer ${token}`);
-
-  assert.equal(response.status, 200);
-});
-
-test('authorize rejects authenticated users without an allowed role', async () => {
-  const secret = 'test-access-secret-with-enough-length';
-  const token = jwt.sign({ sub: 'user_123', role: 'member' }, secret, { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' });
-
-  const app = createApp({
-    configOverrides: {
-      auth: { accessTokenSecret: secret },
-    },
-    configureRoutes(router) {
-      router.get('/admin', authenticate(), authorize('admin'), (_req, res) => {
-        res.json(ApiResponse.success());
-      });
-    },
-  });
-
-  const response = await request(app)
-    .get('/api/v1/admin')
+    .get('/api/v1/admin/pricing')
     .set('Authorization', `Bearer ${token}`);
 
   assert.equal(response.status, 403);
-  assert.equal(response.body.message, 'Insufficient permissions');
-});
-
-test('requirePermissions permits requests with valid permissions and rejects missing permissions', async () => {
-  const secret = 'test-access-secret-with-enough-length';
-
-  const token = jwt.sign(
-    { sub: 'user_123', permissions: ['read_profile', 'write_profile'] },
-    secret,
-    { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' }
-  );
-
-  const app = createApp({
-    configOverrides: {
-      auth: { accessTokenSecret: secret },
-    },
-    configureRoutes(router) {
-      router.get('/secure-action', authenticate(), requirePermissions('read_profile', 'write_profile'), (_req, res) => {
-        res.json(ApiResponse.success());
-      });
-      router.get('/restricted-action', authenticate(), requirePermissions('delete_profile'), (_req, res) => {
-        res.json(ApiResponse.success());
-      });
-    },
-  });
-
-  const successResponse = await request(app)
-    .get('/api/v1/secure-action')
-    .set('Authorization', `Bearer ${token}`);
-
-  assert.equal(successResponse.status, 200);
-
-  const forbiddenResponse = await request(app)
-    .get('/api/v1/restricted-action')
-    .set('Authorization', `Bearer ${token}`);
-
-  assert.equal(forbiddenResponse.status, 403);
-  assert.equal(forbiddenResponse.body.message, 'Missing required permissions');
-  assert.deepEqual(forbiddenResponse.body.data.missing, ['delete_profile']);
+  assert.match(response.body.message, /Venue context required/);
 });

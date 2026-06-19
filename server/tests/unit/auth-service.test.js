@@ -151,6 +151,11 @@ function createMemoryRepository(clock = () => fixedNow) {
         permissions: ['view_own_bookings'],
       };
     },
+    async hasVenuePermission({ userId, venueId, permissionKey }) {
+      const user = [...users.values()].find((item) => item.id === userId);
+      if (!user) return false;
+      return user.permissions?.includes(permissionKey) || false;
+    },
   };
 }
 
@@ -598,6 +603,47 @@ test('refreshSession allows concurrent refresh with negative clock skew within g
 
   assert.equal(refreshedSkew.skipCookieUpdate, true);
   assert.equal(refreshedSkew.access_token.split('.').length, 3);
+});
+
+test('AuthService.hasPermission evaluates user permissions at a venue correctly', async () => {
+  const repository = createMemoryRepository();
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+  });
+
+  // Create a user in repository.data.users
+  const userWithPerm = {
+    id: 'user-with-perm',
+    phone: '+919876543210',
+    name: 'Authorized Staff',
+    isPhoneVerified: true,
+    permissions: ['issue_credits'],
+  };
+  repository.data.users.set(userWithPerm.phone, userWithPerm);
+
+  const hasPerm = await service.hasPermission({
+    userId: 'user-with-perm',
+    venueId: 'venue-1',
+    permission: 'issue_credits',
+  });
+  assert.equal(hasPerm, true);
+
+  const lacksPerm = await service.hasPermission({
+    userId: 'user-with-perm',
+    venueId: 'venue-1',
+    permission: 'manage_courts',
+  });
+  assert.equal(lacksPerm, false);
+
+  const missingUser = await service.hasPermission({
+    userId: 'non-existent',
+    venueId: 'venue-1',
+    permission: 'issue_credits',
+  });
+  assert.equal(missingUser, false);
 });
 
 

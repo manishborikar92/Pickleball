@@ -3,8 +3,9 @@ import { createPaymentsRouter } from './payments.routes.js';
 import { createPaymentsService } from './payments.service.js';
 import { createReconciliationService } from './reconciliation.service.js';
 import { createSandboxPaymentProvider } from './sandbox-payment.provider.js';
+import { createDefaultAuthService } from '../auth/index.js';
 
-export const createDefaultPaymentsService = ({ bookingsService, config } = {}) => {
+export const createDefaultPaymentsService = ({ bookingsService, config, authService } = {}) => {
   const repository = createPaymentsRepository();
   
   const paymentProvider = createSandboxPaymentProvider({
@@ -28,10 +29,11 @@ export const createDefaultPaymentsService = ({ bookingsService, config } = {}) =
     repository,
     bookingsService,
     reconciliationService,
+    authService: authService || createDefaultAuthService({ config }),
   });
 };
 
-export const createDefaultPaymentsRouter = ({ bookingsService, config } = {}) => {
-  const paymentsService = createDefaultPaymentsService({ bookingsService, config });
+export const createDefaultPaymentsRouter = ({ bookingsService, config, authService } = {}) => {
+  const paymentsService = createDefaultPaymentsService({ bookingsService, config, authService });
   return createPaymentsRouter({ paymentsService });
 };

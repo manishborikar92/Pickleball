@@ -37,6 +37,7 @@ export const createPaymentsController = ({ paymentsService }) => ({
     const result = await paymentsService.refundPayment({
       paymentId: req.validated.params.paymentId,
       amount: req.validated.body.amount,
+      userId: req.auth.subject,
     });
     res.json(ApiResponse.success(result, 'Refund initiated'));
   }),
@@ -44,6 +45,7 @@ export const createPaymentsController = ({ paymentsService }) => ({
   retryRefund: asyncHandler(async (req, res) => {
     const result = await paymentsService.retryRefund({
       paymentId: req.validated.params.paymentId,
+      userId: req.auth.subject,
     });
     res.json(ApiResponse.success(result, 'Refund retry initiated'));
   }),

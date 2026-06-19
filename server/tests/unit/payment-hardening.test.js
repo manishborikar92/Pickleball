@@ -4,7 +4,7 @@ import test from 'node:test';
 import { createBookingsService } from '../../src/modules/bookings/bookings.service.js';
 import { createPaymentsService } from '../../src/modules/payments/payments.service.js';
 import { createReconciliationService } from '../../src/modules/payments/reconciliation.service.js';
-import { ConflictError, AppError } from '../../src/utils/api-error.js';
+import { ConflictError, AppError, ForbiddenError } from '../../src/utils/api-error.js';
 
 const userId = '33333333-3333-4333-8333-333333333333';
 const bookingId = '44444444-4444-4444-8444-444444444444';
@@ -345,4 +345,112 @@ test('Double-wallet-crediting prevention: Reconciliation restoreWalletCredits ze
 
   assert.ok(updateBookingCreditsCalled);
   assert.equal(userWalletIncrement, 100);
+});
+
+test('PaymentsService.refundPayment enforces issue_credits permission check', async () => {
+  const mockPayment = {
+    id: paymentId,
+    status: 'success',
+    amount: 500,
+    booking: {
+      id: bookingId,
+      venueId: 'venue-123',
+    },
+  };
+
+  const mockPaymentsRepo = {
+    async getPayment(id) {
+      return id === paymentId ? mockPayment : null;
+    },
+  };
+
+  const mockReconService = {
+    async initiateRefund({ paymentId, amount }) {
+      return { status: 'refund_pending', paymentId, amount };
+    },
+  };
+
+  const mockAuthService = {
+    async hasPermission({ userId, venueId, permission }) {
+      return userId === 'admin-user' && venueId === 'venue-123' && permission === 'issue_credits';
+    },
+  };
+
+  const service = createPaymentsService({
+    repository: mockPaymentsRepo,
+    bookingsService: {},
+    reconciliationService: mockReconService,
+    authService: mockAuthService,
+  });
+
+  // 1. Success case: admin-user has permission
+  const successResult = await service.refundPayment({
+    paymentId,
+    amount: 500,
+    userId: 'admin-user',
+  });
+  assert.equal(successResult.status, 'refund_pending');
+
+  // 2. Failure case: other-user lacks permission
+  await assert.rejects(
+    () => service.refundPayment({
+      paymentId,
+      amount: 500,
+      userId: 'other-user',
+    }),
+    ForbiddenError
+  );
+});
+
+test('PaymentsService.retryRefund enforces issue_credits permission check', async () => {
+  const mockPayment = {
+    id: paymentId,
+    status: 'success',
+    amount: 500,
+    booking: {
+      id: bookingId,
+      venueId: 'venue-123',
+    },
+  };
+
+  const mockPaymentsRepo = {
+    async getPayment(id) {
+      return id === paymentId ? mockPayment : null;
+    },
+  };
+
+  const mockReconService = {
+    async retryRefund({ paymentId }) {
+      return { status: 'refund_pending', paymentId };
+    },
+  };
+
+  const mockAuthService = {
+    async hasPermission({ userId, venueId, permission }) {
+      return userId === 'admin-user' && venueId === 'venue-123' && permission === 'issue_credits';
+    },
+  };
+
+  const service = createPaymentsService({
+    repository: mockPaymentsRepo,
+    bookingsService: {},
+    reconciliationService: mockReconService,
+    authService: mockAuthService,
+  });
+
+  // 1. Success case: admin-user has permission
+  const successResult = await service.retryRefund({
+    paymentId,
+    userId: 'admin-user',
+  });
+  assert.equal(successResult.status, 'refund_pending');
+
+  // 2. Failure case: other-user lacks permission
+  await assert.rejects(
+    () => service.retryRefund({
+      paymentId,
+      userId: 'other-user',
+    }),
+    ForbiddenError
+  );
 });

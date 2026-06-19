@@ -3,6 +3,7 @@ import test from 'node:test';
 import request from 'supertest';
 
 import createApp from '../../src/app.js';
+import { ForbiddenError } from '../../src/utils/api-error.js';
 import { createUsersRouter } from '../../src/modules/users/users.routes.js';
 
 const userId = '33333333-3333-4333-8333-333333333333';
@@ -21,6 +22,7 @@ test('user routes expose owner-scoped bookings and wallet summaries', async () =
     configureRoutes(router) {
       router.use('/users', createUsersRouter({
         authMiddleware,
+        onboardingMiddleware: (_req, _res, next) => next(),
         userService: {
           async getCurrentUser() {
             return { id: userId, permissions: ['view_own_bookings'] };
@@ -79,4 +81,31 @@ test('user routes expose owner-scoped bookings and wallet summaries', async () =
     ['bookings', userId, 'confirmed', 2, 5],
     ['wallet', userId],
   ]);
+});
+
+test('user routes reject un-onboarded users on bookings and wallet endpoints', async () => {
+  const app = createApp({
+    configureRoutes(router) {
+      router.use('/users', createUsersRouter({
+        authMiddleware,
+        onboardingMiddleware: (_req, _res, next) => {
+          next(new ForbiddenError('Onboarding incomplete', { code: 'ONBOARDING_INCOMPLETE' }));
+        },
+        userService: {
+          async getMyBookings() { return { data: [], pagination: {} }; },
+          async getMyWallet() { return { balance: 0, transactions: [] }; },
+        },
+      }));
+    },
+  });
+
+  const bookings = await request(app)
+    .get('/api/v1/users/me/bookings')
+    .set('Authorization', 'Bearer test');
+  assert.equal(bookings.status, 403);
+
+  const wallet = await request(app)
+    .get('/api/v1/users/me/wallet')
+    .set('Authorization', 'Bearer test');
+  assert.equal(wallet.status, 403);
 });

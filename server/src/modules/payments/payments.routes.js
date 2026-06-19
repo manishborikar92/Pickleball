@@ -2,6 +2,7 @@ import { Router } from 'express';
 
 import { authenticate } from '../../middleware/authenticate.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
+import { requireOnboarding } from '../../middleware/require-onboarding.middleware.js';
 import { createPaymentsController } from './payments.controller.js';
 import {
   paymentIdParamsSchema,
@@ -12,6 +13,7 @@ import {
 export const createPaymentsRouter = ({
   paymentsService,
   authMiddleware = authenticate(),
+  onboardingMiddleware = requireOnboarding(),
 } = {}) => {
   if (!paymentsService) {
     throw new Error('paymentsService is required');
@@ -20,7 +22,7 @@ export const createPaymentsRouter = ({
   const router = Router();
   const controller = createPaymentsController({ paymentsService });
 
-  router.get('/status/:merchantOrderId', authMiddleware, validate(paymentOrderParamsSchema, 'params'), controller.getPaymentStatus);
+  router.get('/status/:merchantOrderId', authMiddleware, onboardingMiddleware, validate(paymentOrderParamsSchema, 'params'), controller.getPaymentStatus);
   router.get('/sandbox/:merchantOrderId/complete', validate(paymentOrderParamsSchema, 'params'), controller.completeSandboxPayment);
   router.get('/sandbox/:merchantOrderId/fail', validate(paymentOrderParamsSchema, 'params'), controller.failSandboxPayment);
 

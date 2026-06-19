@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { createHealthRouter } from '../modules/health/health.routes.js';
-import { createDefaultAuthRouter } from '../modules/auth/index.js';
+import { createDefaultAuthRouter, createDefaultAuthService } from '../modules/auth/index.js';
 import { createDefaultUsersRouter, createDefaultUsersService } from '../modules/users/index.js';
 import { createOpenApiRouter } from '../modules/openapi/openapi.routes.js';
 import { createDefaultBookingsService } from '../modules/bookings/index.js';
@@ -20,11 +20,18 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
 
   const userService = createDefaultUsersService();
   const bookingsService = createDefaultBookingsService({ config });
-  router.use('/auth', createDefaultAuthRouter({ config, userService }));
+  const authService = createDefaultAuthService({ config });
+
+  router.use((req, res, next) => {
+    req.app.set('authService', authService);
+    next();
+  });
+
+  router.use('/auth', createDefaultAuthRouter({ config, userService, authService }));
   router.use('/users', createDefaultUsersRouter());
   router.use('/venues', createDefaultVenuesRouter());
   router.use('/bookings', createBookingsRouter({ bookingsService }));
-  router.use('/payments', createDefaultPaymentsRouter({ bookingsService, config }));
+  router.use('/payments', createDefaultPaymentsRouter({ bookingsService, config, authService }));
   router.use('/docs', createOpenApiRouter({ config }));
 
   return router;

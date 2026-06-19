@@ -3,6 +3,7 @@ import test from 'node:test';
 import request from 'supertest';
 
 import createApp from '../../src/app.js';
+import { ForbiddenError } from '../../src/utils/api-error.js';
 import { createBookingsRouter } from '../../src/modules/bookings/bookings.routes.js';
 import { createPaymentsRouter } from '../../src/modules/payments/payments.routes.js';
 
@@ -76,6 +77,7 @@ test('payment routes expose protected status and sandbox terminal callbacks', as
     configureRoutes(router) {
       router.use('/payments', createPaymentsRouter({
         authMiddleware,
+        onboardingMiddleware,
         paymentsService: {
           async getPaymentStatus({ userId: statusUserId, merchantOrderId }) {
             calls.push(['status', statusUserId, merchantOrderId]);
@@ -138,6 +140,7 @@ test('payment routes expose refund and retry refund endpoints', async () => {
     configureRoutes(router) {
       router.use('/payments', createPaymentsRouter({
         authMiddleware,
+        onboardingMiddleware,
         paymentsService: {
           async refundPayment({ paymentId, amount }) {
             calls.push(['refund', paymentId, amount]);
@@ -184,5 +187,29 @@ test('payment routes expose refund and retry refund endpoints', async () => {
     ['refund', paymentId, 300],
     ['retry', paymentId],
   ]);
+});
+
+test('payment routes reject un-onboarded users on status endpoint', async () => {
+  const app = createApp({
+    configureRoutes(router) {
+      router.use('/payments', createPaymentsRouter({
+        authMiddleware,
+        onboardingMiddleware: (_req, _res, next) => {
+          next(new ForbiddenError('Onboarding incomplete', { code: 'ONBOARDING_INCOMPLETE' }));
+        },
+        paymentsService: {
+          async getPaymentStatus() {
+            return {};
+          },
+        },
+      }));
+    },
+  });
+
+  const res = await request(app)
+    .get('/api/v1/payments/status/SANDBOX-order-1')
+    .set('Authorization', 'Bearer test');
+
+  assert.equal(res.status, 403);
 });
 

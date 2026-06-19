@@ -29,7 +29,10 @@ function createTestApp(userService) {
     },
     configureRoutes(router) {
       router.use('/auth', createAuthRouter({ authService, userService }));
-      router.use('/users', createUsersRouter({ userService }));
+      router.use('/users', createUsersRouter({
+        userService,
+        onboardingMiddleware: (_req, _res, next) => next(),
+      }));
     },
   });
 }

@@ -218,5 +218,25 @@ export const createAuthRepository = ({ prisma } = {}) => {
 
     return flattenAuthContext(user);
   },
+
+  async hasVenuePermission({ userId, venueId, permissionKey }) {
+    const count = await db().venueUserRole.count({
+      where: {
+        userId,
+        venueId,
+        role: {
+          permissions: {
+            some: {
+              permission: {
+                key: permissionKey,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return count > 0;
+  },
   };
 };

@@ -3,14 +3,17 @@ import { createAuthRouter } from './auth.routes.js';
 import { createAuthService } from './auth.service.js';
 import { createOtpProvider } from './otp.provider.js';
 
-export const createDefaultAuthRouter = ({ config, userService }) => {
+export const createDefaultAuthService = ({ config } = {}) => {
   const repository = createAuthRepository();
   const otpProvider = createOtpProvider({ config });
-  const authService = createAuthService({
+  return createAuthService({
     repository,
     otpProvider,
     config,
   });
+};
 
-  return createAuthRouter({ authService, userService });
+export const createDefaultAuthRouter = ({ config, userService, authService } = {}) => {
+  const service = authService || createDefaultAuthService({ config });
+  return createAuthRouter({ authService: service, userService });
 };
