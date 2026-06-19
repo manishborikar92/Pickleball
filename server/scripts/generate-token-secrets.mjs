@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * generate-token-secrets.mjs
  *

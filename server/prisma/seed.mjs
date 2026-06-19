@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import 'dotenv/config';
 import { getPrisma } from '../src/lib/prisma.js';
 import { createPasswordHash, normalizeIndianPhone } from '../src/modules/auth/auth.utils.js';

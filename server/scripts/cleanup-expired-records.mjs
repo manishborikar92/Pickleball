@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { getPrisma } from '../src/lib/prisma.js';
 import { createDefaultBookingsService } from '../src/modules/bookings/index.js';
 import { createDefaultVenuesService } from '../src/modules/venues/index.js';
