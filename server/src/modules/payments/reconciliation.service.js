@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { ConflictError, NotFoundError, AppError } from '../../utils/api-error.js';
+import logger from '../../utils/logger.js';
 
 export const createReconciliationService = ({
   paymentsRepository,
@@ -12,23 +13,23 @@ export const createReconciliationService = ({
 
   return {
     async reconcileLatePayment({ paymentId, bookingId, amount }) {
-      console.log(`[Reconciliation] Triggering auto-refund for late payment: ${paymentId}, booking: ${bookingId}`);
+      logger.info(`[Reconciliation] Triggering auto-refund for late payment: ${paymentId}, booking: ${bookingId}`);
 
       // 1. Restore applied wallet credits back to user's wallet
       try {
         const creditRestore = await bookingsService.restoreWalletCredits({ bookingId });
-        console.log(`[Reconciliation] Restored wallet credits: ${creditRestore.restoredAmount}`);
+        logger.info(`[Reconciliation] Restored wallet credits: ${creditRestore.restoredAmount}`);
       } catch (err) {
-        console.error(`[Reconciliation] Failed to restore wallet credits for booking ${bookingId}`, err);
+        logger.error(`[Reconciliation] Failed to restore wallet credits for booking ${bookingId}`, { error: err });
       }
 
       // 2. Initiate auto-refund of the gateway transaction amount
       if (amount > 0) {
         try {
           await this.initiateRefund({ paymentId, amount });
-          console.log(`[Reconciliation] Auto-refund initiated for payment ${paymentId}`);
+          logger.info(`[Reconciliation] Auto-refund initiated for payment ${paymentId}`);
         } catch (err) {
-          console.error(`[Reconciliation] Auto-refund initiation failed for payment ${paymentId}`, err);
+          logger.error(`[Reconciliation] Auto-refund initiation failed for payment ${paymentId}`, { error: err });
         }
       }
     },
@@ -74,7 +75,7 @@ export const createReconciliationService = ({
           return { status: 'refund_failed', merchantRefundId };
         }
       } catch (error) {
-        console.error(`[Reconciliation] Refund API call failed for payment ${paymentId}`, error);
+        logger.error(`[Reconciliation] Refund API call failed for payment ${paymentId}`, { error });
         await this.failRefund({ merchantRefundId });
         return { status: 'refund_failed', merchantRefundId };
       }

@@ -7,6 +7,6 @@ export const createDefaultUsersService = () => {
   return createUsersService({ repository });
 };
 
-export const createDefaultUsersRouter = () => createUsersRouter({
-  userService: createDefaultUsersService(),
+export const createDefaultUsersRouter = ({ userService } = {}) => createUsersRouter({
+  userService,
 });

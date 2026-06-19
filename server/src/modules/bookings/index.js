@@ -1,16 +1,14 @@
 import { createSandboxPaymentProvider } from '../payments/sandbox-payment.provider.js';
-import { createDefaultVenuesService } from '../venues/index.js';
 import { createBookingPricingService } from './booking-pricing.service.js';
 import { createBookingSelectionService } from './booking-selection.service.js';
 import { createBookingsRepository } from './bookings.repository.js';
-import { createBookingsRouter } from './bookings.routes.js';
 import { createBookingsService } from './bookings.service.js';
 
 const defaultApiBaseUrl = (config) => `http://localhost:${config?.app?.port || 5000}`;
 
-export const createDefaultBookingsService = ({ config } = {}) => {
+export const createDefaultBookingsService = ({ config, venueService } = {}) => {
   const repository = createBookingsRepository();
-  const availabilityService = createDefaultVenuesService();
+  const availabilityService = venueService;
   const selectionService = createBookingSelectionService();
   const pricingService = createBookingPricingService();
   const paymentProvider = createSandboxPaymentProvider({
@@ -26,7 +24,3 @@ export const createDefaultBookingsService = ({ config } = {}) => {
   });
 };
 
-export const createDefaultBookingsRouter = ({ config } = {}) => {
-  const bookingsService = createDefaultBookingsService({ config });
-  return createBookingsRouter({ bookingsService });
-};

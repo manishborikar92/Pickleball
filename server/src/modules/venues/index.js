@@ -9,6 +9,6 @@ export const createDefaultVenuesService = () => {
   return createVenuesService({ repository, pricingService });
 };
 
-export const createDefaultVenuesRouter = () => createVenuesRouter({
-  venueService: createDefaultVenuesService(),
+export const createDefaultVenuesRouter = ({ venueService } = {}) => createVenuesRouter({
+  venueService,
 });

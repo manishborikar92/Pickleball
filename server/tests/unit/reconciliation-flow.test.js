@@ -2,9 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createReconciliationService } from '../../src/modules/payments/reconciliation.service.js';
-import { ConflictError, NotFoundError } from '../../src/utils/api-error.js';
-
-const userId = '33333333-3333-4333-8333-333333333333';
+import { ConflictError } from '../../src/utils/api-error.js';
 const bookingId = '44444444-4444-4444-8444-444444444444';
 const paymentId = '55555555-5555-5555-8555-555555555555';
 
@@ -79,9 +77,6 @@ test('reconcileLatePayment restores wallet credits and triggers auto-refund', as
     bookingId,
     amount: 500,
   });
-
-  console.log('OVERRIDES OBJECT IN TEST:', overrides);
-
   assert.equal(overrides.restoredArgs.bookingId, bookingId);
   assert.equal(overrides.initiatedArgs.paymentId, paymentId);
   assert.equal(overrides.initiatedArgs.amount, 500);

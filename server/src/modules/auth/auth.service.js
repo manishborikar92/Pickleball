@@ -5,6 +5,7 @@ import {
   ForbiddenError,
   UnauthorizedError,
 } from '../../utils/api-error.js';
+import { Permissions } from '../../shared/auth-constants.js';
 import {
   createAccessToken,
   createOtpHash,
@@ -188,7 +189,7 @@ export const createAuthService = ({
       const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
       const permissions = authContext.permissions.length > 0
         ? authContext.permissions
-        : ['view_own_bookings'];
+        : [Permissions.VIEW_OWN_BOOKINGS];
       const session = await repository.createSession({
         userId: user.id,
         expiresAt: addSeconds(now, config.auth.refreshTokenTtlSeconds),
@@ -319,7 +320,7 @@ export const createAuthService = ({
         const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
         const permissions = authContext.permissions.length > 0
           ? authContext.permissions
-          : ['view_own_bookings'];
+          : [Permissions.VIEW_OWN_BOOKINGS];
 
         if (isLegitimateConcurrentRefresh) {
           const accessToken = createAccessToken({
@@ -361,7 +362,7 @@ export const createAuthService = ({
       const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
       const permissions = authContext.permissions.length > 0
         ? authContext.permissions
-        : ['view_own_bookings'];
+        : [Permissions.VIEW_OWN_BOOKINGS];
 
       try {
         const tokenPair = await issueTokenPair({

@@ -3,7 +3,6 @@ import { createPaymentsRouter } from './payments.routes.js';
 import { createPaymentsService } from './payments.service.js';
 import { createReconciliationService } from './reconciliation.service.js';
 import { createSandboxPaymentProvider } from './sandbox-payment.provider.js';
-import { createDefaultAuthService } from '../auth/index.js';
 
 export const createDefaultPaymentsService = ({ bookingsService, config, authService } = {}) => {
   const repository = createPaymentsRepository();
@@ -29,7 +28,7 @@ export const createDefaultPaymentsService = ({ bookingsService, config, authServ
     repository,
     bookingsService,
     reconciliationService,
-    authService: authService || createDefaultAuthService({ config }),
+    authorizationService: authService,
   });
 };
 

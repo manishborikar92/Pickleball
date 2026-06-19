@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createAuthService } from '../../src/modules/auth/auth.service.js';
 import { createPasswordHash, hashRefreshToken } from '../../src/modules/auth/auth.utils.js';
+import { Permissions } from '../../src/shared/auth-constants.js';
 
 const baseConfig = {
   auth: {
@@ -57,7 +58,7 @@ function createMemoryRepository(clock = () => fixedNow) {
         name: null,
         isPhoneVerified: true,
         roles: [],
-        permissions: ['view_own_bookings'],
+        permissions: [Permissions.VIEW_OWN_BOOKINGS],
       };
       users.set(phone, user);
       return { user, isNewUser: true };
@@ -148,10 +149,10 @@ function createMemoryRepository(clock = () => fixedNow) {
       return {
         user,
         roles: ['customer'],
-        permissions: ['view_own_bookings'],
+        permissions: [Permissions.VIEW_OWN_BOOKINGS],
       };
     },
-    async hasVenuePermission({ userId, venueId, permissionKey }) {
+    async hasVenuePermission({ userId, _venueId, permissionKey }) {
       const user = [...users.values()].find((item) => item.id === userId);
       if (!user) return false;
       return user.permissions?.includes(permissionKey) || false;

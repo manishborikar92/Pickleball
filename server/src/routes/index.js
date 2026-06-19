@@ -7,7 +7,7 @@ import { createOpenApiRouter } from '../modules/openapi/openapi.routes.js';
 import { createDefaultBookingsService } from '../modules/bookings/index.js';
 import { createBookingsRouter } from '../modules/bookings/bookings.routes.js';
 import { createDefaultPaymentsRouter } from '../modules/payments/index.js';
-import { createDefaultVenuesRouter } from '../modules/venues/index.js';
+import { createDefaultVenuesRouter, createDefaultVenuesService } from '../modules/venues/index.js';
 
 export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   const router = Router();
@@ -19,19 +19,15 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   }
 
   const userService = createDefaultUsersService();
-  const bookingsService = createDefaultBookingsService({ config });
-  const authService = createDefaultAuthService({ config });
+  const venueService = createDefaultVenuesService();
+  const bookingsService = createDefaultBookingsService({ config, venueService });
+  const authorizationService = createDefaultAuthService({ config });
 
-  router.use((req, res, next) => {
-    req.app.set('authService', authService);
-    next();
-  });
-
-  router.use('/auth', createDefaultAuthRouter({ config, userService, authService }));
-  router.use('/users', createDefaultUsersRouter());
-  router.use('/venues', createDefaultVenuesRouter());
+  router.use('/auth', createDefaultAuthRouter({ config, userService, authService: authorizationService }));
+  router.use('/users', createDefaultUsersRouter({ userService }));
+  router.use('/venues', createDefaultVenuesRouter({ venueService }));
   router.use('/bookings', createBookingsRouter({ bookingsService }));
-  router.use('/payments', createDefaultPaymentsRouter({ bookingsService, config, authService }));
+  router.use('/payments', createDefaultPaymentsRouter({ bookingsService, config, authService: authorizationService }));
   router.use('/docs', createOpenApiRouter({ config }));
 
   return router;

@@ -1,8 +1,10 @@
 import { getPrisma } from '../src/lib/prisma.js';
 import { createDefaultBookingsService } from '../src/modules/bookings/index.js';
+import { createDefaultVenuesService } from '../src/modules/venues/index.js';
 
 const prisma = getPrisma();
-const bookingsService = createDefaultBookingsService();
+const venueService = createDefaultVenuesService();
+const bookingsService = createDefaultBookingsService({ venueService });
 const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 

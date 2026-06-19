@@ -1,74 +1,44 @@
-import { ForbiddenError, UnauthorizedError } from '../utils/api-error.js';
+import {
+  ConfigurationError,
+  MissingVenueContextError,
+  PermissionDeniedError,
+  UnauthorizedError,
+} from '../utils/api-error.js';
 
-/**
- * @deprecated Use requireVenuePermission instead.
- */
-export const authorize = (...allowedRoles) => (req, _res, next) => {
-  if (!req.auth) {
-    return next(new UnauthorizedError('Authentication required'));
-  }
+export const createRequireVenuePermission = ({ authorizationService } = {}) => {
+  return ({ permission, venueResolver }) => async (req, _res, next) => {
+    try {
+      if (!req.auth?.subject) {
+        throw new UnauthorizedError('Authentication required');
+      }
 
-  if (allowedRoles.length === 0) {
-    return next();
-  }
+      if (!authorizationService) {
+        throw new ConfigurationError('authorizationService is required for requireVenuePermission');
+      }
 
-  const grantedRoles = new Set([
-    ...(Array.isArray(req.auth.roles) ? req.auth.roles : []),
-    req.auth.role,
-  ].filter(Boolean));
+      if (typeof venueResolver !== 'function') {
+        throw new ConfigurationError('venueResolver is required and must be a function');
+      }
 
-  if (!allowedRoles.some((role) => grantedRoles.has(role))) {
-    return next(new ForbiddenError('Insufficient permissions'));
-  }
+      const venueId = venueResolver(req);
+      if (!venueId) {
+        throw new MissingVenueContextError('Venue context required for this operation');
+      }
 
-  return next();
+      const hasPerm = await authorizationService.hasPermission({
+        userId: req.auth.subject,
+        venueId,
+        permission,
+      });
+
+      if (!hasPerm) {
+        throw new PermissionDeniedError('Missing required permissions');
+      }
+
+      return next();
+    } catch (error) {
+      return next(error);
+    }
+  };
 };
 
-/**
- * @deprecated Use requireVenuePermission instead.
- */
-export const requirePermissions = (...requiredPermissions) => (req, _res, next) => {
-  if (!req.auth) {
-    return next(new UnauthorizedError('Authentication required'));
-  }
-
-  const granted = new Set(req.auth.permissions || []);
-  const missing = requiredPermissions.filter((permission) => !granted.has(permission));
-  if (missing.length > 0) {
-    return next(new ForbiddenError('Missing required permissions', { missing }));
-  }
-
-  return next();
-};
-
-export const requireVenuePermission = (permissionKey) => async (req, _res, next) => {
-  try {
-    if (!req.auth?.subject) {
-      throw new UnauthorizedError('Authentication required');
-    }
-
-    const venueId = req.params?.venueId || req.params?.id || req.query?.venueId || req.body?.venueId;
-    if (!venueId) {
-      throw new ForbiddenError('Venue context required for this operation');
-    }
-
-    const authService = req.app.get('authService');
-    if (!authService) {
-      throw new Error('authService is required for requireVenuePermission');
-    }
-
-    const hasPerm = await authService.hasPermission({
-      userId: req.auth.subject,
-      venueId,
-      permission: permissionKey,
-    });
-
-    if (!hasPerm) {
-      throw new ForbiddenError('Missing required permissions');
-    }
-
-    return next();
-  } catch (error) {
-    return next(error);
-  }
-};

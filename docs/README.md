@@ -66,6 +66,10 @@ We document major technology selections and designs through ADRs.
 | **ADR-002** | Database-backed auth sessions for refresh token rotation | Accepted | 2026-06-15 | [ADR-002 Session Revocation](adrs/ADR-002-refresh-token-sessions.md) |
 | **ADR-003** | Abstraction of OTP provider interface for sandbox fallback | Accepted | 2026-06-16 | [ADR-003 OTP Abstraction](adrs/ADR-003-otp-provider-abstraction.md) |
 | **ADR-004** | Booking Consistency, Payment Abstraction, and Compliance Logging | Approved | 2026-06-17 | [ADR-004 Booking Lifecycle](adrs/ADR-004-booking-lifecycle-payments.md) |
+| **ADR-005** | Decoupling of Authentication and Authorization Domains | Approved | 2026-06-19 | [ADR-005 Auth Separation](adrs/ADR-005-auth-separation.md) |
+| **ADR-006** | Transition to Boot-Time Dependency Injection | Approved | 2026-06-19 | [ADR-006 Boot DI](adrs/ADR-006-boot-di.md) |
+| **ADR-007** | Centralized Permission Catalog | Approved | 2026-06-19 | [ADR-007 Permission Catalog](adrs/ADR-007-permission-catalog.md) |
+| **ADR-008** | Standardized Domain Error Hierarchy | Approved | 2026-06-19 | [ADR-008 Error Hierarchy](adrs/ADR-008-error-hierarchy.md) |
 
 ---
 *For quick startup, see the root [README.md](../README.md).*

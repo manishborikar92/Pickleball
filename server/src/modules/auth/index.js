@@ -13,7 +13,6 @@ export const createDefaultAuthService = ({ config } = {}) => {
   });
 };
 
-export const createDefaultAuthRouter = ({ config, userService, authService } = {}) => {
-  const service = authService || createDefaultAuthService({ config });
-  return createAuthRouter({ authService: service, userService });
+export const createDefaultAuthRouter = ({ userService, authService } = {}) => {
+  return createAuthRouter({ authService, userService });
 };

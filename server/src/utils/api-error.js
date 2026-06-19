@@ -27,6 +27,24 @@ export class ForbiddenError extends AppError {
   }
 }
 
+export class ConfigurationError extends AppError {
+  constructor(message = 'Internal configuration error', details = {}) {
+    super(message, 500, details, false);
+  }
+}
+
+export class MissingVenueContextError extends AppError {
+  constructor(message = 'Venue context required', details = {}) {
+    super(message, 403, details);
+  }
+}
+
+export class PermissionDeniedError extends AppError {
+  constructor(message = 'Permission denied', details = {}) {
+    super(message, 403, details);
+  }
+}
+
 export class NotFoundError extends AppError {
   constructor(message = 'Resource not found', details = {}) {
     super(message, 404, details);

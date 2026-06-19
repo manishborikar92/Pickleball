@@ -7,7 +7,7 @@ import request from 'supertest';
 import createApp from '../../src/app.js';
 import { validate } from '../../src/middleware/validate.middleware.js';
 import { authenticate } from '../../src/middleware/authenticate.middleware.js';
-import { requireVenuePermission } from '../../src/middleware/authorize.middleware.js';
+import { createRequireVenuePermission } from '../../src/middleware/authorize.middleware.js';
 import { ApiResponse } from '../../src/utils/api-response.js';
 
 test('createApp wires root and health endpoints with a consistent response envelope', async () => {
@@ -169,23 +169,32 @@ test('requireVenuePermission permits authorized users and rejects unauthorized u
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
-  const mockAuthService = {
+  const mockAuthorizationService = {
     async hasPermission({ userId, venueId, permission }) {
       return userId === 'user_123' && venueId === 'venue-1' && permission === 'edit_pricing';
     },
   };
+
+  const requireVenuePermission = createRequireVenuePermission({
+    authorizationService: mockAuthorizationService,
+  });
 
   const app = createApp({
     configOverrides: {
       auth: { accessTokenSecret: secret },
     },
     configureRoutes(router) {
-      router.get('/admin/:venueId/pricing', (req, res, next) => {
-        req.app.set('authService', mockAuthService);
-        next();
-      }, authenticate(), requireVenuePermission('edit_pricing'), (req, res) => {
-        res.json(ApiResponse.success({ ok: true }));
-      });
+      router.get(
+        '/admin/:venueId/pricing',
+        authenticate(),
+        requireVenuePermission({
+          permission: 'edit_pricing',
+          venueResolver: (req) => req.params.venueId,
+        }),
+        (req, res) => {
+          res.json(ApiResponse.success({ ok: true }));
+        },
+      );
     },
   });
 
@@ -210,14 +219,32 @@ test('requireVenuePermission rejects requests without venue context', async () =
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
 
+  const mockAuthorizationService = {
+    async hasPermission() {
+      return true;
+    },
+  };
+
+  const requireVenuePermission = createRequireVenuePermission({
+    authorizationService: mockAuthorizationService,
+  });
+
   const app = createApp({
     configOverrides: {
       auth: { accessTokenSecret: secret },
     },
     configureRoutes(router) {
-      router.get('/admin/pricing', authenticate(), requireVenuePermission('edit_pricing'), (req, res) => {
-        res.json(ApiResponse.success({ ok: true }));
-      });
+      router.get(
+        '/admin/pricing',
+        authenticate(),
+        requireVenuePermission({
+          permission: 'edit_pricing',
+          venueResolver: () => null,
+        }),
+        (req, res) => {
+          res.json(ApiResponse.success({ ok: true }));
+        },
+      );
     },
   });
 

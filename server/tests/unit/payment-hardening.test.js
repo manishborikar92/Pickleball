@@ -4,7 +4,8 @@ import test from 'node:test';
 import { createBookingsService } from '../../src/modules/bookings/bookings.service.js';
 import { createPaymentsService } from '../../src/modules/payments/payments.service.js';
 import { createReconciliationService } from '../../src/modules/payments/reconciliation.service.js';
-import { ConflictError, AppError, ForbiddenError } from '../../src/utils/api-error.js';
+import { PermissionDeniedError } from '../../src/utils/api-error.js';
+import { Permissions } from '../../src/shared/auth-constants.js';
 
 const userId = '33333333-3333-4333-8333-333333333333';
 const bookingId = '44444444-4444-4444-8444-444444444444';
@@ -70,7 +71,7 @@ test('Duplicate payment prevention: handles concurrent P2002 database exception 
       err.code = 'P2002';
       throw err;
     },
-    async findReusableInitiatedPayment({ bookingId }) {
+    async findReusableInitiatedPayment({ _bookingId }) {
       findCalled++;
       return {
         id: paymentId,
@@ -370,9 +371,9 @@ test('PaymentsService.refundPayment enforces issue_credits permission check', as
     },
   };
 
-  const mockAuthService = {
+  const mockAuthorizationService = {
     async hasPermission({ userId, venueId, permission }) {
-      return userId === 'admin-user' && venueId === 'venue-123' && permission === 'issue_credits';
+      return userId === 'admin-user' && venueId === 'venue-123' && permission === Permissions.ISSUE_CREDITS;
     },
   };
 
@@ -380,7 +381,7 @@ test('PaymentsService.refundPayment enforces issue_credits permission check', as
     repository: mockPaymentsRepo,
     bookingsService: {},
     reconciliationService: mockReconService,
-    authService: mockAuthService,
+    authorizationService: mockAuthorizationService,
   });
 
   // 1. Success case: admin-user has permission
@@ -398,7 +399,7 @@ test('PaymentsService.refundPayment enforces issue_credits permission check', as
       amount: 500,
       userId: 'other-user',
     }),
-    ForbiddenError
+    PermissionDeniedError
   );
 });
 
@@ -425,9 +426,9 @@ test('PaymentsService.retryRefund enforces issue_credits permission check', asyn
     },
   };
 
-  const mockAuthService = {
+  const mockAuthorizationService = {
     async hasPermission({ userId, venueId, permission }) {
-      return userId === 'admin-user' && venueId === 'venue-123' && permission === 'issue_credits';
+      return userId === 'admin-user' && venueId === 'venue-123' && permission === Permissions.ISSUE_CREDITS;
     },
   };
 
@@ -435,7 +436,7 @@ test('PaymentsService.retryRefund enforces issue_credits permission check', asyn
     repository: mockPaymentsRepo,
     bookingsService: {},
     reconciliationService: mockReconService,
-    authService: mockAuthService,
+    authorizationService: mockAuthorizationService,
   });
 
   // 1. Success case: admin-user has permission
@@ -451,6 +452,6 @@ test('PaymentsService.retryRefund enforces issue_credits permission check', asyn
       paymentId,
       userId: 'other-user',
     }),
-    ForbiddenError
+    PermissionDeniedError
   );
 });
