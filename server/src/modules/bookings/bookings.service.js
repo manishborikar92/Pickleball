@@ -5,6 +5,10 @@ import {
   TooManyRequestsError,
 } from '../../utils/api-error.js';
 import { formatTime, minutesToTimeDate, timeToMinutes, toDateOnly, localDateTimeToUtc } from './booking-time.js';
+import { DEFAULT_SWEEP_LIMIT } from './bookings.constants.js';
+
+const DEFAULT_HOLD_TTL_SECONDS = 10 * 60; // 10 minutes
+const DEFAULT_ACTIVE_HOLD_LIMIT = 2;
 
 const isUniqueConflict = (error) => error?.code === 'P2002';
 
@@ -79,8 +83,8 @@ export const createBookingsService = ({
   selectionService,
   pricingService,
   paymentProvider = null,
-  holdTtlSeconds = 10 * 60,
-  activeHoldLimit = 2,
+  holdTtlSeconds = DEFAULT_HOLD_TTL_SECONDS,
+  activeHoldLimit = DEFAULT_ACTIVE_HOLD_LIMIT,
   clock = () => new Date(),
 } = {}) => {
   if (!repository) throw new Error('repository is required');
@@ -377,7 +381,7 @@ export const createBookingsService = ({
       }
 
       if (state === 'COMPLETED') {
-        const timezone = booking.venue?.timezone || 'Asia/Kolkata';
+        const timezone = booking.venue.timezone;
         const endUtc = getBookingEndUtc(booking, timezone);
         const isSessionEnded = clock() >= endUtc;
 
@@ -452,18 +456,18 @@ export const createBookingsService = ({
 
     onLatePayment: null,
 
-    async expirePendingHolds({ limit = 100 } = {}) {
+    async expirePendingHolds({ limit = DEFAULT_SWEEP_LIMIT } = {}) {
       const now = clock();
       return repository.expirePendingHolds({ now, limit });
     },
 
-    async sweepCompletedBookings({ limit = 100 } = {}) {
+    async sweepCompletedBookings({ limit = DEFAULT_SWEEP_LIMIT } = {}) {
       const now = clock();
       const candidates = await repository.findPastConfirmedBookings({ now, limit });
 
       const completedIds = [];
       for (const booking of candidates) {
-        const timezone = booking.venue?.timezone || 'Asia/Kolkata';
+        const timezone = booking.venue.timezone;
         const endUtc = getBookingEndUtc(booking, timezone);
 
         if (now >= endUtc) {

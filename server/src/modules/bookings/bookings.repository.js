@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { getPrisma } from '../../lib/prisma.js';
 import { ConflictError, NotFoundError } from '../../utils/api-error.js';
 import { formatTime, minutesToTimeDate, timeToMinutes } from './booking-time.js';
+import { DEFAULT_SWEEP_LIMIT } from './bookings.constants.js';
 
 const activeSlotStatuses = ['pending_payment', 'confirmed', 'walk_in', 'admin_block'];
 
@@ -500,7 +501,7 @@ export const createBookingsRepository = ({ prisma } = {}) => {
       });
     },
 
-    async expirePendingHolds({ now, limit = 100 }) {
+    async expirePendingHolds({ now, limit = DEFAULT_SWEEP_LIMIT }) {
       return db().$transaction(async (tx) => {
         const candidates = await tx.booking.findMany({
           where: {
@@ -770,7 +771,7 @@ export const createBookingsRepository = ({ prisma } = {}) => {
       });
     },
 
-    async findPastConfirmedBookings({ now, limit = 100 }) {
+    async findPastConfirmedBookings({ now, limit = DEFAULT_SWEEP_LIMIT }) {
       const dateCutoff = new Date(now);
       dateCutoff.setUTCDate(dateCutoff.getUTCDate() + 1); // 1 day ahead safely covers timezone differences
 

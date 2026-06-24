@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { COOKIES } from "@/constants/cookies";
 
 const DEFAULT_API_BASE_URL = "http://localhost:5000";
 
@@ -30,7 +31,7 @@ export async function apiRequest(path, {
   if (!token) {
     try {
       const cookieStore = await cookies();
-      token = cookieStore.get("pb_access_token")?.value || "";
+      token = cookieStore.get(COOKIES.ACCESS_TOKEN)?.value || "";
     } catch {
       // Ignore if called in a context where cookies() is not available
     }
@@ -45,12 +46,12 @@ export async function apiRequest(path, {
   if (!rToken) {
     try {
       const cookieStore = await cookies();
-      rToken = cookieStore.get("pb_refresh_token")?.value || "";
+      rToken = cookieStore.get(COOKIES.REFRESH_TOKEN)?.value || "";
     } catch {}
   }
 
   if (rToken) {
-    headers.Cookie = `pb_refresh_token=${rToken}`;
+    headers.Cookie = `${COOKIES.REFRESH_TOKEN}=${rToken}`;
   }
 
   let response = await fetch(`${getApiBaseUrl()}${path}`, {
@@ -70,7 +71,7 @@ export async function apiRequest(path, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "Cookie": `pb_refresh_token=${rToken}`,
+              "Cookie": `${COOKIES.REFRESH_TOKEN}=${rToken}`,
             },
             cache: "no-store",
           });
@@ -82,7 +83,7 @@ export async function apiRequest(path, {
           const refreshPayload = await refreshResponse.json();
           const newAccessToken = refreshPayload.data.access_token;
           const setCookieHeader = refreshResponse.headers.get("set-cookie");
-          const newRefreshToken = extractCookieValue(setCookieHeader, "pb_refresh_token") || rToken;
+          const newRefreshToken = extractCookieValue(setCookieHeader, COOKIES.REFRESH_TOKEN) || rToken;
 
           return { newAccessToken, newRefreshToken };
         })();
@@ -97,14 +98,14 @@ export async function apiRequest(path, {
         try {
           const cookieStore = await cookies();
           const secure = process.env.NODE_ENV === "production";
-          cookieStore.set("pb_access_token", newAccessToken, {
+          cookieStore.set(COOKIES.ACCESS_TOKEN, newAccessToken, {
             httpOnly: true,
             secure,
             sameSite: "lax",
             path: "/",
             maxAge: 15 * 60,
           });
-          cookieStore.set("pb_refresh_token", newRefreshToken, {
+          cookieStore.set(COOKIES.REFRESH_TOKEN, newRefreshToken, {
             httpOnly: true,
             secure,
             sameSite: "lax",
@@ -122,7 +123,7 @@ export async function apiRequest(path, {
           Authorization: `Bearer ${newAccessToken}`,
         };
         if (newRefreshToken) {
-          retryHeaders.Cookie = `pb_refresh_token=${newRefreshToken}`;
+          retryHeaders.Cookie = `${COOKIES.REFRESH_TOKEN}=${newRefreshToken}`;
         }
 
         response = await fetch(`${getApiBaseUrl()}${path}`, {
@@ -138,11 +139,11 @@ export async function apiRequest(path, {
       console.error("Failed to automatically refresh token:", refreshErr);
       try {
         const cookieStore = await cookies();
-        cookieStore.delete({ name: "pb_access_token", path: "/" });
-        cookieStore.delete({ name: "pb_refresh_token", path: "/" });
-        cookieStore.delete({ name: "pb_auth_role", path: "/" });
-        cookieStore.delete({ name: "pb_staff_role", path: "/" });
-        cookieStore.delete({ name: "pb_user_onboarded", path: "/" });
+        cookieStore.delete({ name: COOKIES.ACCESS_TOKEN, path: "/" });
+        cookieStore.delete({ name: COOKIES.REFRESH_TOKEN, path: "/" });
+        cookieStore.delete({ name: COOKIES.AUTH_ROLE, path: "/" });
+        cookieStore.delete({ name: COOKIES.STAFF_ROLE, path: "/" });
+        cookieStore.delete({ name: COOKIES.USER_ONBOARDED, path: "/" });
       } catch (cookieErr) {
         console.warn("Failed to clear session cookies on refresh failure:", cookieErr.message);
       }

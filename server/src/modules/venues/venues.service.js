@@ -142,7 +142,7 @@ export const createVenuesService = ({
             slotStartTime: slot.start_time,
             now,
             slotDate: normalizedDate,
-            venueTimezone: context.venue.timezone || 'Asia/Kolkata',
+            venueTimezone: context.venue.timezone,
           });
 
           if (status !== 'available') {

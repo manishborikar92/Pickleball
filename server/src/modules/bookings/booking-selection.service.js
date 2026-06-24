@@ -30,7 +30,7 @@ export const createBookingSelectionService = ({ clock = () => new Date() } = {})
     }
 
     const now = clock();
-    const timezone = venue.timezone || 'Asia/Kolkata';
+    const timezone = venue.timezone;
     for (const slotStartTime of slotStartTimes) {
       const slotStartUtc = localDateTimeToUtc(input.slot_date, slotStartTime, timezone);
       if (now >= slotStartUtc) {

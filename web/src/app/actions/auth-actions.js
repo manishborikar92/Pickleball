@@ -6,11 +6,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { apiRequest } from "@/services/apiClient";
 
-const ACCESS_COOKIE = "pb_access_token";
-const REFRESH_COOKIE = "pb_refresh_token";
-const AUTH_ROLE_COOKIE = "pb_auth_role";
-const STAFF_ROLE_COOKIE = "pb_staff_role";
-const AUTH_ONBOARDED_COOKIE = "pb_user_onboarded";
+import { COOKIES } from "@/constants/cookies";
+import { ROUTES } from "@/constants/routes";
+
+const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
+const REFRESH_COOKIE = COOKIES.REFRESH_TOKEN;
+const AUTH_ROLE_COOKIE = COOKIES.AUTH_ROLE;
+const STAFF_ROLE_COOKIE = COOKIES.STAFF_ROLE;
+const AUTH_ONBOARDED_COOKIE = COOKIES.USER_ONBOARDED;
 
 function extractCookieValue(setCookie, name) {
   if (!setCookie) return "";
@@ -166,13 +169,13 @@ export async function signOutStaffAction() {
   }
 
   await clearSessionCookies();
-  redirect("/staff-login");
+  redirect(ROUTES.STAFF_LOGIN);
 }
 
 export async function signInStaffAction(formData) {
   const email = String(formData?.get("email") || "");
   const password = String(formData?.get("password") || "");
-  const next = String(formData?.get("next") || "/admin");
+  const next = String(formData?.get("next") || ROUTES.ADMIN);
 
   const { payload, setCookie } = await apiRequest("/api/v1/auth/staff/login", {
     method: "POST",
@@ -187,5 +190,5 @@ export async function signInStaffAction(formData) {
     role,
   });
 
-  redirect(next.startsWith("/") ? next : "/admin");
+  redirect(next.startsWith("/") ? next : ROUTES.ADMIN);
 }

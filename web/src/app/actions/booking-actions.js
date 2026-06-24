@@ -11,7 +11,9 @@ import {
   normalizeWalletResponse,
 } from "@/services/bookingService";
 
-const ACCESS_COOKIE = "pb_access_token";
+import { COOKIES } from "@/constants/cookies";
+
+const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
 
 async function getAccessToken() {
   const cookieStore = await cookies();

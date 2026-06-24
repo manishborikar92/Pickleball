@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 
 import { canAccessRoute, getRolePermissions, roles } from "@/lib/rbac";
 import { apiRequest } from "@/services/apiClient";
+import { COOKIES } from "@/constants/cookies";
+import { ROUTES } from "@/constants/routes";
 
-export const SESSION_COOKIE = "pb_auth_role";
-const ACCESS_COOKIE = "pb_access_token";
+export const SESSION_COOKIE = COOKIES.AUTH_ROLE;
+const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
 
 /**
  * getSession — Resolves the active authenticated session.
@@ -19,7 +21,7 @@ const ACCESS_COOKIE = "pb_access_token";
 export async function getSession(preferredType = null) {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
-  const refreshToken = cookieStore.get("pb_refresh_token")?.value || "";
+  const refreshToken = cookieStore.get(COOKIES.REFRESH_TOKEN)?.value || "";
   if (!accessToken && !refreshToken) return null;
 
   try {
@@ -44,30 +46,30 @@ export async function getSession(preferredType = null) {
  * for layouts and page routes on the server side.
  */
 export async function requireRouteAccess(pathname) {
-  const isStaffRoute = pathname.startsWith("/admin");
+  const isStaffRoute = pathname.startsWith(ROUTES.ADMIN);
   const session = await getSession(isStaffRoute ? "staff" : "customer");
 
   if (!session) {
     if (isStaffRoute) {
-      redirect(`/staff-login?next=${encodeURIComponent(pathname)}`);
+      redirect(`${ROUTES.STAFF_LOGIN}?next=${encodeURIComponent(pathname)}`);
     } else {
-      redirect(`/login?next=${encodeURIComponent(pathname)}`);
+      redirect(`${ROUTES.LOGIN}?next=${encodeURIComponent(pathname)}`);
     }
   }
 
   // Customer onboarding check: Must provide a name if authenticated as a customer
   if (session.role === "customer" && !session.user.name) {
-    if (pathname !== "/onboarding") {
-      redirect(`/onboarding?next=${encodeURIComponent(pathname)}`);
+    if (pathname !== ROUTES.ONBOARDING) {
+      redirect(`${ROUTES.ONBOARDING}?next=${encodeURIComponent(pathname)}`);
     }
-  } else if (session.role === "customer" && session.user.name && pathname === "/onboarding") {
+  } else if (session.role === "customer" && session.user.name && pathname === ROUTES.ONBOARDING) {
     // Already fully onboarded
-    redirect("/dashboard");
+    redirect(ROUTES.DASHBOARD);
   }
 
   // Check RBAC permissions for the route
   if (!canAccessRoute(pathname, session.role)) {
-    redirect(isStaffRoute ? "/admin" : "/dashboard");
+    redirect(isStaffRoute ? ROUTES.ADMIN : ROUTES.DASHBOARD);
   }
 
   return session;

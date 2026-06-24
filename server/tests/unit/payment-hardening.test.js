@@ -45,6 +45,7 @@ function createMockRepository(overrides = {}) {
           status: 'pending_payment',
           creditsApplied: 100,
           expiresAt: new Date('2026-06-18T12:10:00.000Z'),
+          venue: { timezone: 'Asia/Kolkata' },
         },
       };
     },
@@ -204,6 +205,7 @@ test('Late payment resolution: completes payment to success, leaves booking as e
           status: 'expired', // Late payment scenario
           creditsApplied: 100,
           expiresAt: new Date('2026-06-18T11:50:00.000Z'), // expired 10 mins ago
+          venue: { timezone: 'Asia/Kolkata' },
         },
       };
     },

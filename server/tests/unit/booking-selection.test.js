@@ -8,6 +8,7 @@ const venue = {
   id: '11111111-1111-4111-8111-111111111111',
   advanceBookingDays: 7,
   rolloverTime: new Date('1970-01-01T08:00:00.000Z'),
+  timezone: 'Asia/Kolkata',
 };
 
 const courts = [

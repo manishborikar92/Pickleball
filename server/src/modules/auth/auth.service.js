@@ -16,6 +16,9 @@ import {
   verifyOtpHash,
 } from './auth.utils.js';
 
+const DEFAULT_LOCKOUT_MAX_ATTEMPTS = 10;
+const DEFAULT_LOCKOUT_DURATION_SECONDS = 30 * 60; // 30 minutes
+
 const addSeconds = (date, seconds) => new Date(date.getTime() + seconds * 1000);
 
 const resolveOtpCode = (config) => {
@@ -252,8 +255,8 @@ export const createAuthService = ({
         const nextFailedCount = (credential.failedLoginAttempts || 0) + 1;
         await repository.recordStaffLoginFailure({
           id: credential.id,
-          lockedUntil: nextFailedCount >= 10
-            ? addSeconds(now, 30 * 60)
+          lockedUntil: nextFailedCount >= DEFAULT_LOCKOUT_MAX_ATTEMPTS
+            ? addSeconds(now, DEFAULT_LOCKOUT_DURATION_SECONDS)
             : null,
         });
         throw new UnauthorizedError('Invalid credentials');
