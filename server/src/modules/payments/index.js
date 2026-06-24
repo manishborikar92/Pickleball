@@ -3,7 +3,7 @@ import { createPaymentsRouter } from './payments.routes.js';
 import { createPaymentsService } from './payments.service.js';
 import { createReconciliationService } from './reconciliation.service.js';
 
-export const createDefaultPaymentsService = ({ bookingsService, config, authService, paymentProvider } = {}) => {
+export const createDefaultPaymentsService = ({ bookingsService, config: _config, authService, paymentProvider } = {}) => {
   const repository = createPaymentsRepository();
 
   const reconciliationService = createReconciliationService({

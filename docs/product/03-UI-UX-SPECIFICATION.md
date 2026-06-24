@@ -100,7 +100,7 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 **Section 5 — Live Summary**
 - Updates in real-time as courts and slots are selected/deselected.
 - Shows: "Court 1 + Court 2 · Sunday 11 May · 9:00 AM – 12:00 PM (3 hrs)"
-- Price table: per-unit breakdown (collapsible) + subtotal + tax + total.
+- Price table: per-unit breakdown (collapsible) + subtotal + tax (rendered conditionally only when tax > 0) + total.
 - Price data comes from the `/bookings/price-preview` endpoint, triggered on every selection change (debounced 300ms).
 - Promo code input with "Apply" button — applying a coupon re-calls price-preview with `coupon_code`.
 - Wallet credit toggle (if user is authenticated and has a balance).

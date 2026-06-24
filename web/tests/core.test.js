@@ -86,12 +86,12 @@ test("booking API normalization maps server availability and price preview shape
       ],
       subtotal: 1000,
       coupon_discount: 50,
-      tax: 171,
-      total: 1121,
+      tax: 0,
+      total: 950,
     },
   });
 
-  assert.equal(quote.totalAmount, 1121);
+  assert.equal(quote.totalAmount, 950);
   assert.equal(quote.discountAmount, 50);
   assert.deepEqual(quote.breakdown, [{ label: "Court 1", amount: 1000, slotCount: 2 }]);
 });

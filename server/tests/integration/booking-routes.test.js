@@ -31,7 +31,7 @@ test('booking routes expose price preview and protected hold creation', async ()
         session_start_time: '09:00',
         session_end_time: '10:00',
         session_duration_mins: 60,
-        price_breakdown: { units: [], subtotal: 500, coupon_discount: 0, tax: 90, total: 590 },
+        price_breakdown: { units: [], subtotal: 500, coupon_discount: 0, tax: 0, total: 500 },
       };
     },
     async createHold({ userId: holdUserId, input, requestContext }) {
@@ -40,7 +40,7 @@ test('booking routes expose price preview and protected hold creation', async ()
         booking_id: '44444444-4444-4444-8444-444444444444',
         status: 'pending_payment',
         expires_at: '2026-06-17T04:10:00.000Z',
-        price_quote: { total: 590 },
+        price_quote: { total: 500 },
       };
     },
   };
@@ -65,7 +65,7 @@ test('booking routes expose price preview and protected hold creation', async ()
     });
 
   assert.equal(preview.status, 200);
-  assert.equal(preview.body.data.price_breakdown.total, 590);
+  assert.equal(preview.body.data.price_breakdown.total, 500);
   assert.equal(calls[0][1].total_amount, undefined);
 
   const hold = await request(app)

@@ -345,8 +345,8 @@ Court 2 / 10:00–11:00 → base ₹500 + indoor +10% + weekend +20% = ₹660
                                                   Subtotal       = ₹2,520
 Coupon (-10%)                                                    = −₹252
                                                   Discounted     = ₹2,268
-Tax (18%)                                                        = ₹408.24
-                                                  Total          = ₹2,676.24
+Tax (0.00% default)                                              = ₹0.00
+                                                  Total          = ₹2,268.00
 ```
 
 Each unit's price is stored as `booking_slots.unit_price` for display in receipts.
@@ -364,7 +364,7 @@ After all units are priced:
 
 5. **Coupon Application** — If a valid coupon is provided, apply flat or percentage discount to the sum of all unit prices. One coupon per booking.
 6. **Wallet Credits** — Deduct up to the user's available `wallet_credits` balance.
-7. **Tax** — Applied as a percentage on `(subtotal − coupon_discount)`.
+7. **Tax** — Applied as a percentage on `(subtotal − coupon_discount)`. The default tax rate is 0.00 (configured via `BOOKING_TAX_RATE`), meaning no tax is charged by default unless configured.
 
 ### 4.3 Price Preview
 

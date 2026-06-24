@@ -153,6 +153,14 @@ function BookingItems({ selectedCourtsData, selectedDate, quote }) {
         </div>
       )}
 
+      {/* Tax — only when tax is charged */}
+      {quote.taxAmount > 0 && (
+        <div className="flex items-center justify-between gap-4 rounded-xl bg-surface/30 px-4 py-2.5 text-sm font-semibold text-muted/80">
+          <span>Tax</span>
+          <span>{formatCurrency(quote.taxAmount)}</span>
+        </div>
+      )}
+
     </div>
   );
 }

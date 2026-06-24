@@ -105,7 +105,7 @@ export const createPhonePeAuth = ({
           timeoutMs: TOKEN_FETCH_TIMEOUT_MS,
           latencyMs: Date.now() - start,
         });
-        throw new Error(`PhonePe OAuth token fetch timed out after ${TOKEN_FETCH_TIMEOUT_MS}ms`);
+        throw new Error(`PhonePe OAuth token fetch timed out after ${TOKEN_FETCH_TIMEOUT_MS}ms`, { cause: error });
       }
       throw error;
     } finally {

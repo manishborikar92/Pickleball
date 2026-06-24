@@ -121,10 +121,10 @@ BACKEND_BASE_URL=https://api.besanagpur.com
 
 ### 3.1 Price Quote & Wallet Application (Pre-Payment)
 
-Before any interaction with PhonePe, the backend computes the complete price quote:
+Before any interaction with PhonePe, the backend computes the complete price quote (where `tax_amount` defaults to 0.00 under Optional Tax Support):
 
 ```
-total_payable = base_amount + modifier_amount - coupon_discount - credits_applied + tax_amount
+total_payable = base_amount + modifier_amount - coupon_discount + tax_amount
 phonepe_amount = total_payable - credits_applied
 ```
 

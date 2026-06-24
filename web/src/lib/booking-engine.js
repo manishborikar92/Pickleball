@@ -44,8 +44,9 @@ export function getSlotRange(slots, startTime, endTime) {
 }
 
 export function getPaymentReceiptDetails(booking) {
-  const totalAmount = Number(booking.total_amount || 0);
-  const creditsApplied = Number(booking.credits_applied || 0);
+  const totalAmount = Number(booking.total_amount || booking.totalAmount || 0);
+  const creditsApplied = Number(booking.credits_applied || booking.creditsApplied || 0);
+  const taxAmount = Number(booking.tax_amount || booking.taxAmount || 0);
   const upiAmount = totalAmount - creditsApplied;
 
   if (creditsApplied > 0) {
@@ -56,6 +57,7 @@ export function getPaymentReceiptDetails(booking) {
         upiAmount,
         creditsApplied,
         totalAmount,
+        taxAmount,
         isMixed: false,
         isWalletOnly: true,
       };
@@ -66,6 +68,7 @@ export function getPaymentReceiptDetails(booking) {
         upiAmount,
         creditsApplied,
         totalAmount,
+        taxAmount,
         isMixed: true,
         isWalletOnly: false,
       };
@@ -78,6 +81,7 @@ export function getPaymentReceiptDetails(booking) {
     upiAmount,
     creditsApplied,
     totalAmount,
+    taxAmount,
     isMixed: false,
     isWalletOnly: false,
   };

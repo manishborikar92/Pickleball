@@ -379,7 +379,7 @@ The parent transaction record. One booking covers a contiguous time session acro
 | `booking_type` | VARCHAR(20) | NOT NULL, default 'online' | Enum: online, walk_in, admin_block |
 | `base_amount` | NUMERIC(10,2) | NOT NULL | Sum of all unit base prices before modifiers |
 | `discount_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | Coupon + modifier reductions |
-| `tax_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | |
+| `tax_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | Optional tax charged on the booking (defaults to 0.00) |
 | `total_amount` | NUMERIC(10,2) | NOT NULL | Final amount charged |
 | `credits_applied` | NUMERIC(10,2) | NOT NULL, default 0.00 | |
 | `coupon_id` | UUID | FK → coupons.id | |

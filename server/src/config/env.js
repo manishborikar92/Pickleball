@@ -50,6 +50,7 @@ const envSchema = Joi.object({
   // Base URLs for payment redirect and webhook routing.
   FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:3000'),
   BACKEND_BASE_URL: Joi.string().uri().default('http://localhost:5000'),
+  BOOKING_TAX_RATE: Joi.number().min(0).default(0.00),
 }).unknown(true);
 
 const parseCsv = (value) => String(value || '')
@@ -183,6 +184,9 @@ export const buildConfig = (overrides = {}) => {
       env: value.PHONEPE_ENV,
       webhookUsername: value.PHONEPE_WEBHOOK_USERNAME || undefined,
       webhookPassword: value.PHONEPE_WEBHOOK_PASSWORD || undefined,
+    },
+    bookings: {
+      taxRate: value.BOOKING_TAX_RATE,
     },
     frontendBaseUrl: value.FRONTEND_BASE_URL,
     backendBaseUrl: value.BACKEND_BASE_URL,

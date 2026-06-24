@@ -538,8 +538,8 @@ The frontend uses this response on app load to decide whether to show the name c
     ],
     "subtotal": 3780.00,
     "coupon_discount": 0.00,
-    "tax": 680.40,
-    "total": 4460.40
+    "tax": 0.00,
+    "total": 3780.00
   }
 }
 ```
@@ -586,8 +586,8 @@ The frontend uses this response on app load to decide whether to show the name c
     ],
     "subtotal": 3780.00,
     "coupon_discount": 0.00,
-    "tax": 680.40,
-    "total": 4460.40
+    "tax": 0.00,
+    "total": 3780.00
   }
 }
 ```

@@ -226,6 +226,12 @@ export default async function BookingConfirmedPage(props) {
                         <span className="text-muted">Paid via UPI</span>
                         <span className="font-bold text-foreground">₹{receiptDetails.upiAmount}</span>
                       </div>
+                      {receiptDetails.taxAmount > 0 && (
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
+                          <span className="text-muted">Includes Tax</span>
+                          <span className="font-bold text-foreground">₹{receiptDetails.taxAmount}</span>
+                        </div>
+                      )}
                       <div className="border-t border-line/60 pt-2.5 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-5 w-5 text-accent" />
@@ -235,16 +241,24 @@ export default async function BookingConfirmedPage(props) {
                       </div>
                     </>
                   ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-accent" />
-                        <span className="text-xs font-semibold text-muted sm:text-sm">
-                          {receiptDetails?.paymentModeLabel}
+                    <div className="space-y-3">
+                      {receiptDetails?.taxAmount > 0 && (
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
+                          <span className="text-muted">Tax</span>
+                          <span className="font-bold text-foreground">₹{receiptDetails.taxAmount}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-5 w-5 text-accent" />
+                          <span className="text-xs font-semibold text-muted sm:text-sm">
+                            {receiptDetails?.paymentModeLabel}
+                          </span>
+                        </div>
+                        <span className="text-sm font-black text-foreground sm:text-base">
+                          ₹{receiptDetails?.displayAmount}
                         </span>
                       </div>
-                      <span className="text-sm font-black text-foreground sm:text-base">
-                        ₹{receiptDetails?.displayAmount}
-                      </span>
                     </div>
                   )}
                 </div>

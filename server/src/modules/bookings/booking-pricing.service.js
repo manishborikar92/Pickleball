@@ -53,84 +53,90 @@ const normalizeCoupon = (coupon) => {
   };
 };
 
-export const createBookingPricingService = ({ taxRate = 0.18 } = {}) => ({
-  calculateUnitPrice({
-    court,
-    slotDate,
-    slotStartTime,
-    pricingRules = [],
-  }) {
-    const base = getAmount(court.basePrice?.amount ?? court.base_price?.amount ?? court.price);
-    const activeRules = pricingRules
-      .filter((rule) => rule?.isActive !== false && (!rule.courtId || rule.courtId === court.id || rule.court_id === court.id))
-      .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
+export const createBookingPricingService = ({ taxRate } = {}) => {
+  if (taxRate === undefined) {
+    throw new Error('taxRate is required to initialize BookingPricingService');
+  }
 
-    const adjusted = activeRules.reduce((amount, pricingRule) => {
-      const rule = pricingRule.rule || {};
-      if (!matchesRule({ rule, court, slotDate, slotStartTime })) {
-        return amount;
+  return {
+    calculateUnitPrice({
+      court,
+      slotDate,
+      slotStartTime,
+      pricingRules = [],
+    }) {
+      const base = getAmount(court.basePrice?.amount ?? court.base_price?.amount ?? court.price);
+      const activeRules = pricingRules
+        .filter((rule) => rule?.isActive !== false && (!rule.courtId || rule.courtId === court.id || rule.court_id === court.id))
+        .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
+
+      const adjusted = activeRules.reduce((amount, pricingRule) => {
+        const rule = pricingRule.rule || {};
+        if (!matchesRule({ rule, court, slotDate, slotStartTime })) {
+          return amount;
+        }
+        return applyAdjustment(amount, rule);
+      }, base);
+
+      return roundMoney(Math.max(0, adjusted));
+    },
+
+    buildQuote({
+      courts = [],
+      slotDate,
+      slotStartTimes = [],
+      slotDurationMins = 60,
+      pricingRules = [],
+      coupon = null,
+    }) {
+      const units = courts.flatMap((court) => slotStartTimes.map((slotStartTime) => {
+        const unitPrice = this.calculateUnitPrice({
+          court,
+          slotDate,
+          slotStartTime,
+          pricingRules,
+        });
+
+        return {
+          court_id: court.id,
+          court_name: court.name,
+          slot_start_time: slotStartTime,
+          slot_end_time: addMinutesToTime(slotStartTime, slotDurationMins),
+          unit_price: unitPrice,
+        };
+      }));
+
+      const subtotal = roundMoney(units.reduce((sum, unit) => sum + unit.unit_price, 0));
+      const normalizedCoupon = normalizeCoupon(coupon);
+      let couponDiscount = 0;
+
+      if (normalizedCoupon?.discountType === 'flat') {
+        couponDiscount = Math.min(normalizedCoupon.discountValue, subtotal);
+      } else if (normalizedCoupon?.discountType === 'percentage') {
+        couponDiscount = subtotal * normalizedCoupon.discountValue / 100;
       }
-      return applyAdjustment(amount, rule);
-    }, base);
 
-    return roundMoney(Math.max(0, adjusted));
-  },
-
-  buildQuote({
-    courts = [],
-    slotDate,
-    slotStartTimes = [],
-    slotDurationMins = 60,
-    pricingRules = [],
-    coupon = null,
-  }) {
-    const units = courts.flatMap((court) => slotStartTimes.map((slotStartTime) => {
-      const unitPrice = this.calculateUnitPrice({
-        court,
-        slotDate,
-        slotStartTime,
-        pricingRules,
-      });
+      const taxable = Math.max(0, subtotal - couponDiscount);
+      const tax = roundMoney(taxable * taxRate);
+      const total = roundMoney(taxable + tax);
+      const sessionStart = slotStartTimes[0];
+      const sessionEnd = addMinutesToTime(slotStartTimes[slotStartTimes.length - 1], slotDurationMins);
 
       return {
-        court_id: court.id,
-        court_name: court.name,
-        slot_start_time: slotStartTime,
-        slot_end_time: addMinutesToTime(slotStartTime, slotDurationMins),
-        unit_price: unitPrice,
+        court_count: courts.length,
+        slot_count: slotStartTimes.length,
+        slot_unit_count: units.length,
+        session_start_time: sessionStart,
+        session_end_time: sessionEnd,
+        session_duration_mins: slotStartTimes.length * slotDurationMins,
+        price_breakdown: {
+          units,
+          subtotal,
+          coupon_discount: roundMoney(couponDiscount),
+          tax,
+          total,
+        },
       };
-    }));
-
-    const subtotal = roundMoney(units.reduce((sum, unit) => sum + unit.unit_price, 0));
-    const normalizedCoupon = normalizeCoupon(coupon);
-    let couponDiscount = 0;
-
-    if (normalizedCoupon?.discountType === 'flat') {
-      couponDiscount = Math.min(normalizedCoupon.discountValue, subtotal);
-    } else if (normalizedCoupon?.discountType === 'percentage') {
-      couponDiscount = subtotal * normalizedCoupon.discountValue / 100;
     }
-
-    const taxable = Math.max(0, subtotal - couponDiscount);
-    const tax = roundMoney(taxable * taxRate);
-    const total = roundMoney(taxable + tax);
-    const sessionStart = slotStartTimes[0];
-    const sessionEnd = addMinutesToTime(slotStartTimes[slotStartTimes.length - 1], slotDurationMins);
-
-    return {
-      court_count: courts.length,
-      slot_count: slotStartTimes.length,
-      slot_unit_count: units.length,
-      session_start_time: sessionStart,
-      session_end_time: sessionEnd,
-      session_duration_mins: slotStartTimes.length * slotDurationMins,
-      price_breakdown: {
-        units,
-        subtotal,
-        coupon_discount: roundMoney(couponDiscount),
-        tax,
-        total,
-      },
-    };
-  },
-});
+  };
+};

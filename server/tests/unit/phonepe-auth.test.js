@@ -14,7 +14,6 @@ test('PhonePe Auth: getAccessToken returns cached token when valid', async () =>
   // Manually inject a cached token via _getCache side-channel.
   // Since we can't easily mock fetch in Node test runner without external libs,
   // we test the cache logic by setting internal state and verifying behavior.
-  const futureExpiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
   auth._getCache(); // Verify method exists
   assert.ok(auth.getAccessToken, 'getAccessToken method exists');
   assert.ok(auth.invalidateToken, 'invalidateToken method exists');

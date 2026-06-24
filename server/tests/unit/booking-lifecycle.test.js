@@ -19,8 +19,8 @@ const quote = {
     units: [{ court_id: courtId, court_name: 'Court 1', slot_start_time: '09:00', slot_end_time: '10:00', unit_price: 500 }],
     subtotal: 500,
     coupon_discount: 0,
-    tax: 90,
-    total: 590,
+    tax: 0,
+    total: 500,
   },
 };
 
@@ -106,8 +106,8 @@ test('createHold writes an atomic pending booking from server-calculated quote',
 
   assert.equal(result.booking_id, '44444444-4444-4444-8444-444444444444');
   assert.equal(result.status, 'pending_payment');
-  assert.equal(result.price_quote.total, 590);
-  assert.equal(createHoldInput.booking.totalAmount, 590);
+  assert.equal(result.price_quote.total, 500);
+  assert.equal(createHoldInput.booking.totalAmount, 500);
   assert.equal(createHoldInput.booking.baseAmount, 500);
   assert.equal(createHoldInput.slotUnits.length, 1);
 });

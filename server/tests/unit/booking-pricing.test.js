@@ -86,3 +86,30 @@ test('pricing applies valid coupons after unit pricing and before tax', () => {
   assert.equal(quote.price_breakdown.tax, 162);
   assert.equal(quote.price_breakdown.total, 1062);
 });
+
+test('createBookingPricingService requires taxRate configuration', () => {
+  assert.throws(() => {
+    createBookingPricingService();
+  }, /taxRate is required/);
+
+  assert.throws(() => {
+    createBookingPricingService({});
+  }, /taxRate is required/);
+});
+
+test('pricing calculates 0 tax when taxRate is 0', () => {
+  const service = createBookingPricingService({ taxRate: 0 });
+
+  const quote = service.buildQuote({
+    courts: [courtOne],
+    slotDate: '2026-06-18',
+    slotStartTimes: ['09:00'],
+    slotDurationMins: 60,
+    pricingRules: [],
+  });
+
+  assert.equal(quote.price_breakdown.subtotal, 500);
+  assert.equal(quote.price_breakdown.tax, 0);
+  assert.equal(quote.price_breakdown.total, 500);
+});
+

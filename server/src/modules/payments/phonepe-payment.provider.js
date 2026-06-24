@@ -128,7 +128,7 @@ export const createPhonePePaymentProvider = ({
   clientId,
   clientSecret,
   clientVersion = 1,
-  merchantId,
+  merchantId: _merchantId,
   env = 'SANDBOX',
   backendBaseUrl = 'http://localhost:5000',
 } = {}) => {

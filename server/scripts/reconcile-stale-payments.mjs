@@ -20,7 +20,6 @@ import { getPrisma, disconnectPrisma } from '../src/lib/prisma.js';
 import { createPaymentProviderFromEnv } from '../src/modules/payments/provider-factory.js';
 import logger from '../src/utils/logger.js';
 
-import { createDefaultUsersService } from '../src/modules/users/index.js';
 import { createDefaultVenuesService } from '../src/modules/venues/index.js';
 import { createDefaultAuthService } from '../src/modules/auth/index.js';
 import { createDefaultBookingsService } from '../src/modules/bookings/index.js';
@@ -33,7 +32,6 @@ async function reconcileStalePayments() {
   const prisma = getPrisma();
   const paymentProvider = createPaymentProviderFromEnv(config);
 
-  const userService = createDefaultUsersService();
   const venueService = createDefaultVenuesService();
   const authorizationService = createDefaultAuthService({ config });
   const bookingsService = createDefaultBookingsService({ config, venueService, paymentProvider });
