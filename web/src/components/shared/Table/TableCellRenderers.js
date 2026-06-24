@@ -11,7 +11,7 @@ export function StatusBadge({ value }) {
   const val = String(value).toLowerCase();
 
   let tone = "neutral";
-  if (val === "confirmed" || val === "active" || val === "walk_in") {
+  if (val === "confirmed" || val === "active" || val === "walk_in" || val === "completed") {
     tone = "accent";
   } else if (val === "cancelled" || val === "maintenance" || val === "blocked") {
     tone = "danger";

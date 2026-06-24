@@ -16,6 +16,7 @@ import {
 } from "../src/lib/validation.js";
 import {
   buildDateWindow,
+  getPaymentReceiptDetails,
 } from "../src/lib/booking-engine.js";
 import {
   buildBookingSelectionPayload,
@@ -148,4 +149,41 @@ test("coupon validation is format-only before server preview applies it", () => 
     value: "FIRST50",
   });
   assert.equal(validateCoupon("bad coupon").ok, false);
+});
+
+test("getPaymentReceiptDetails correctly handles wallet-only checkouts", () => {
+  const booking = {
+    total_amount: 590,
+    credits_applied: 590,
+  };
+  const result = getPaymentReceiptDetails(booking);
+  assert.equal(result.isWalletOnly, true);
+  assert.equal(result.isMixed, false);
+  assert.equal(result.paymentModeLabel, "Payment Method: Wallet Credits");
+  assert.equal(result.displayAmount, 590);
+});
+
+test("getPaymentReceiptDetails correctly handles UPI-only checkouts", () => {
+  const booking = {
+    total_amount: 590,
+    credits_applied: 0,
+  };
+  const result = getPaymentReceiptDetails(booking);
+  assert.equal(result.isWalletOnly, false);
+  assert.equal(result.isMixed, false);
+  assert.equal(result.paymentModeLabel, "Payment Method: UPI");
+  assert.equal(result.displayAmount, 590);
+});
+
+test("getPaymentReceiptDetails correctly handles mixed Wallet + UPI checkouts", () => {
+  const booking = {
+    total_amount: 590,
+    credits_applied: 100,
+  };
+  const result = getPaymentReceiptDetails(booking);
+  assert.equal(result.isWalletOnly, false);
+  assert.equal(result.isMixed, true);
+  assert.equal(result.paymentModeLabel, "Payment Method: UPI + Wallet");
+  assert.equal(result.upiAmount, 490);
+  assert.equal(result.creditsApplied, 100);
 });

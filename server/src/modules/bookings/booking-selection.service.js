@@ -1,6 +1,7 @@
 import {
   addMinutesToTime,
   isDateWithinAdvanceWindow,
+  localDateTimeToUtc,
 } from './booking-time.js';
 import { BadRequestError, ConflictError } from '../../utils/api-error.js';
 
@@ -26,6 +27,15 @@ export const createBookingSelectionService = ({ clock = () => new Date() } = {})
 
     if (!isDateWithinAdvanceWindow({ slotDate: input.slot_date, venue, now: clock() })) {
       throw new BadRequestError('Date is outside the booking window', { code: 'DATE_OUTSIDE_BOOKING_WINDOW' });
+    }
+
+    const now = clock();
+    const timezone = venue.timezone || 'Asia/Kolkata';
+    for (const slotStartTime of slotStartTimes) {
+      const slotStartUtc = localDateTimeToUtc(input.slot_date, slotStartTime, timezone);
+      if (now >= slotStartUtc) {
+        throw new BadRequestError(`Slot starting at ${slotStartTime} is in the past`, { code: 'SLOT_IN_PAST' });
+      }
     }
 
     const selectedCourts = courtIds.map((courtId) => {

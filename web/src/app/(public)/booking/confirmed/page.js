@@ -4,6 +4,7 @@ import { Button, Card } from "@/components/shared";
 import { Map } from "@/components/shared/Map";
 import { venue } from "@/data/platform";
 import { getPaymentStatus, getBookingById } from "@/lib/api";
+import { getPaymentReceiptDetails } from "@/lib/booking-engine";
 import { 
   CheckCircle2, 
   MapPin, 
@@ -52,7 +53,7 @@ export default async function BookingConfirmedPage(props) {
   let courtName = null;
   let rawDate = null;
   let timeSlot = null;
-  let amount = null;
+  let receiptDetails = null;
   let errorMsg = null;
   let bookingLoaded = false;
   let isAuthError = false;
@@ -77,8 +78,7 @@ export default async function BookingConfirmedPage(props) {
       courtName = booking.slots?.[0]?.court?.name || "Court";
       rawDate = booking.slot_date;
       timeSlot = `${booking.session_start_time} - ${booking.session_end_time}`;
-      // paid amount = total_amount - credits_applied
-      amount = String(Number(booking.total_amount || 0) - Number(booking.credits_applied || 0));
+      receiptDetails = getPaymentReceiptDetails(booking);
       bookingLoaded = true;
     } catch (err) {
       console.error("Failed to load booking details dynamically:", err);
@@ -215,16 +215,38 @@ export default async function BookingConfirmedPage(props) {
                 </div>
 
                 {/* Amount details row */}
-                <div className="mt-6 flex items-center justify-between rounded-xl border border-line/70 bg-surface-panel p-4">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-accent" />
-                    <span className="text-xs font-semibold text-muted sm:text-sm">Payment Mode (UPI)</span>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm font-black text-foreground sm:text-base">
-                      ₹{amount}
-                    </span>
-                  </div>
+                <div className="mt-6 rounded-xl border border-line/70 bg-surface-panel p-4 space-y-3">
+                  {receiptDetails?.isMixed ? (
+                    <>
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
+                        <span className="text-muted">Paid via Wallet</span>
+                        <span className="font-bold text-foreground">₹{receiptDetails.creditsApplied}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
+                        <span className="text-muted">Paid via UPI</span>
+                        <span className="font-bold text-foreground">₹{receiptDetails.upiAmount}</span>
+                      </div>
+                      <div className="border-t border-line/60 pt-2.5 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-5 w-5 text-accent" />
+                          <span className="text-xs font-semibold text-muted sm:text-sm font-black text-foreground">Total Amount</span>
+                        </div>
+                        <span className="text-sm font-black text-foreground sm:text-base">₹{receiptDetails.totalAmount}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-5 w-5 text-accent" />
+                        <span className="text-xs font-semibold text-muted sm:text-sm">
+                          {receiptDetails?.paymentModeLabel}
+                        </span>
+                      </div>
+                      <span className="text-sm font-black text-foreground sm:text-base">
+                        ₹{receiptDetails?.displayAmount}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Card>
 

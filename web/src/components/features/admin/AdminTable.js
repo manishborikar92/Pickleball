@@ -32,7 +32,7 @@ const COLUMNS = [
     key: "status",
     label: "Status",
     filterable: true,
-    filterOptions: ["walk_in", "confirmed", "cancelled"],
+    filterOptions: ["walk_in", "confirmed", "completed", "cancelled"],
     render: (val) => <StatusBadge value={val} />,
   },
   {

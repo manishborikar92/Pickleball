@@ -339,3 +339,152 @@ test('acceptWaiver guards booking status correctly', async () => {
   assert.equal(waiverUpdates.ipAddress, '1.2.3.4');
 });
 
+test('sweepCompletedBookings transitions confirmed/walk_in bookings that ended to completed', async () => {
+  let transitionedIds;
+  const mockBookings = [
+    {
+      id: 'b-past-1',
+      status: 'confirmed',
+      slotDate: new Date('2026-06-16T00:00:00.000Z'),
+      sessionStartTime: new Date('1970-01-01T09:00:00.000Z'),
+      sessionEndTime: new Date('1970-01-01T10:00:00.000Z'),
+      sessionDurationMins: 60,
+      venue: { timezone: 'Asia/Kolkata' },
+    },
+    {
+      id: 'b-future-1',
+      status: 'confirmed',
+      slotDate: new Date('2026-06-17T00:00:00.000Z'),
+      sessionStartTime: new Date('1970-01-01T20:00:00.000Z'),
+      sessionEndTime: new Date('1970-01-01T21:00:00.000Z'),
+      sessionDurationMins: 60,
+      venue: { timezone: 'Asia/Kolkata' },
+    },
+  ];
+
+  const service = createService({
+    async findPastConfirmedBookings() {
+      return mockBookings;
+    },
+    async transitionToCompleted(ids) {
+      transitionedIds = ids;
+      return { count: ids.length };
+    },
+  });
+
+  const result = await service.sweepCompletedBookings({ limit: 50 });
+  assert.equal(result.swept_count, 1);
+  assert.equal(result.updated_count, 1);
+  assert.deepEqual(transitionedIds, ['b-past-1']);
+});
+
+test('sweepCompletedBookings handles overnight bookings correctly', async () => {
+  let transitionedIds;
+  const mockBookings = [
+    {
+      id: 'b-overnight-ended',
+      status: 'confirmed',
+      slotDate: new Date('2026-06-16T00:00:00.000Z'),
+      sessionStartTime: new Date('1970-01-01T23:00:00.000Z'),
+      sessionEndTime: new Date('1970-01-01T01:00:00.000Z'),
+      sessionDurationMins: 120,
+      venue: { timezone: 'Asia/Kolkata' },
+    },
+    {
+      id: 'b-overnight-future',
+      status: 'confirmed',
+      slotDate: new Date('2026-06-17T00:00:00.000Z'),
+      sessionStartTime: new Date('1970-01-01T23:00:00.000Z'),
+      sessionEndTime: new Date('1970-01-01T01:00:00.000Z'),
+      sessionDurationMins: 120,
+      venue: { timezone: 'Asia/Kolkata' },
+    },
+  ];
+
+  const service = createService({
+    async findPastConfirmedBookings() {
+      return mockBookings;
+    },
+    async transitionToCompleted(ids) {
+      transitionedIds = ids;
+      return { count: ids.length };
+    },
+  });
+
+  const result = await service.sweepCompletedBookings({ limit: 50 });
+  assert.equal(result.swept_count, 1);
+  assert.equal(result.updated_count, 1);
+  assert.deepEqual(transitionedIds, ['b-overnight-ended']);
+});
+
+test('sweepCompletedBookings is idempotent and handles empty sweep gracefully', async () => {
+  const service = createService({
+    async findPastConfirmedBookings() {
+      return [];
+    },
+    async transitionToCompleted() {
+      assert.fail('Should not be called');
+    },
+  });
+
+  const result = await service.sweepCompletedBookings();
+  assert.equal(result.swept_count, 0);
+  assert.equal(result.updated_count, 0);
+});
+
+test('handleProviderPaymentEvent rejects late webhook if session play window ended', async () => {
+  let forceExpireArg = null;
+  const mockBookingEnded = {
+    id: 'b-ended',
+    status: 'pending_payment',
+    expiresAt: new Date('2026-06-17T04:10:00.000Z'),
+    slotDate: new Date('2026-06-16T00:00:00.000Z'),
+    sessionStartTime: new Date('1970-01-01T09:00:00.000Z'),
+    sessionEndTime: new Date('1970-01-01T10:00:00.000Z'),
+    venueId: venueId,
+  };
+
+  const mockBookingEndedWithVenue = {
+    ...mockBookingEnded,
+    venue: { id: venueId, timezone: 'Asia/Kolkata' },
+  };
+
+  const service = createService({
+    async getPaymentWithBooking() {
+      return { id: 'p-1', bookingId: 'b-ended', status: 'initiated', amount: 500, booking: mockBookingEndedWithVenue };
+    },
+    async getBookingForReconciliation() {
+      return mockBookingEnded;
+    },
+    async getHoldContext() {
+      return { venue: { id: venueId, timezone: 'Asia/Kolkata' } };
+    },
+    async confirmProviderPayment({ forceExpire }) {
+      forceExpireArg = forceExpire;
+      return { booking: { id: 'b-ended', status: 'expired' }, payment: { id: 'p-1', status: 'success' } };
+    },
+  });
+
+  service.availabilityService = {
+    async getVenueById() {
+      return { id: venueId, timezone: 'Asia/Kolkata' };
+    },
+  };
+
+  let onLatePaymentArg = null;
+  service.onLatePayment = async (arg) => {
+    onLatePaymentArg = arg;
+  };
+
+  const response = await service.handleProviderPaymentEvent({
+    merchantOrderId: 'order-1',
+    state: 'COMPLETED',
+    payload: {},
+  });
+
+  assert.equal(forceExpireArg, true);
+  assert.equal(response.booking_status, 'expired');
+  assert.ok(onLatePaymentArg);
+  assert.equal(onLatePaymentArg.bookingId, 'b-ended');
+});
+

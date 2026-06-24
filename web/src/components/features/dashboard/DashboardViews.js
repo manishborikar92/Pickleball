@@ -6,6 +6,7 @@ import { DataTable, StatusBadge, Currency } from "@/components/shared/Table";
 import { useTable } from "@/hooks/useTable";
 import { formatCurrency } from "@/lib/booking-engine";
 
+
 /* ── Column Definitions ─────────────────────────── */
 
 const BOOKING_COLUMNS = [
@@ -37,7 +38,7 @@ const BOOKING_COLUMNS = [
     key: "status",
     label: "Status",
     filterable: true,
-    filterOptions: ["confirmed", "cancelled"],
+    filterOptions: ["confirmed", "completed", "cancelled"],
     render: (val) => <StatusBadge value={val} />,
   },
   {
@@ -51,7 +52,7 @@ const BOOKING_COLUMNS = [
     label: "",
     className: "text-right",
     render: (_, row) => {
-      if (!row.hasReview && row.status === "confirmed") {
+      if (!row.hasReview && row.status === "completed") {
         return (
           <Link
             href={`/review/${row.id}`}
@@ -124,9 +125,9 @@ export function DashboardOverview({ bookings = [], wallet }) {
       </SectionHeader>
       
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Metric label="Upcoming" value={String(upcoming.length)} />
+        <Metric label="Upcoming" value={String(bookings.filter((booking) => booking.status === "confirmed").length)} />
         <Metric label="Wallet Credits" value={formatCurrency(wallet.balance)} />
-        <Metric label="Past Sessions" value={String(bookings.length)} className="sm:col-span-2 lg:col-span-1" />
+        <Metric label="Past Sessions" value={String(bookings.filter((booking) => booking.status === "completed").length)} className="sm:col-span-2 lg:col-span-1" />
       </div>
       
       <Card className="flex flex-col p-5 sm:p-6 lg:p-8">
@@ -236,7 +237,7 @@ function MobileBookingCard(row) {
           <Currency value={row.amount} />
         </div>
         
-        {!row.hasReview && row.status === "confirmed" && (
+        {!row.hasReview && row.status === "completed" && (
           <Link
             href={`/review/${row.id}`}
             className="text-xs font-bold text-accent transition-colors hover:text-accent-dim"

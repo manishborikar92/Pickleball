@@ -42,3 +42,43 @@ export function getSlotRange(slots, startTime, endTime) {
   if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) return [];
   return slots.slice(startIdx, endIdx + 1);
 }
+
+export function getPaymentReceiptDetails(booking) {
+  const totalAmount = Number(booking.total_amount || 0);
+  const creditsApplied = Number(booking.credits_applied || 0);
+  const upiAmount = totalAmount - creditsApplied;
+
+  if (creditsApplied > 0) {
+    if (upiAmount === 0) {
+      return {
+        paymentModeLabel: "Payment Method: Wallet Credits",
+        displayAmount: creditsApplied,
+        upiAmount,
+        creditsApplied,
+        totalAmount,
+        isMixed: false,
+        isWalletOnly: true,
+      };
+    } else {
+      return {
+        paymentModeLabel: "Payment Method: UPI + Wallet",
+        displayAmount: totalAmount,
+        upiAmount,
+        creditsApplied,
+        totalAmount,
+        isMixed: true,
+        isWalletOnly: false,
+      };
+    }
+  }
+
+  return {
+    paymentModeLabel: "Payment Method: UPI",
+    displayAmount: upiAmount,
+    upiAmount,
+    creditsApplied,
+    totalAmount,
+    isMixed: false,
+    isWalletOnly: false,
+  };
+}

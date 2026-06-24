@@ -145,3 +145,34 @@ test('availability applies closed and modified-hours exceptions by court', async
   assert.deepEqual(result.courts[0].slots, []);
   assert.deepEqual(result.courts[1].slots.map((slot) => slot.start_time), ['10:00', '11:00']);
 });
+
+test('availability overrides same-day past slots to status past', async () => {
+  const service = createVenuesService({
+    repository: {
+      async getAvailabilityContext() {
+        return {
+          venue,
+          courts: [courts[0]],
+          schedules: [schedules[0]],
+          scheduleExceptions: [],
+          bookingSlots: [],
+          pricingRules: [],
+        };
+      },
+    },
+    pricingService: createBookingPricingService({ taxRate: 0 }),
+    // 09:30 AM IST corresponds to 2026-06-17T04:00:00.000Z
+    clock: () => new Date('2026-06-17T04:00:00.000Z'),
+  });
+
+  const result = await service.getAvailability({
+    venueId: venue.id,
+    date: '2026-06-17',
+  });
+
+  const slots = result.courts[0].slots;
+  assert.equal(slots[0].start_time, '09:00');
+  assert.equal(slots[0].status, 'past');
+  assert.equal(slots[1].start_time, '10:00');
+  assert.equal(slots[1].status, 'available');
+});

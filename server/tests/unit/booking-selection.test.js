@@ -81,3 +81,49 @@ test('selection validation rejects unavailable generated slots', () => {
     },
   }), /not available/);
 });
+
+test('selection validation rejects same-day past slots', () => {
+  const service = createBookingSelectionService({
+    // 2026-06-17T03:30:00Z is 09:00 AM IST. So a slot at 09:00 AM is starting now/past.
+    clock: () => new Date('2026-06-17T03:31:00.000Z'),
+  });
+
+  const venueWithTz = { ...venue, timezone: 'Asia/Kolkata' };
+
+  assert.throws(() => service.validateSelection({
+    venue: venueWithTz,
+    courts,
+    availability,
+    input: {
+      court_ids: [courts[0].id],
+      slot_date: '2026-06-17',
+      slot_start_times: ['09:00'],
+    },
+  }), (err) => {
+    assert.ok(err instanceof BadRequestError);
+    assert.equal(err.details?.code, 'SLOT_IN_PAST');
+    return true;
+  });
+});
+
+test('selection validation accepts same-day future slots', () => {
+  const service = createBookingSelectionService({
+    // 08:00 AM IST is 2026-06-17T02:30:00Z.
+    clock: () => new Date('2026-06-17T02:30:00.000Z'),
+  });
+
+  const venueWithTz = { ...venue, timezone: 'Asia/Kolkata' };
+
+  const result = service.validateSelection({
+    venue: venueWithTz,
+    courts,
+    availability,
+    input: {
+      court_ids: [courts[0].id],
+      slot_date: '2026-06-17',
+      slot_start_times: ['09:00'],
+    },
+  });
+
+  assert.equal(result.slotDurationMins, 60);
+});

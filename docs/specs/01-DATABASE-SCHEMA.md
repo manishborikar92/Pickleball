@@ -375,7 +375,7 @@ The parent transaction record. One booking covers a contiguous time session acro
 | `session_duration_mins` | SMALLINT | NOT NULL | Total time span in minutes (e.g., 9 AM–12 PM = 180) |
 | `court_count` | SMALLINT | NOT NULL | Number of distinct courts in this booking |
 | `slot_unit_count` | SMALLINT | NOT NULL | Total court×time_slot units (court_count × time slots selected) |
-| `status` | VARCHAR(30) | NOT NULL, default 'pending_payment' | Enum: pending_payment, confirmed, expired, cancelled, walk_in, admin_block |
+| `status` | VARCHAR(30) | NOT NULL, default 'pending_payment' | Enum: pending_payment, confirmed, completed, expired, cancelled, walk_in, admin_block |
 | `booking_type` | VARCHAR(20) | NOT NULL, default 'online' | Enum: online, walk_in, admin_block |
 | `base_amount` | NUMERIC(10,2) | NOT NULL | Sum of all unit base prices before modifiers |
 | `discount_amount` | NUMERIC(10,2) | NOT NULL, default 0.00 | Coupon + modifier reductions |
@@ -402,9 +402,9 @@ PENDING_PAYMENT  ──── (10 min timeout + wallet rollback) ────►
     │
     │ (wallet-only path OR PhonePe COMPLETED webhook/redirect)
     ▼
-CONFIRMED
+CONFIRMED ─────── (play window ends) ───────► COMPLETED
     │
-    │ (admin force-cancel)
+    │ (admin force-cancel, strictly before session starts)
     ▼
 CANCELLED
 ```

@@ -5,7 +5,7 @@ export const onboardingSchema = Joi.object({
 });
 
 export const myBookingsQuerySchema = Joi.object({
-  status: Joi.string().valid('pending_payment', 'confirmed', 'expired', 'cancelled').optional(),
+  status: Joi.string().valid('pending_payment', 'confirmed', 'completed', 'expired', 'cancelled').optional(),
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(20),
 });

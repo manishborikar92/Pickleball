@@ -373,7 +373,7 @@ The frontend uses this response on app load to decide whether to show the name c
 
 *Protected.* Returns all bookings for the authenticated user.
 
-**Query params:** `status` (confirmed, expired, cancelled), `page`, `limit`.
+**Query params:** `status` (confirmed, completed, expired, cancelled), `page`, `limit`.
 
 **Response `200`:**
 ```json
@@ -494,7 +494,7 @@ The frontend uses this response on app load to decide whether to show the name c
 
 **`unit_price`** is the per-slot price for that specific court at that time (base + modifiers), pre-calculated. Only present when `status = 'available'`. The frontend uses these to show live price totals as selections are made, while `/bookings/price-preview` provides the authoritative server-side total before holding.
 
-**`status` values:** `available`, `booked` (confirmed/walk-in), `pending` (locked by another user's 10-minute hold), `blocked` (admin block).
+**`status` values:** `available`, `booked` (confirmed/walk-in), `pending` (locked by another user's 10-minute hold), `blocked` (admin block), `past` (slots whose start time has already passed for the same day).
 
 **Notes:**
 - Only dates within the advance booking window are returned with slot data.
@@ -607,7 +607,7 @@ The frontend uses this response on app load to decide whether to show the name c
 ```
 
 **Errors:**
-- `400 Bad Request` — non-consecutive slots, invalid court_ids, or slot outside the booking window.
+- `400 Bad Request` — non-consecutive slots, invalid court_ids, slot outside the booking window, or slot in the past (code `SLOT_IN_PAST`).
 - `409 Conflict` — one or more slot units are taken (see above).
 - `429 Too Many Requests` — velocity check: 2 pending bookings already held.
 

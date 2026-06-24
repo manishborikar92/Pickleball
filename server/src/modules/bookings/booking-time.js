@@ -60,3 +60,21 @@ export const isDateWithinAdvanceWindow = ({
 
   return target >= today && target <= last;
 };
+
+export const localDateTimeToUtc = (date, time, venueTimezone) => {
+  const dateStr = toDateOnly(date);
+  const timeStr = formatTime(time);
+  const localISO = `${dateStr}T${timeStr}:00`;
+  const localUtc = new Date(`${localISO}Z`);
+  const tzString = localUtc.toLocaleString('en-US', { timeZone: venueTimezone, timeZoneName: 'longOffset' });
+  const match = tzString.match(/GMT([+-])(\d+):?(\d+)?/);
+  if (!match) {
+    return localUtc;
+  }
+  const sign = match[1] === '+' ? 1 : -1;
+  const hours = parseInt(match[2], 10);
+  const minutes = parseInt(match[3] || '0', 10);
+  const offsetMs = sign * (hours * 60 + minutes) * 60 * 1000;
+
+  return new Date(localUtc.getTime() - offsetMs);
+};

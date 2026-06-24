@@ -434,6 +434,7 @@ Step 3 — All-or-Nothing Lock (authenticated + onboarding complete)
     b. slot_start_times are consecutive (no gaps).
     c. Each slot exists in the generated slot array for that date.
     d. Velocity check: user_id holds fewer than 2 pending bookings.
+    e. Past Slot Protection: For same-day bookings, slot_start_times must be in the future relative to the venue timezone. If any slot start time has already elapsed, the request is rejected with a `400 Bad Request` containing the validation code `SLOT_IN_PAST`.
 
   Backend lock phase (single DB transaction):
     e. Sort all N×M units by (court_id, slot_start_time).
@@ -552,13 +553,22 @@ All bookings are **100% non-refundable** once confirmed. Users acknowledge this 
 When the **business** must cancel (flood, power outage, court damage), the Admin initiates the cancellation workflow:
 
 1. Admin selects the affected booking(s) and triggers cancellation.
-2. System updates `bookings.status` → `cancelled`.
-3. Instead of a bank refund (which incurs gateway fees), the system:
+2. System verifies that the session has not started yet. **Admin cancellations are strictly restricted to bookings where the current time is before the local session start time.**
+3. System updates `bookings.status` → `cancelled`.
+4. Instead of a bank refund (which incurs gateway fees), the system:
    - Calculates credit amount = `payments.amount` (or `total_amount` if walk-in).
    - Inserts a `wallet_transactions` record of type `credit_issued`.
    - Increments `users.wallet_credits` by the credit amount.
-4. Sends a WhatsApp message informing the user of the cancellation and the credit added.
-5. Credits are automatically applied as a discount on the user's next booking during the pricing calculation step.
+5. Sends a WhatsApp message informing the user of the cancellation and the credit added.
+6. Credits are automatically applied as a discount on the user's next booking during the pricing calculation step.
+
+### 7.3 Completed Bookings Terminal Lock
+
+Once a booking transitions to the `completed` status, it is locked. **Completed bookings are terminal and can never be cancelled or refunded.** If any customer service issues arise post-session, they must be addressed using manual wallet credit adjustments rather than mutating the booking status to `cancelled`.
+
+### 7.4 Completion Processor Ownership
+
+The background lifecycle sweeper script (`cleanup-expired-records.mjs`) is the sole authority and owner of booking completion transitions. It is run every 5 minutes to sweep past `confirmed` and `walk_in` bookings whose scheduled play windows have ended, transitioning them to the `completed` state. All API GET routes and web requests are strictly read-only and must never perform lazy write-through updates to the booking status.
 
 ---
 
@@ -630,11 +640,19 @@ The admin dashboard surfaces the following at launch:
 - Today's revenue total and booking count.
 - User lookup by phone: booking history, wallet balance.
 
-
+#### 10.3.1 Financial Revenue Source of Truth
+* **Rule**: All financial revenue reporting must be derived from the `payments` table.
+* **Calculation**: Sum the `amount` of all `payments` rows where `status === 'success'` and `gateway IN ('phonepe', 'sandbox')`, and subtract the `amount` of payments with status `refunded`.
+* **Note**: Bookings and slot statuses are used strictly for court utilization and operational metrics (e.g. counting past vs. upcoming sessions), never as the financial source of truth.
 
 ---
 
 ## 11. Review System
+
+### 11.1 Review Eligibility
+* **Single Source of Truth**: A user is eligible to write a review for a booking **if and only if** `booking.status === 'completed'`. Both frontend display (the "Rate Session" action) and backend API validation (`POST /api/v1/reviews`) must enforce this exact check.
+
+### 11.2 Review Submission
 
 The review screen allows:
 - Star rating (1–5), required.

@@ -34,6 +34,13 @@ try {
   });
   console.log(`Expired ${expiredBookings.expired_count} pending booking holds.`);
   console.log(`Rolled back ${expiredBookings.wallet_credits_rolled_back} wallet credits from expired holds.`);
+
+  // Sweep completed bookings
+  const sweepLimit = parseInt(process.env.COMPLETION_SWEEP_LIMIT || '100', 10);
+  const sweptBookings = await bookingsService.sweepCompletedBookings({
+    limit: sweepLimit,
+  });
+  console.log(`Swept ${sweptBookings.swept_count} bookings to completed status (updated ${sweptBookings.updated_count} records).`);
 } catch (error) {
   console.error("Error running database cleanup:", error);
   process.exit(1);

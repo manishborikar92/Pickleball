@@ -526,7 +526,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           summary: 'List current user bookings',
           security: [{ bearerAuth: [] }],
           parameters: [
-            { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending_payment', 'confirmed', 'expired', 'cancelled'] } },
+            { name: 'status', in: 'query', schema: { type: 'string', enum: ['pending_payment', 'confirmed', 'completed', 'expired', 'cancelled'] } },
             { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
             { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
           ],

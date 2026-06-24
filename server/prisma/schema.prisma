@@ -57,6 +57,7 @@ enum BookingStatus {
   cancelled
   walk_in
   admin_block
+  completed
 }
 
 enum BookingType {

@@ -11,12 +11,15 @@ const STATUS_STYLES = {
     "border-accent/20 bg-accent/5 text-muted/40 cursor-not-allowed",
   blocked:
     "border-line/50 bg-surface/30 text-muted/30 cursor-not-allowed",
+  past:
+    "border-line/50 bg-surface/30 text-muted/30 cursor-not-allowed",
 };
 
 const STATUS_LABELS = {
   booked: "Taken",
   pending: "Hold",
   blocked: "Closed",
+  past: "Past",
 };
 
 /**

@@ -4,7 +4,7 @@ import {
   NotFoundError,
   TooManyRequestsError,
 } from '../../utils/api-error.js';
-import { formatTime, minutesToTimeDate, timeToMinutes, toDateOnly } from './booking-time.js';
+import { formatTime, minutesToTimeDate, timeToMinutes, toDateOnly, localDateTimeToUtc } from './booking-time.js';
 
 const isUniqueConflict = (error) => error?.code === 'P2002';
 
@@ -55,6 +55,23 @@ const serializeBooking = (booking) => ({
     created_at: payment.createdAt,
   })),
 });
+
+const getBookingEndUtc = (booking, venueTimezone) => {
+  const endTimeStr = formatTime(booking.sessionEndTime);
+  const startTimeStr = formatTime(booking.sessionStartTime);
+
+  const startMins = timeToMinutes(startTimeStr);
+  const endMins = timeToMinutes(endTimeStr);
+
+  let date = booking.slotDate;
+  if (endMins <= startMins) {
+    const nextDay = new Date(booking.slotDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    date = nextDay;
+  }
+
+  return localDateTimeToUtc(date, endTimeStr, venueTimezone);
+};
 
 export const createBookingsService = ({
   repository,
@@ -360,13 +377,20 @@ export const createBookingsService = ({
       }
 
       if (state === 'COMPLETED') {
-        const isLatePayment = booking.status === 'expired' || (booking.expiresAt && booking.expiresAt <= clock());
+        const timezone = booking.venue?.timezone || 'Asia/Kolkata';
+        const endUtc = getBookingEndUtc(booking, timezone);
+        const isSessionEnded = clock() >= endUtc;
+
+        const isLatePayment = booking.status === 'expired' || 
+                              (booking.expiresAt && booking.expiresAt <= clock()) ||
+                              isSessionEnded;
 
         const result = await repository.confirmProviderPayment({
           paymentId: payment.id,
           bookingId: booking.id,
           payload,
           now: clock(),
+          forceExpire: isSessionEnded,
         });
 
         if (isLatePayment && this.onLatePayment) {
@@ -431,6 +455,34 @@ export const createBookingsService = ({
     async expirePendingHolds({ limit = 100 } = {}) {
       const now = clock();
       return repository.expirePendingHolds({ now, limit });
+    },
+
+    async sweepCompletedBookings({ limit = 100 } = {}) {
+      const now = clock();
+      const candidates = await repository.findPastConfirmedBookings({ now, limit });
+
+      const completedIds = [];
+      for (const booking of candidates) {
+        const timezone = booking.venue?.timezone || 'Asia/Kolkata';
+        const endUtc = getBookingEndUtc(booking, timezone);
+
+        if (now >= endUtc) {
+          completedIds.push(booking.id);
+        }
+      }
+
+      if (completedIds.length > 0) {
+        const result = await repository.transitionToCompleted(completedIds);
+        return {
+          swept_count: completedIds.length,
+          updated_count: result.count,
+        };
+      }
+
+      return {
+        swept_count: 0,
+        updated_count: 0,
+      };
     },
 
     async getBooking({ userId, bookingId }) {

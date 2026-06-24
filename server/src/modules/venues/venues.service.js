@@ -5,6 +5,7 @@ import {
   isDateWithinAdvanceWindow,
   timeToMinutes,
   toDateOnly,
+  localDateTimeToUtc,
 } from '../bookings/booking-time.js';
 import { BadRequestError, NotFoundError } from '../../utils/api-error.js';
 
@@ -35,18 +36,30 @@ const generateSlots = ({ openTime, closeTime, slotDurationMins }) => {
   return slots;
 };
 
-const slotState = ({ bookingSlots, courtId, slotStartTime, now }) => {
+const slotState = ({ bookingSlots, courtId, slotStartTime, now, slotDate, venueTimezone }) => {
   const match = bookingSlots.find((slot) => (
     slot.courtId === courtId
     && formatTime(slot.slotStartTime) === slotStartTime
   ));
 
-  if (!match) return 'available';
-  if (match.status === 'admin_block') return 'blocked';
-  if (match.status === 'pending_payment') {
-    return match.booking?.expiresAt && match.booking.expiresAt > now ? 'pending' : 'available';
+  let resolvedStatus = 'available';
+  if (match) {
+    if (match.status === 'admin_block') resolvedStatus = 'blocked';
+    else if (match.status === 'pending_payment') {
+      resolvedStatus = match.booking?.expiresAt && match.booking.expiresAt > now ? 'pending' : 'available';
+    } else {
+      resolvedStatus = 'booked';
+    }
   }
-  return 'booked';
+
+  if (resolvedStatus === 'available') {
+    const slotStartUtc = localDateTimeToUtc(slotDate, slotStartTime, venueTimezone);
+    if (now >= slotStartUtc) {
+      return 'past';
+    }
+  }
+
+  return resolvedStatus;
 };
 
 export const createVenuesService = ({
@@ -128,6 +141,8 @@ export const createVenuesService = ({
             courtId: court.id,
             slotStartTime: slot.start_time,
             now,
+            slotDate: normalizedDate,
+            venueTimezone: context.venue.timezone || 'Asia/Kolkata',
           });
 
           if (status !== 'available') {

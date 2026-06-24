@@ -369,13 +369,19 @@ export const createBookingsRepository = ({ prisma } = {}) => {
                   walletCredits: true,
                 },
               },
+              venue: {
+                select: {
+                  id: true,
+                  timezone: true,
+                },
+              },
             },
           },
         },
       });
     },
 
-    async confirmProviderPayment({ paymentId, bookingId, payload, now }) {
+    async confirmProviderPayment({ paymentId, bookingId, payload, now, forceExpire = false }) {
       return db().$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({ where: { id: bookingId } });
         const payment = await tx.payment.findUnique({ where: { id: paymentId } });
@@ -405,7 +411,7 @@ export const createBookingsRepository = ({ prisma } = {}) => {
         // If already confirmed, it's a no-op. If expired or cancelled, we DO NOT resurrect it.
         let updatedBooking = booking;
         if (booking.status === 'pending_payment') {
-          const isExpired = booking.expiresAt && booking.expiresAt <= now;
+          const isExpired = (booking.expiresAt && booking.expiresAt <= now) || forceExpire;
           if (isExpired) {
             updatedBooking = await tx.booking.update({
               where: { id: bookingId },
@@ -763,6 +769,50 @@ export const createBookingsRepository = ({ prisma } = {}) => {
         return { restoredAmount: 0, balanceAfter: toMoney(booking.user?.walletCredits) };
       });
     },
+
+    async findPastConfirmedBookings({ now, limit = 100 }) {
+      const dateCutoff = new Date(now);
+      dateCutoff.setUTCDate(dateCutoff.getUTCDate() + 1); // 1 day ahead safely covers timezone differences
+
+      return db().booking.findMany({
+        where: {
+          status: { in: ['confirmed', 'walk_in'] },
+          slotDate: { lte: dateCutoff },
+        },
+        orderBy: { slotDate: 'asc' },
+        take: limit,
+        include: {
+          venue: {
+            select: {
+              timezone: true,
+            },
+          },
+        },
+      });
+    },
+
+    async transitionToCompleted(bookingIds) {
+      if (!bookingIds || bookingIds.length === 0) return { count: 0 };
+
+      return db().$transaction(async (tx) => {
+        const bookingsResult = await tx.booking.updateMany({
+          where: {
+            id: { in: bookingIds },
+            status: { in: ['confirmed', 'walk_in'] },
+          },
+          data: { status: 'completed' },
+        });
+
+        await tx.bookingSlot.updateMany({
+          where: {
+            bookingId: { in: bookingIds },
+            status: { in: ['confirmed', 'walk_in'] },
+          },
+          data: { status: 'completed' },
+        });
+
+        return { count: bookingsResult.count };
+      });
+    },
   };
 };
-
