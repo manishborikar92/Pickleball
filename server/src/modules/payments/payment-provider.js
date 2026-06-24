@@ -1,5 +1,5 @@
 export const assertPaymentProvider = (provider) => {
-  const requiredMethods = ['createPaymentOrder'];
+  const requiredMethods = ['createPaymentOrder', 'getPaymentStatus', 'refundPayment'];
   const missing = requiredMethods.filter((method) => typeof provider?.[method] !== 'function');
 
   if (missing.length > 0) {

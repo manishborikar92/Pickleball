@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-const PAGECLIP_SITE_KEY = process.env.NEXT_PUBLIC_PAGECLIP_SITE_KEY || "M6xW7YlgRqD6fmxtTWdcxaegUQLfFYuc";
-const PAGECLIP_FORM_NAME = process.env.NEXT_PUBLIC_PAGECLIP_FORM_NAME || "waitlist";
+const PAGECLIP_SITE_KEY = "M6xW7YlgRqD6fmxtTWdcxaegUQLfFYuc";
+const PAGECLIP_FORM_NAME = "waitlist";
 
 export async function POST(req) {
   try {

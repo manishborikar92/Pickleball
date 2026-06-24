@@ -9,7 +9,7 @@ const REFRESH_COOKIE_NAME = "pb_refresh_token";
 const AUTH_ROLE_COOKIE_NAME = "pb_auth_role";
 const AUTH_ONBOARDED_COOKIE_NAME = "pb_user_onboarded";
 
-const API_BASE_URL = process.env.API_BASE_URL || "http://localhost:5000";
+const NEXT_PUBLIC_API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5000";
 
 function extractCookieValue(setCookie, name) {
   if (!setCookie) return "";
@@ -19,7 +19,7 @@ function extractCookieValue(setCookie, name) {
 
 async function refreshTokens(refreshToken) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    const response = await fetch(`${NEXT_PUBLIC_API_BASE_URL}/api/v1/auth/refresh`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

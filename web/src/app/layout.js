@@ -1,4 +1,5 @@
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import AppProviders from "@/providers/AppProviders";
 import "./globals.css";
 
@@ -69,6 +70,14 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
+        <Script
+          src={
+            process.env.NEXT_PUBLIC_PHONEPE_ENV === "PRODUCTION"
+              ? "https://mercury.phonepe.com/web/bundle/checkout.js"
+              : "https://mercury-uat.phonepe.com/web/bundle/checkout.js"
+          }
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );

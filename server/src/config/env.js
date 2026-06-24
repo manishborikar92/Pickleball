@@ -37,6 +37,19 @@ const envSchema = Joi.object({
   WHATSAPP_OTP_TEMPLATE_NAME: Joi.string().allow('').default(''),
   WHATSAPP_OTP_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
   SHUTDOWN_TIMEOUT_MS: Joi.number().integer().positive().default(10000),
+
+  // PhonePe Payment Gateway — credentials provided via merchant dashboard.
+  PHONEPE_CLIENT_ID: Joi.string().allow('').default(''),
+  PHONEPE_CLIENT_SECRET: Joi.string().allow('').default(''),
+  PHONEPE_CLIENT_VERSION: Joi.number().integer().positive().default(1),
+  PHONEPE_MERCHANT_ID: Joi.string().allow('').default(''),
+  PHONEPE_ENV: Joi.string().valid('SANDBOX', 'PRODUCTION').default('SANDBOX'),
+  PHONEPE_WEBHOOK_USERNAME: Joi.string().allow('').default(''),
+  PHONEPE_WEBHOOK_PASSWORD: Joi.string().allow('').default(''),
+
+  // Base URLs for payment redirect and webhook routing.
+  FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:3000'),
+  BACKEND_BASE_URL: Joi.string().uri().default('http://localhost:5000'),
 }).unknown(true);
 
 const parseCsv = (value) => String(value || '')
@@ -102,6 +115,13 @@ export const buildConfig = (overrides = {}) => {
     if (parseCsv(value.ALLOWED_ORIGINS).length === 0) {
       throw new Error('ALLOWED_ORIGINS must contain at least one origin in production');
     }
+
+    // PhonePe credentials are mandatory in production/staging.
+    const phonePeRequired = ['PHONEPE_CLIENT_ID', 'PHONEPE_CLIENT_SECRET', 'PHONEPE_MERCHANT_ID', 'PHONEPE_WEBHOOK_USERNAME', 'PHONEPE_WEBHOOK_PASSWORD'];
+    const phonePeMissing = phonePeRequired.filter((key) => !value[key]);
+    if (phonePeMissing.length > 0) {
+      throw new Error(`PhonePe credentials must be set in ${value.NODE_ENV}: ${phonePeMissing.join(', ')}`);
+    }
   }
 
   const config = {
@@ -155,6 +175,17 @@ export const buildConfig = (overrides = {}) => {
       otpTemplateName: value.WHATSAPP_OTP_TEMPLATE_NAME || undefined,
       otpTemplateLanguage: value.WHATSAPP_OTP_TEMPLATE_LANGUAGE || undefined,
     },
+    phonepe: {
+      clientId: value.PHONEPE_CLIENT_ID || undefined,
+      clientSecret: value.PHONEPE_CLIENT_SECRET || undefined,
+      clientVersion: value.PHONEPE_CLIENT_VERSION,
+      merchantId: value.PHONEPE_MERCHANT_ID || undefined,
+      env: value.PHONEPE_ENV,
+      webhookUsername: value.PHONEPE_WEBHOOK_USERNAME || undefined,
+      webhookPassword: value.PHONEPE_WEBHOOK_PASSWORD || undefined,
+    },
+    frontendBaseUrl: value.FRONTEND_BASE_URL,
+    backendBaseUrl: value.BACKEND_BASE_URL,
   };
 
   return deepMerge(config, overrides);

@@ -31,7 +31,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── bookings/          # Selection, holds, waivers, and pricing
 │   │       ├── health/            # Liveness/Readiness endpoints
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
-│   │       ├── payments/          # Gateway logic and sandbox provider
+│   │       ├── payments/          # Gateway logic: PhonePe provider, webhook, redirect, reconciliation
 │   │       ├── users/             # User profile, wallet, and history
 │   │       └── venues/            # Venues, courts, and availability
 │   └── tests/                     # Node.js native test suite

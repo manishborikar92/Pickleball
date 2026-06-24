@@ -17,7 +17,7 @@ export const createSandboxPaymentProvider = ({
       provider: 'sandbox',
       gateway: 'sandbox',
       merchant_order_id: merchantOrderId,
-      redirect_url: `${baseUrl}/api/v1/payments/sandbox/${merchantOrderId}/complete`,
+      redirect_url: `${baseUrl}/api/v1/payments/redirect?orderId=${merchantOrderId}`,
       amount,
       currency,
     };

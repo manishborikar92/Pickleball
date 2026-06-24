@@ -3,6 +3,7 @@ import { Header, Footer } from "@/components/layout";
 import { Button, Card } from "@/components/shared";
 import { Map } from "@/components/shared/Map";
 import { venue } from "@/data/platform";
+import { getPaymentStatus, getBookingById } from "@/lib/api";
 import { 
   CheckCircle2, 
   MapPin, 
@@ -45,13 +46,92 @@ function formatDate(dateStr) {
 
 export default async function BookingConfirmedPage(props) {
   const searchParams = await props.searchParams;
-  
-  // Extract details from searchParams, falling back to mock defaults
-  const bookingId = searchParams.bookingId || "BK-2041";
-  const courtName = searchParams.court || "Court 1";
-  const rawDate = searchParams.date || "2026-05-24";
-  const timeSlot = searchParams.time || "18:00 - 19:00";
-  const amount = searchParams.amount || "767";
+  const orderId = searchParams.orderId;
+  let bookingId = searchParams.bookingId;
+
+  let courtName = null;
+  let rawDate = null;
+  let timeSlot = null;
+  let amount = null;
+  let errorMsg = null;
+  let bookingLoaded = false;
+  let isAuthError = false;
+
+  if (orderId || bookingId) {
+    try {
+      if (orderId && !bookingId) {
+        // 1. Fetch payment status by merchantOrderId (orderId)
+        const paymentStatus = await getPaymentStatus(orderId);
+        bookingId = paymentStatus.booking_id;
+        if (!bookingId) {
+          throw new Error("Booking association not found for order");
+        }
+      }
+
+      // 2. Fetch booking details
+      const booking = await getBookingById(bookingId);
+      if (!booking) {
+        throw new Error("Booking details not found");
+      }
+
+      courtName = booking.slots?.[0]?.court?.name || "Court";
+      rawDate = booking.slot_date;
+      timeSlot = `${booking.session_start_time} - ${booking.session_end_time}`;
+      // paid amount = total_amount - credits_applied
+      amount = String(Number(booking.total_amount || 0) - Number(booking.credits_applied || 0));
+      bookingLoaded = true;
+    } catch (err) {
+      console.error("Failed to load booking details dynamically:", err);
+      errorMsg = err.message || "Failed to load booking details dynamically.";
+      if (err.message?.toLowerCase().includes("unauthorized") || err.message?.toLowerCase().includes("authenticate")) {
+        isAuthError = true;
+      }
+    }
+  } else {
+    errorMsg = "Missing orderId or bookingId parameters.";
+  }
+
+  if (!bookingLoaded) {
+    const redirectParam = orderId ? `?orderId=${orderId}` : `?bookingId=${bookingId}`;
+    return (
+      <div className="flex min-h-screen flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center px-4 py-16 sm:py-24">
+          <Card className="w-full max-w-lg p-8 text-center border-t-4 border-t-red-500">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-red-500/10">
+              <ShieldAlert className="h-10 w-10 text-red-400" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Booking Details Unavailable</h1>
+            <p className="mb-6 text-muted-foreground text-sm">
+              We successfully received your payment, but we couldn&apos;t retrieve the reservation details right now. Please check your Dashboard under &apos;My Bookings&apos; or contact our support team.
+            </p>
+            {errorMsg && (
+              <p className="mb-6 text-xs text-red-400/80 font-mono bg-surface-soft/40 p-3 rounded border border-line">
+                Error: {errorMsg}
+              </p>
+            )}
+            <div className="flex flex-col gap-3">
+              {isAuthError ? (
+                <Button href={`/login?redirectTo=${encodeURIComponent(`/booking/confirmed${redirectParam}`)}`} className="w-full justify-center">
+                  Log In to View Booking
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button href="/dashboard/bookings" className="w-full justify-center">
+                  Go to My Bookings
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              )}
+              <Button href="/" variant="secondary" className="w-full justify-center">
+                Back to Home
+              </Button>
+            </div>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   const formattedDate = formatDate(rawDate);
 

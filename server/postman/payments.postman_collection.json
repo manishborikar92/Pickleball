@@ -42,12 +42,12 @@
       }
     },
     {
-      "name": "Complete a sandbox payment",
+      "name": "PhonePe payment redirect handler",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/payments/sandbox/:merchantOrderId/complete",
+          "raw": "{{baseUrl}}/api/v1/payments/redirect",
           "host": [
             "{{baseUrl}}"
           ],
@@ -55,43 +55,42 @@
             "api",
             "v1",
             "payments",
-            "sandbox",
-            ":merchantOrderId",
-            "complete"
-          ],
-          "variable": [
-            {
-              "key": "merchantOrderId",
-              "value": ""
-            }
+            "redirect"
           ]
         }
       }
     },
     {
-      "name": "Fail a sandbox payment",
+      "name": "PhonePe webhook callback receiver",
       "request": {
-        "method": "GET",
-        "header": [],
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/payments/sandbox/:merchantOrderId/fail",
+          "raw": "{{baseUrl}}/api/v1/webhooks/phonepe",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
             "v1",
-            "payments",
-            "sandbox",
-            ":merchantOrderId",
-            "fail"
-          ],
-          "variable": [
-            {
-              "key": "merchantOrderId",
-              "value": ""
-            }
+            "webhooks",
+            "phonepe"
           ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"response\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         }
       }
     },

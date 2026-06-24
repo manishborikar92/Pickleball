@@ -401,19 +401,32 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           },
         });
 
-        // Booking domain invariants: only pending_payment can transition to confirmed.
+        // Booking domain invariants: only pending_payment can transition to confirmed/expired.
         // If already confirmed, it's a no-op. If expired or cancelled, we DO NOT resurrect it.
         let updatedBooking = booking;
         if (booking.status === 'pending_payment') {
-          updatedBooking = await tx.booking.update({
-            where: { id: bookingId },
-            data: { status: 'confirmed' },
-          });
+          const isExpired = booking.expiresAt && booking.expiresAt <= now;
+          if (isExpired) {
+            updatedBooking = await tx.booking.update({
+              where: { id: bookingId },
+              data: { status: 'expired' },
+            });
 
-          await tx.bookingSlot.updateMany({
-            where: { bookingId },
-            data: { status: 'confirmed' },
-          });
+            await tx.bookingSlot.updateMany({
+              where: { bookingId },
+              data: { status: 'expired' },
+            });
+          } else {
+            updatedBooking = await tx.booking.update({
+              where: { id: bookingId },
+              data: { status: 'confirmed' },
+            });
+
+            await tx.bookingSlot.updateMany({
+              where: { bookingId },
+              data: { status: 'confirmed' },
+            });
+          }
         }
 
         return { booking: updatedBooking, payment: updatedPayment };

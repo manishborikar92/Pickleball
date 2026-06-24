@@ -38,10 +38,10 @@ test('booking routes record waiver and initiate payment through services', async
           async initiatePayment({ userId: paymentUserId, bookingId: paymentBookingId, input }) {
             calls.push(['payment', paymentUserId, paymentBookingId, input]);
             return {
-              type: 'sandbox',
+              type: 'phonepe',
               booking_id: paymentBookingId,
-              merchant_order_id: 'SANDBOX-order-1',
-              redirect_url: 'http://localhost/api/v1/payments/sandbox/SANDBOX-order-1/complete',
+              merchant_order_id: 'PP-order-1',
+              redirect_url: 'https://mercury.phonepe.com/transact/PP-order-1',
               credits_applied: 200,
               phonepe_amount: 390,
               total_amount: 590,
@@ -66,12 +66,12 @@ test('booking routes record waiver and initiate payment through services', async
     .send({ use_wallet_credits: true });
 
   assert.equal(payment.status, 200);
-  assert.equal(payment.body.data.type, 'sandbox');
+  assert.equal(payment.body.data.type, 'phonepe');
   assert.equal(payment.body.data.phonepe_amount, 390);
   assert.deepEqual(calls.map(([name]) => name), ['waiver', 'payment']);
 });
 
-test('payment routes expose protected status and sandbox terminal callbacks', async () => {
+test('payment routes expose protected status endpoint', async () => {
   const calls = [];
   const app = createApp({
     configureRoutes(router) {
@@ -88,50 +88,18 @@ test('payment routes expose protected status and sandbox terminal callbacks', as
               payment_status: 'initiated',
             };
           },
-          async completeSandboxPayment({ merchantOrderId, requestContext }) {
-            calls.push(['complete', merchantOrderId, requestContext.requestId]);
-            return {
-              merchant_order_id: merchantOrderId,
-              booking_id: bookingId,
-              booking_status: 'confirmed',
-              payment_status: 'success',
-              idempotent: false,
-            };
-          },
-          async failSandboxPayment({ merchantOrderId }) {
-            calls.push(['fail', merchantOrderId]);
-            return {
-              merchant_order_id: merchantOrderId,
-              booking_id: bookingId,
-              booking_status: 'pending_payment',
-              payment_status: 'failed',
-              idempotent: false,
-            };
-          },
         },
       }));
     },
   });
 
   const status = await request(app)
-    .get('/api/v1/payments/status/SANDBOX-order-1')
+    .get('/api/v1/payments/status/PP-order-1')
     .set('Authorization', 'Bearer test');
 
   assert.equal(status.status, 200);
   assert.equal(status.body.data.payment_status, 'initiated');
-
-  const complete = await request(app)
-    .get('/api/v1/payments/sandbox/SANDBOX-order-1/complete');
-
-  assert.equal(complete.status, 200);
-  assert.equal(complete.body.data.booking_status, 'confirmed');
-
-  const fail = await request(app)
-    .get('/api/v1/payments/sandbox/SANDBOX-order-1/fail');
-
-  assert.equal(fail.status, 200);
-  assert.equal(fail.body.data.payment_status, 'failed');
-  assert.deepEqual(calls.map(([name]) => name), ['status', 'complete', 'fail']);
+  assert.deepEqual(calls.map(([name]) => name), ['status']);
 });
 
 test('payment routes expose refund and retry refund endpoints', async () => {

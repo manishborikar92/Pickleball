@@ -22,5 +22,5 @@ test('sandbox payment provider creates provider-neutral payment orders', async (
   assert.equal(order.gateway, 'sandbox');
   assert.equal(order.merchant_order_id, 'SANDBOX-order-1');
   assert.equal(order.amount, 590);
-  assert.match(order.redirect_url, /\/api\/v1\/payments\/sandbox\/SANDBOX-order-1\/complete/);
+  assert.match(order.redirect_url, /\/api\/v1\/payments\/redirect\?orderId=SANDBOX-order-1/);
 });

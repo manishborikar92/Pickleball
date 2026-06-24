@@ -36,30 +36,6 @@ export const createPaymentsService = ({
       return serializePaymentStatus(payment);
     },
 
-    async completeSandboxPayment({ merchantOrderId, requestContext = {} }) {
-      return bookingsService.handleProviderPaymentEvent({
-        merchantOrderId,
-        state: 'COMPLETED',
-        payload: {
-          provider: 'sandbox',
-          state: 'COMPLETED',
-        },
-        requestContext,
-      });
-    },
-
-    async failSandboxPayment({ merchantOrderId, requestContext = {} }) {
-      return bookingsService.handleProviderPaymentEvent({
-        merchantOrderId,
-        state: 'FAILED',
-        payload: {
-          provider: 'sandbox',
-          state: 'FAILED',
-        },
-        requestContext,
-      });
-    },
-
     async refundPayment({ paymentId, amount, userId }) {
       if (!reconciliationService) {
         throw new ConfigurationError('reconciliationService is required for refunds');

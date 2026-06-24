@@ -14,7 +14,6 @@ import { buildDateWindow } from "@/lib/booking-engine";
 import { validateCoupon } from "@/lib/validation";
 import {
   acceptBookingWaiverAction,
-  completeSandboxPaymentAction,
   createBookingHoldAction,
   getVenueAvailabilityAction,
   initiateBookingPaymentAction,
@@ -306,19 +305,40 @@ export function BookingClient({
       }
       const payment = paymentRes.data;
 
-      if (payment.type === "sandbox" && payment.merchant_order_id) {
-        const completeRes = await completeSandboxPaymentAction(payment.merchant_order_id);
-        if (!completeRes.success) {
-          setCheckoutError(completeRes.error || "Could not complete sandbox payment.");
+      // Wallet-only payment — no gateway needed.
+      if (payment.type === "wallet_only") {
+        setConfirmedBookingId(hold.booking_id);
+        setAuth((current) => ({ ...current, step: "success" }));
+        return;
+      }
+
+      // PhonePe payment — use iFrame checkout or fallback to redirect.
+      if (payment.redirect_url) {
+        if (typeof window.PhonePeCheckout?.transact === "function") {
+          window.PhonePeCheckout.transact({
+            tokenUrl: payment.redirect_url,
+            type: "IFRAME",
+            callback: (response) => {
+              if (response === "USER_CANCEL") {
+                setCheckoutError("Payment was cancelled. You can try again.");
+                setCheckoutLoading(false);
+              } else {
+                // CONCLUDED — redirect to backend for verification.
+                window.location.assign(
+                  `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/api/v1/payments/redirect?orderId=${payment.merchant_order_id}`,
+                );
+              }
+            },
+          });
           return;
         }
-      } else if (payment.redirect_url) {
+
+        // Fallback: PhonePe JS bundle not loaded — full-page redirect.
         window.location.assign(payment.redirect_url);
         return;
       }
 
-      setConfirmedBookingId(hold.booking_id);
-      setAuth((current) => ({ ...current, step: "success" }));
+      setCheckoutError("Payment could not be initiated. Please try again.");
     } catch (error) {
       setCheckoutError(error.message || "Could not complete booking.");
     } finally {

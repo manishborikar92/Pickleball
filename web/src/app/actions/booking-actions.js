@@ -95,15 +95,6 @@ export async function initiateBookingPaymentAction(bookingId, { useWalletCredits
   }
 }
 
-export async function completeSandboxPaymentAction(merchantOrderId) {
-  try {
-    const { payload } = await apiRequest(`/api/v1/payments/sandbox/${merchantOrderId}/complete`);
-    return { success: true, data: payload.data };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-}
-
 export async function getUserBookingsAction() {
   try {
     const accessToken = await getAccessToken();
@@ -127,3 +118,28 @@ export async function getWalletAction() {
     return { success: false, error: error.message };
   }
 }
+
+export async function getPaymentStatusAction(orderId) {
+  try {
+    const accessToken = await getAccessToken();
+    const { payload } = await apiRequest(`/api/v1/payments/status/${orderId}`, {
+      accessToken,
+    });
+    return { success: true, data: payload.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getBookingByIdAction(bookingId) {
+  try {
+    const accessToken = await getAccessToken();
+    const { payload } = await apiRequest(`/api/v1/bookings/${bookingId}`, {
+      accessToken,
+    });
+    return { success: true, data: payload.data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+

@@ -2,14 +2,9 @@ import { createPaymentsRepository } from './payments.repository.js';
 import { createPaymentsRouter } from './payments.routes.js';
 import { createPaymentsService } from './payments.service.js';
 import { createReconciliationService } from './reconciliation.service.js';
-import { createSandboxPaymentProvider } from './sandbox-payment.provider.js';
 
-export const createDefaultPaymentsService = ({ bookingsService, config, authService } = {}) => {
+export const createDefaultPaymentsService = ({ bookingsService, config, authService, paymentProvider } = {}) => {
   const repository = createPaymentsRepository();
-  
-  const paymentProvider = createSandboxPaymentProvider({
-    baseUrl: `http://localhost:${config?.app?.port || 5000}`,
-  });
 
   const reconciliationService = createReconciliationService({
     paymentsRepository: repository,
@@ -24,15 +19,24 @@ export const createDefaultPaymentsService = ({ bookingsService, config, authServ
     };
   }
 
-  return createPaymentsService({
+  const paymentsService = createPaymentsService({
     repository,
     bookingsService,
     reconciliationService,
     authorizationService: authService,
   });
+
+  return { paymentsService, reconciliationService, repository };
 };
 
-export const createDefaultPaymentsRouter = ({ bookingsService, config, authService } = {}) => {
-  const paymentsService = createDefaultPaymentsService({ bookingsService, config, authService });
-  return createPaymentsRouter({ paymentsService });
+export const createDefaultPaymentsRouter = ({ bookingsService, config, authService, paymentProvider } = {}) => {
+  const { paymentsService, reconciliationService, repository } = createDefaultPaymentsService({
+    bookingsService,
+    config,
+    authService,
+    paymentProvider,
+  });
+  const router = createPaymentsRouter({ paymentsService, paymentProvider, bookingsService, config });
+  return { router, paymentsService, reconciliationService, repository };
 };
+

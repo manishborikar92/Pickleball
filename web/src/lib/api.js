@@ -7,6 +7,8 @@ import {
   getVenueBySlugAction,
   getUserBookingsAction,
   getWalletAction,
+  getPaymentStatusAction,
+  getBookingByIdAction,
 } from "@/app/actions/booking-actions";
 
 const wait = (value) =>
@@ -60,3 +62,20 @@ export async function getAdminOverview() {
     courts,
   });
 }
+
+export async function getPaymentStatus(orderId) {
+  const res = await getPaymentStatusAction(orderId);
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load payment status");
+  }
+  return res.data;
+}
+
+export async function getBookingById(bookingId) {
+  const res = await getBookingByIdAction(bookingId);
+  if (!res.success) {
+    throw new Error(res.error || "Failed to load booking details");
+  }
+  return res.data;
+}
+

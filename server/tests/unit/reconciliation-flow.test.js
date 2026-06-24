@@ -128,3 +128,38 @@ test('retryRefund rejected for success payments', async () => {
     ConflictError
   );
 });
+
+test('initiateRefund passes originalMerchantOrderId and reuse of merchantRefundId on retry', async () => {
+  const existingRefundId = 'REFUND-existing-id-123';
+  const { service, overrides } = createMocks({
+    payment: {
+      status: 'refund_failed',
+      merchantOrderId: 'PP-original-order-1',
+      merchantRefundId: existingRefundId,
+      refundAmount: 500,
+    },
+  });
+
+  const result = await service.retryRefund({ paymentId });
+
+  assert.equal(result.status, 'refunded');
+  assert.equal(overrides.providerRefundArgs.originalMerchantOrderId, 'PP-original-order-1');
+  assert.equal(overrides.providerRefundArgs.merchantRefundId, existingRefundId);
+  assert.equal(overrides.providerRefundArgs.amount, 500);
+});
+
+test('initiateRefund defaults to original payment amount when amount is omitted', async () => {
+  const { service, overrides } = createMocks({
+    payment: {
+      status: 'success',
+      amount: 750,
+      merchantOrderId: 'PP-original-order-2',
+    },
+  });
+
+  const result = await service.initiateRefund({ paymentId });
+
+  assert.equal(result.status, 'refunded');
+  assert.equal(overrides.providerRefundArgs.originalMerchantOrderId, 'PP-original-order-2');
+  assert.equal(overrides.providerRefundArgs.amount, 750);
+});

@@ -76,8 +76,8 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'POST /api/v1/bookings/{bookingId}/waiver',
     'POST /api/v1/bookings/{bookingId}/initiate-payment',
     'GET /api/v1/payments/status/{merchantOrderId}',
-    'GET /api/v1/payments/sandbox/{merchantOrderId}/complete',
-    'GET /api/v1/payments/sandbox/{merchantOrderId}/fail',
+    'GET /api/v1/payments/redirect',
+    'POST /api/v1/webhooks/phonepe',
     'GET /api/v1/docs/openapi.json',
     'GET /api/v1/docs',
   ].forEach((route) => {

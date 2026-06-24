@@ -50,20 +50,22 @@ export const createReconciliationService = ({
         throw new AppError('Payment provider not configured for refunds', 503, { code: 'PAYMENT_PROVIDER_UNAVAILABLE' });
       }
 
-      const merchantRefundId = `REFUND-${crypto.randomUUID()}`;
+      const merchantRefundId = payment.merchantRefundId || `REFUND-${crypto.randomUUID()}`;
+      const refundAmount = amount !== undefined && amount !== null ? amount : Number(payment.amount);
 
       // Update status to refund_pending
       await paymentsRepository.updatePaymentRefundInitiated({
         paymentId,
         merchantRefundId,
-        amount,
+        amount: refundAmount,
         now,
       });
 
       try {
         const response = await paymentProvider.refundPayment({
           merchantRefundId,
-          amount,
+          originalMerchantOrderId: payment.merchantOrderId,
+          amount: refundAmount,
         });
 
         if (response && response.status === 'SUCCESS') {

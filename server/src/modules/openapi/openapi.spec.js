@@ -736,27 +736,40 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`/payments/sandbox/{merchantOrderId}/complete`]: {
+      [`/payments/redirect`]: {
         get: {
           tags: ['Payments'],
-          summary: 'Complete a sandbox payment',
+          summary: 'PhonePe payment redirect handler',
+          description: 'Handles browser redirect from PhonePe payment gateway, verifies payment state, and redirects the browser to the appropriate frontend page.',
           parameters: [
-            { name: 'merchantOrderId', in: 'path', required: true, schema: { type: 'string', example: 'SANDBOX-order-1' } },
+            { name: 'orderId', in: 'query', required: true, schema: { type: 'string', example: 'PP-booking123' } },
           ],
           responses: {
-            200: { description: 'Sandbox payment completed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            302: { description: 'Redirects to confirmed, failed, or pending page on frontend' },
           },
         },
       },
-      [`/payments/sandbox/{merchantOrderId}/fail`]: {
-        get: {
+      [`/webhooks/phonepe`]: {
+        post: {
           tags: ['Payments'],
-          summary: 'Fail a sandbox payment',
-          parameters: [
-            { name: 'merchantOrderId', in: 'path', required: true, schema: { type: 'string', example: 'SANDBOX-order-1' } },
-          ],
+          summary: 'PhonePe webhook callback receiver',
+          description: 'Receives server-to-server transaction status callbacks from PhonePe. Authenticates messages via basic authentication credentials.',
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    response: { type: 'string', description: 'Base64 encoded payload from PhonePe containing payment details' },
+                  },
+                },
+              },
+            },
+          },
           responses: {
-            200: { description: 'Sandbox payment failed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            200: { description: 'Webhook acknowledged and processed successfully' },
+            401: { description: 'Unauthorized signature or credentials' },
           },
         },
       },
