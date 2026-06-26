@@ -44,7 +44,7 @@ export default async function BookingFailedPage(props) {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button asChild variant="primary" size="lg">
-              <Link href="/venues/besa-nagpur">
+              <Link href="/venues/besa-nagpur/book">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Try Again
               </Link>

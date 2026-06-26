@@ -2,6 +2,7 @@ import { BookingClient } from "@/components/features/booking";
 import { getAvailability, getVenue } from "@/lib/api";
 import { JsonLd } from "@/components/seo";
 import { getPageMetadata } from "@/config/metadata";
+import { getTodayDateString } from "@/lib/booking-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -21,8 +22,8 @@ export async function generateMetadata({ params }) {
 
 export default async function BookPage({ params }) {
   const { slug } = await params;
-  const initialDate = new Date().toISOString().slice(0, 10);
   const venue = await getVenue(slug);
+  const initialDate = getTodayDateString(venue.timezone);
   const availability = await getAvailability({
     venueId: venue.id,
     date: initialDate,

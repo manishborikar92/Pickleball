@@ -10,7 +10,7 @@ import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
-import { buildDateWindow } from "@/lib/booking-engine";
+import { buildDateWindow, getSlotRange } from "@/lib/booking-engine";
 import { validateCoupon } from "@/lib/validation";
 import {
   acceptBookingWaiverAction,
@@ -106,14 +106,13 @@ export function BookingClient({
       const courtAvailability = availabilityData.find((item) => item.courtId === court.id);
       if (!courtAvailability) continue;
 
-      const startIdx = courtAvailability.slots.findIndex((slot) => slot.startTime === selection.startTime);
-      const endIdx = courtAvailability.slots.findIndex((slot) => slot.endTime === selection.endTime);
-      if (startIdx === -1 || endIdx === -1 || endIdx < startIdx) continue;
+      const slotsRange = getSlotRange(courtAvailability.slots, selection.startTime, selection.endTime);
+      if (slotsRange.length === 0) continue;
 
       result.push({
         courtId: court.id,
         courtName: court.name,
-        slots: courtAvailability.slots.slice(startIdx, endIdx + 1),
+        slots: slotsRange,
       });
     }
 

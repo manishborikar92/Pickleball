@@ -66,7 +66,7 @@ function BrandLogo() {
 function AccountButton() {
   return (
     <Link
-      href="/interest"
+      href="/dashboard"
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-panel hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-auto sm:gap-2 sm:px-4"
       aria-label="Go to Account Dashboard"
     >
@@ -79,7 +79,7 @@ function AccountButton() {
 function CTA() {
   return (
     <Button
-      href="/interest"
+      href="/venues/besa-nagpur/book"
       className="h-9 px-3 text-sm font-semibold shadow-sm transition-transform active:scale-95 sm:h-10 sm:px-5 lg:text-base"
     >
       <span className="hidden sm:inline">Book Court</span>

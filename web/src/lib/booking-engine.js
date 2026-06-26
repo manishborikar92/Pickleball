@@ -86,3 +86,12 @@ export function getPaymentReceiptDetails(booking) {
     isWalletOnly: false,
   };
 }
+
+export function getTodayDateString(timeZone = "Asia/Kolkata") {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}

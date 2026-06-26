@@ -24,13 +24,13 @@ export function HeroSection() {
 
           <div className="mt-8 flex flex-col gap-4 sm:mt-10 sm:flex-row sm:items-center">
             <Button 
-              href="/interest" 
+              href="/venues/besa-nagpur/book" 
               className="flex min-h-[3rem] w-full items-center justify-center sm:w-auto sm:px-8"
             >
               Book Court
             </Button>
             <Button
-              href="/interest"
+              href="/dashboard/bookings"
               variant="secondary"
               className="flex min-h-[3rem] w-full items-center justify-center sm:w-auto sm:px-8"
             >

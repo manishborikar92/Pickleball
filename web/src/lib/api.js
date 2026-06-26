@@ -1,6 +1,5 @@
 import {
   courts,
-  reviews,
 } from "@/data/platform";
 import {
   getVenueAvailabilityAction,
@@ -14,10 +13,13 @@ import {
 const wait = (value) =>
   Promise.resolve(value);
 
-export async function getVenue(slug = "besa-nagpur") {
+export async function getVenue(slug) {
+  if (!slug) {
+    throw new Error("Venue slug is required");
+  }
   const res = await getVenueBySlugAction(slug);
   if (!res.success) {
-    throw new Error(res.error || "Failed to load venue");
+    throw new Error(res.error || `Failed to load venue: ${slug}`);
   }
   return res.data;
 }
@@ -28,10 +30,6 @@ export async function getAvailability({ venueId, date }) {
     throw new Error(res.error || "Failed to load availability");
   }
   return res.data;
-}
-
-export async function getPublishedReviews() {
-  return wait(reviews);
 }
 
 export async function getUserBookings() {

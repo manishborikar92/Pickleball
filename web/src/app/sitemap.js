@@ -22,7 +22,7 @@ export default async function sitemap() {
 
   // Dynamic routes (e.g. venues and court bookings)
   try {
-    const venueData = await getVenue();
+    const venueData = await getVenue("besa-nagpur");
     if (venueData && venueData.slug) {
       staticRoutes.push({
         url: `${baseUrl}/venues/${venueData.slug}/book`,

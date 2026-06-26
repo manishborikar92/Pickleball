@@ -98,7 +98,7 @@ function PendingContent() {
           Your payment could not be processed. No amount has been deducted.
         </p>
         <Button asChild variant="primary" size="lg">
-          <Link href="/venues/besa-nagpur">
+          <Link href="/venues/besa-nagpur/book">
             Try Again
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

@@ -60,7 +60,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/interest" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
+                <Link href="/venues/besa-nagpur/book" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
                   Book Court Slots
                 </Link>
               </li>
