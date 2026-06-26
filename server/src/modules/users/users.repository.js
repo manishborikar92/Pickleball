@@ -29,14 +29,11 @@ const serializeAuthProfile = (user) => {
 const money = (value) => Number(value || 0);
 
 const serializeBookingSummary = (booking) => {
-  const firstSlot = booking.slots?.[0] || null;
+  const courtNames = [...new Set((booking.slots || []).map((s) => s.court?.name).filter(Boolean))].sort();
 
   return {
     id: booking.id,
-    court: firstSlot?.court ? {
-      id: firstSlot.court.id,
-      name: firstSlot.court.name,
-    } : null,
+    court_names: courtNames,
     venue: booking.venue ? {
       id: booking.venue.id,
       name: booking.venue.name,
@@ -128,7 +125,6 @@ export const createUsersRepository = ({ prisma } = {}) => {
                 { slotDate: 'asc' },
                 { slotStartTime: 'asc' },
               ],
-              take: 1,
               include: {
                 court: {
                   select: { id: true, name: true },

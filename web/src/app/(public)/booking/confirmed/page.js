@@ -75,7 +75,7 @@ export default async function BookingConfirmedPage(props) {
         throw new Error("Booking details not found");
       }
 
-      courtName = booking.slots?.[0]?.court?.name || "Court";
+      courtName = booking.courtNames?.join(", ") || "Court";
       rawDate = booking.slotDate;
       timeSlot = `${booking.sessionStartTime} - ${booking.sessionEndTime}`;
       receiptDetails = getPaymentReceiptDetails(booking);

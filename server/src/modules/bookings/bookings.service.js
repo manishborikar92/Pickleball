@@ -23,6 +23,7 @@ const quoteToResponse = (quote) => ({
 const serializeBooking = (booking) => ({
   id: booking.id,
   status: booking.status,
+  court_names: [...new Set((booking.slots || []).map((s) => s.court?.name).filter(Boolean))].sort(),
   venue: booking.venue ? {
     id: booking.venue.id,
     name: booking.venue.name,

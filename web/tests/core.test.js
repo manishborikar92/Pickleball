@@ -206,7 +206,7 @@ test("normalizeBooking maps summary list fields and formats display values", () 
   assert.equal(normalized.id, "booking-123");
   assert.equal(normalized.status, "confirmed");
   assert.equal(normalized.amount, 500);
-  assert.equal(normalized.courtName, "Court A");
+  assert.deepEqual(normalized.courtNames, ["Court A"]);
   assert.equal(normalized.venueName, "Venue A");
   assert.equal(normalized.date, "2026-06-18");
   assert.equal(normalized.time, "09:00 - 10:00");
@@ -276,3 +276,59 @@ test("normalizeBookingDetailResponse enriches venue configuration and parses dec
   assert.equal(detailed.payments[0].id, "pay-1");
   assert.equal(detailed.payments[0].amount, 400);
 });
+
+test("normalizeBooking aggregates multiple courts for summary list payloads using court_names", () => {
+  const rawSummaryBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    total_amount: 1500,
+    slot_date: "2026-06-25",
+    slot_start_time: "09:00",
+    slot_end_time: "10:00",
+    court_names: ["Court 1", "Court 2"],
+    venue: { id: "venue-1", name: "Venue A" },
+  };
+
+  const normalized = normalizeBooking(rawSummaryBooking, { isDetail: false });
+  assert.deepEqual(normalized.courtNames, ["Court 1", "Court 2"]);
+});
+
+test("normalizeBookingDetailResponse trusts court_names if present in detailed response", () => {
+  const rawDetailBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    total_amount: 1500,
+    slot_date: "2026-06-25",
+    session_start_time: "09:00",
+    session_end_time: "10:00",
+    venue: { id: "venue-1", name: "Venue A" },
+    court_names: ["Court 1", "Court 2"],
+    slots: [
+      { id: "s-1", court: { id: "c-2", name: "Court 2" } },
+      { id: "s-2", court: { id: "c-1", name: "Court 1" } },
+    ],
+  };
+
+  const normalized = normalizeBookingDetailResponse(rawDetailBooking);
+  assert.deepEqual(normalized.courtNames, ["Court 1", "Court 2"]);
+});
+
+test("normalizeBookingDetailResponse falls back to extracting court names from slots without sorting if court_names is missing", () => {
+  const rawDetailBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    total_amount: 1500,
+    slot_date: "2026-06-25",
+    session_start_time: "09:00",
+    session_end_time: "10:00",
+    venue: { id: "venue-1", name: "Venue A" },
+    slots: [
+      { id: "s-1", court: { id: "c-2", name: "Court 2" } },
+      { id: "s-2", court: { id: "c-1", name: "Court 1" } },
+    ],
+  };
+
+  const normalized = normalizeBookingDetailResponse(rawDetailBooking);
+  assert.deepEqual(normalized.courtNames, ["Court 2", "Court 1"]);
+});
+

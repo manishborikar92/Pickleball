@@ -106,10 +106,16 @@ export function normalizePricePreviewResponse(payload = {}) {
 export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
   if (!booking) return null;
 
+  // Trust backend API contract for unique, sorted court_names.
+  // Fallback to slots extraction without sorting if court_names is missing.
+  const rawCourts = booking.court_names || 
+    [...new Set((booking.slots || []).map((s) => s.court?.name || s.courtName).filter(Boolean))];
+  const courtNames = rawCourts.length > 0 ? rawCourts : [booking.court?.name || "Court"];
+
   const base = {
     id: booking.id,
     status: booking.status,
-    courtName: booking.court?.name || booking.slots?.[0]?.court?.name || "Court",
+    courtNames,
     venueName: booking.venue?.name || "Venue",
     venueSlug: booking.venue?.slug || "",
     date: booking.slot_date,

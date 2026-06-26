@@ -11,13 +11,13 @@ import { formatCurrency } from "@/lib/booking-engine";
 
 const BOOKING_COLUMNS = [
   {
-    key: "courtName",
+    key: "courtNames",
     label: "Court / Venue",
     sortable: true,
     render: (val, row) => (
       <div>
         <strong className="text-sm font-bold text-foreground sm:text-base">
-          {val}
+          {Array.isArray(val) ? val.join(", ") : val || "Court"}
         </strong>
         <span className="mx-1 text-muted/50 font-normal">&mdash;</span>
         <span className="text-xs sm:text-sm text-muted">{row.venueName}</span>
@@ -228,7 +228,7 @@ function MobileBookingCard(row) {
     <div className="flex flex-col gap-3 p-5 hover:bg-surface-high/10 transition-colors">
       <div className="flex flex-col">
         <p className="font-bold text-foreground">
-          {row.courtName} <span className="text-muted/65 font-normal mx-1">&mdash;</span> {row.venueName}
+          {row.courtNames?.join(", ") || "Court"} <span className="text-muted/65 font-normal mx-1">&mdash;</span> {row.venueName}
         </p>
         <div className="mt-1">
           <DateTime date={row.date} time={row.time} />
