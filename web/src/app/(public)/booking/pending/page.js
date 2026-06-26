@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Card } from "@/components/shared";
+import { Card, Loader } from "@/components/shared";
 import { Button } from "@/components/shared";
 import { Loader2, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
 import { getPaymentStatusAction } from "@/app/actions/booking-actions";
@@ -156,7 +156,9 @@ export default function BookingPendingPage() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <main className="flex flex-1 items-center justify-center px-4 py-16 sm:py-24">
-        <PendingContent />
+        <Suspense fallback={<Loader variant="spinner" />}>
+          <PendingContent />
+        </Suspense>
       </main>
     </div>
   );

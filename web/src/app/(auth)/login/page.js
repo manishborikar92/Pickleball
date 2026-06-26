@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { getPageMetadata } from "@/config/metadata";
 import { CustomerLoginForm } from "@/components/features/auth";
+import { Loader } from "@/components/shared";
 
 export const metadata = getPageMetadata({
   title: "Sign In",
@@ -10,6 +12,8 @@ export const metadata = getPageMetadata({
 
 export default function LoginPage() {
   return (
-    <CustomerLoginForm showStaffLink={true} />
+    <Suspense fallback={<Loader variant="spinner" className="py-20" />}>
+      <CustomerLoginForm showStaffLink={true} />
+    </Suspense>
   );
 }

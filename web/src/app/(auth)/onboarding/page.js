@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { getPageMetadata } from "@/config/metadata";
 import { CustomerOnboardingForm } from "@/components/features/auth";
+import { Loader } from "@/components/shared";
 
 export const metadata = getPageMetadata({
   title: "Complete Your Profile",
@@ -10,6 +12,8 @@ export const metadata = getPageMetadata({
 
 export default function OnboardingPage() {
   return (
-    <CustomerOnboardingForm />
+    <Suspense fallback={<Loader variant="spinner" className="py-20" />}>
+      <CustomerOnboardingForm />
+    </Suspense>
   );
 }
