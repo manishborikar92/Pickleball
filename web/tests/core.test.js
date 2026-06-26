@@ -22,6 +22,8 @@ import {
   buildBookingSelectionPayload,
   normalizeAvailabilityResponse,
   normalizePricePreviewResponse,
+  normalizeBooking,
+  normalizeBookingDetailResponse,
 } from "../src/services/bookingService.js";
 
 test("role permissions are permission-key based and expandable", () => {
@@ -186,4 +188,91 @@ test("getPaymentReceiptDetails correctly handles mixed Wallet + UPI checkouts", 
   assert.equal(result.paymentModeLabel, "Payment Method: UPI + Wallet");
   assert.equal(result.upiAmount, 490);
   assert.equal(result.creditsApplied, 100);
+});
+
+test("normalizeBooking maps summary list fields and formats display values", () => {
+  const rawBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    total_amount: "500.00",
+    slot_date: "2026-06-18",
+    slot_start_time: "09:00",
+    slot_end_time: "10:00",
+    court: { name: "Court A" },
+    venue: { name: "Venue A" },
+  };
+
+  const normalized = normalizeBooking(rawBooking, { isDetail: false });
+  assert.equal(normalized.id, "booking-123");
+  assert.equal(normalized.status, "confirmed");
+  assert.equal(normalized.amount, 500);
+  assert.equal(normalized.courtName, "Court A");
+  assert.equal(normalized.venueName, "Venue A");
+  assert.equal(normalized.date, "2026-06-18");
+  assert.equal(normalized.time, "09:00 - 10:00");
+});
+
+test("normalizeBookingDetailResponse enriches venue configuration and parses decimals", () => {
+  const rawBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    total_amount: "500.00",
+    credits_applied: "100.00",
+    slot_date: "2026-06-18",
+    session_start_time: "09:00",
+    session_end_time: "10:00",
+    venue: {
+      id: "venue-besa",
+      name: "Besa, Nagpur",
+      slug: "besa-nagpur",
+      address: "Besa Road",
+    },
+    slots: [
+      {
+        id: "slot-1",
+        slot_date: "2026-06-18",
+        slot_start_time: "09:00",
+        slot_end_time: "10:00",
+        unit_price: "250.00",
+      }
+    ],
+    payments: [
+      {
+        id: "pay-1",
+        amount: "400.00",
+        status: "success",
+      }
+    ]
+  };
+
+  const detailed = normalizeBookingDetailResponse(rawBooking);
+  assert.equal(detailed.id, "booking-123");
+  assert.equal(detailed.totalAmount, 500);
+  assert.equal(detailed.creditsApplied, 100);
+  
+  // Verify configuration enrichment
+  assert.equal(detailed.venue.brandName, "Baseline Arena"); // From config
+  assert.equal(detailed.venue.address, "Besa Road"); // From DB
+  assert.equal(detailed.venue.googleMapsLink, "https://maps.app.goo.gl/18jsuTs2SrhpvGnz8"); // From config
+  assert.deepEqual(detailed.venue.location, { lat: 21.085109, lng: 79.085931 }); // From config
+
+  // Verify coordinates are overridden if present in database (for future schema additions)
+  const rawBookingWithCoords = {
+    ...rawBooking,
+    venue: {
+      ...rawBooking.venue,
+      latitude: 12.3456,
+      longitude: 78.9012,
+    }
+  };
+  const detailedWithCoords = normalizeBookingDetailResponse(rawBookingWithCoords);
+  assert.deepEqual(detailedWithCoords.venue.location, { lat: 12.3456, lng: 78.9012 });
+
+  // Verify slots mapping
+  assert.equal(detailed.slots[0].id, "slot-1");
+  assert.equal(detailed.slots[0].unitPrice, 250);
+
+  // Verify payments mapping
+  assert.equal(detailed.payments[0].id, "pay-1");
+  assert.equal(detailed.payments[0].amount, 400);
 });

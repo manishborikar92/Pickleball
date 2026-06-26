@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Header, Footer } from "@/components/layout";
 import { Button, Card } from "@/components/shared";
 import { Map } from "@/components/shared/Map";
-import { venue } from "@/data/platform";
 import { getPaymentStatus, getBookingById } from "@/lib/api";
 import { getPaymentReceiptDetails } from "@/lib/booking-engine";
 import { 
@@ -57,6 +56,7 @@ export default async function BookingConfirmedPage(props) {
   let errorMsg = null;
   let bookingLoaded = false;
   let isAuthError = false;
+  let venue = null;
 
   if (orderId || bookingId) {
     try {
@@ -76,9 +76,10 @@ export default async function BookingConfirmedPage(props) {
       }
 
       courtName = booking.slots?.[0]?.court?.name || "Court";
-      rawDate = booking.slot_date;
-      timeSlot = `${booking.session_start_time} - ${booking.session_end_time}`;
+      rawDate = booking.slotDate;
+      timeSlot = `${booking.sessionStartTime} - ${booking.sessionEndTime}`;
       receiptDetails = getPaymentReceiptDetails(booking);
+      venue = booking.venue;
       bookingLoaded = true;
     } catch (err) {
       console.error("Failed to load booking details dynamically:", err);
@@ -313,7 +314,7 @@ export default async function BookingConfirmedPage(props) {
                   <span>Go to My Bookings</span>
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
-                <Button href="/venues/besa-nagpur/book" variant="secondary" className="w-full justify-center active:scale-[0.98] transition-transform duration-200">
+                <Button href={`/venues/${venue.slug}/book`} variant="secondary" className="w-full justify-center active:scale-[0.98] transition-transform duration-200">
                   Book Another Slot
                 </Button>
               </div>

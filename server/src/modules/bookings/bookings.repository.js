@@ -680,7 +680,20 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           userId,
         },
         include: {
-          venue: { select: { id: true, name: true } },
+          venue: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              address: true,
+              city: true,
+              timezone: true,
+              currency: true,
+              phone: true,
+              secondaryPhone: true,
+              email: true,
+            },
+          },
           slots: {
             orderBy: [
               { slotStartTime: 'asc' },

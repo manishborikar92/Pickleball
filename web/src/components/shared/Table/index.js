@@ -1,2 +1,2 @@
 export { DataTable } from "./DataTable";
-export { StatusBadge, Currency, DateTime } from "./TableCellRenderers";
+export { StatusBadge, Currency, DateTime, TransactionType, TransactionDate } from "./TableCellRenderers";

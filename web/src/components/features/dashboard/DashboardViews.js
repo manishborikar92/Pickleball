@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Badge, Button, Card, SectionHeader } from "@/components/shared";
-import { DataTable, StatusBadge, Currency } from "@/components/shared/Table";
+import { DataTable, StatusBadge, Currency, DateTime, TransactionType, TransactionDate } from "@/components/shared/Table";
 import { useTable } from "@/hooks/useTable";
 import { formatCurrency } from "@/lib/booking-engine";
 
@@ -28,11 +28,7 @@ const BOOKING_COLUMNS = [
     key: "date",
     label: "Reservation Date",
     sortable: true,
-    render: (val, row) => (
-      <span className="text-xs sm:text-sm text-muted">
-        {val} <span className="mx-1.5 text-muted/40">&bull;</span> {row.time}
-      </span>
-    ),
+    render: (val, row) => <DateTime date={val} time={row.time} />,
   },
   {
     key: "status",
@@ -76,9 +72,11 @@ const TRANSACTION_COLUMNS = [
     render: (val, row) => (
       <div>
         <p className="font-bold text-foreground">{val}</p>
-        <p className="mt-1 text-xs text-muted md:hidden">
-          {row.type} &bull; {row.createdAt}
-        </p>
+        <div className="mt-1 text-xs text-muted md:hidden flex items-center gap-1.5">
+          <TransactionType value={row.type} />
+          <span className="text-muted/40">&bull;</span>
+          <TransactionDate value={row.createdAt} />
+        </div>
       </div>
     ),
   },
@@ -86,11 +84,13 @@ const TRANSACTION_COLUMNS = [
     key: "type",
     label: "Type",
     className: "hidden md:table-cell text-muted",
+    render: (val) => <TransactionType value={val} />,
   },
   {
     key: "createdAt",
     label: "Date",
     className: "hidden md:table-cell text-muted",
+    render: (val) => <TransactionDate value={val} />,
   },
   {
     key: "amount",
@@ -118,6 +118,10 @@ export function DashboardOverview({ bookings = [], wallet }) {
     defaultPageSize: 5,
   });
 
+  const lastBooking = bookings.find((b) => b.venueSlug);
+  const ctaHref = lastBooking ? `/venues/${lastBooking.venueSlug}/book` : "/";
+  const ctaLabel = lastBooking ? "Book Again" : "Book Court";
+
   return (
     <div className="space-y-8 sm:space-y-10">
       <SectionHeader align="left" title="Player Dashboard">
@@ -133,8 +137,8 @@ export function DashboardOverview({ bookings = [], wallet }) {
       <Card className="flex flex-col p-5 sm:p-6 lg:p-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-xl font-black sm:text-2xl">Upcoming Bookings</h2>
-          <Button href="/venues/besa-nagpur/book" className="w-full sm:w-auto">
-            Book Again
+          <Button href={ctaHref} className="w-full sm:w-auto">
+            {ctaLabel}
           </Button>
         </div>
         
@@ -226,9 +230,9 @@ function MobileBookingCard(row) {
         <p className="font-bold text-foreground">
           {row.courtName} <span className="text-muted/65 font-normal mx-1">&mdash;</span> {row.venueName}
         </p>
-        <p className="mt-1 text-xs text-muted">
-          {row.date} <span className="mx-1.5 text-muted/40">&bull;</span> {row.time}
-        </p>
+        <div className="mt-1">
+          <DateTime date={row.date} time={row.time} />
+        </div>
       </div>
       
       <div className="flex items-center justify-between border-t border-line/40 pt-2.5">
@@ -255,9 +259,11 @@ function MobileTransactionCard(row) {
     <div className="flex flex-col gap-3 p-5 hover:bg-surface-high/10 transition-colors">
       <div>
         <p className="font-bold text-foreground">{row.reason}</p>
-        <p className="mt-0.5 text-xs text-muted">
-          {row.type} &bull; {row.createdAt}
-        </p>
+        <div className="mt-0.5 text-xs text-muted flex items-center gap-1.5">
+          <TransactionType value={row.type} />
+          <span className="text-muted/40">&bull;</span>
+          <TransactionDate value={row.createdAt} />
+        </div>
       </div>
       <div className="flex items-center justify-between border-t border-line/40 pt-2.5">
         <span className="text-xs text-muted">

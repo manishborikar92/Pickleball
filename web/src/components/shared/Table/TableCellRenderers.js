@@ -56,3 +56,40 @@ export function DateTime({ date, time }) {
     </span>
   );
 }
+
+function formatTransactionType(type) {
+  if (type === "credit_issued") return "Credit";
+  if (type === "credit_redeemed") return "Debit";
+  return type || "";
+}
+
+function formatTransactionDate(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+export function TransactionType({ value }) {
+  if (!value) return null;
+  const label = formatTransactionType(value);
+  const colorClass = value === "credit_issued" ? "text-accent font-bold" : "text-foreground font-semibold";
+  return <span className={colorClass}>{label}</span>;
+}
+
+export function TransactionDate({ value }) {
+  if (!value) return null;
+  const formatted = formatTransactionDate(value);
+  return <span className="text-xs sm:text-sm text-muted">{formatted}</span>;
+}

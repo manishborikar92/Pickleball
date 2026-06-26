@@ -1,11 +1,31 @@
+import { VENUE_CONFIG } from "../config/venue.config.js";
+
 const DEFAULT_BRAND = "Baseline Arena";
 
-export function normalizeVenueResponse(venue = {}) {
+export function enrichVenueConfiguration(venue = {}) {
+  const config = VENUE_CONFIG[venue.slug] || {};
+  
+  // Use database coordinates if they exist (latitude/longitude), otherwise fall back to configuration
+  const hasDbLocation = venue.latitude !== undefined && venue.latitude !== null &&
+                        venue.longitude !== undefined && venue.longitude !== null;
+  const location = hasDbLocation
+    ? { lat: Number(venue.latitude), lng: Number(venue.longitude) }
+    : config.location || { lat: 21.0907, lng: 79.0834 };
+
   return {
+    ...venue,
+    brandName: venue.brandName || config.brandName || DEFAULT_BRAND,
+    googleMapsLink: venue.googleMapsLink || config.googleMapsLink || "",
+    hours: venue.hours || config.hours || "Mon-Sun: 7 AM to 12 AM",
+    location,
+  };
+}
+
+export function normalizeVenueResponse(venue = {}) {
+  const normalized = {
     id: venue.id,
     name: venue.name,
     slug: venue.slug,
-    brandName: venue.brandName || venue.brand_name || DEFAULT_BRAND,
     address: venue.address || "",
     city: venue.city || "",
     timezone: venue.timezone || "Asia/Kolkata",
@@ -15,7 +35,9 @@ export function normalizeVenueResponse(venue = {}) {
     phone: venue.phone || "",
     secondaryPhone: venue.secondary_phone || "",
     email: venue.email || "",
-    location: venue.location || { lat: 21.0907, lng: 79.0834 },
+    // Backend coordinates (temporary schema gaps representation)
+    latitude: venue.latitude !== undefined ? venue.latitude : null,
+    longitude: venue.longitude !== undefined ? venue.longitude : null,
     courts: (venue.courts || []).map((court) => ({
       id: court.id,
       name: court.name,
@@ -27,6 +49,8 @@ export function normalizeVenueResponse(venue = {}) {
       displayOrder: court.display_order ?? court.displayOrder ?? 0,
     })),
   };
+
+  return enrichVenueConfiguration(normalized);
 }
 
 export function normalizeAvailabilityResponse(payload = {}) {
@@ -79,18 +103,74 @@ export function normalizePricePreviewResponse(payload = {}) {
   };
 }
 
-export function normalizeUserBookingsResponse(payload = {}) {
-  const rows = Array.isArray(payload) ? payload : payload.data || [];
-  return rows.map((booking) => ({
+export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
+  if (!booking) return null;
+
+  const base = {
     id: booking.id,
-    courtName: booking.court?.name || "Court",
-    venueName: booking.venue?.name || "Venue",
-    date: booking.slot_date,
-    time: `${booking.slot_start_time} - ${booking.slot_end_time}`,
     status: booking.status,
+    courtName: booking.court?.name || booking.slots?.[0]?.court?.name || "Court",
+    venueName: booking.venue?.name || "Venue",
+    venueSlug: booking.venue?.slug || "",
+    date: booking.slot_date,
+    time: booking.slot_start_time && booking.slot_end_time 
+      ? `${booking.slot_start_time} - ${booking.slot_end_time}` 
+      : booking.session_start_time && booking.session_end_time
+        ? `${booking.session_start_time} - ${booking.session_end_time}`
+        : "",
     amount: Number(booking.total_amount || 0),
     hasReview: Boolean(booking.has_review),
-  }));
+  };
+
+  if (!isDetail) {
+    return base;
+  }
+
+  return {
+    ...base,
+    slotDate: booking.slot_date,
+    sessionStartTime: booking.session_start_time,
+    sessionEndTime: booking.session_end_time,
+    sessionDurationMins: Number(booking.session_duration_mins || 0),
+    courtCount: Number(booking.court_count || 0),
+    slotUnitCount: Number(booking.slot_unit_count || 0),
+    totalAmount: Number(booking.total_amount || 0),
+    creditsApplied: Number(booking.credits_applied || 0),
+    expiresAt: booking.expires_at,
+    waiverAccepted: Boolean(booking.waiver_accepted),
+    waiverAcceptedAt: booking.waiver_accepted_at,
+    venue: booking.venue ? normalizeVenueResponse(booking.venue) : null,
+    slots: (booking.slots || []).map((slot) => ({
+      id: slot.id,
+      court: slot.court ? {
+        id: slot.court.id,
+        name: slot.court.name,
+      } : null,
+      slotDate: slot.slot_date,
+      startTime: slot.slot_start_time,
+      endTime: slot.slot_end_time,
+      status: slot.status,
+      unitPrice: Number(slot.unit_price || 0),
+    })),
+    payments: (booking.payments || []).map((payment) => ({
+      id: payment.id,
+      gateway: payment.gateway,
+      merchantOrderId: payment.merchant_order_id,
+      amount: Number(payment.amount || 0),
+      status: payment.status,
+      createdAt: payment.created_at,
+    })),
+  };
+}
+
+export function normalizeUserBookingsResponse(payload = {}) {
+  const rows = Array.isArray(payload) ? payload : payload.data || [];
+  return rows.map((booking) => normalizeBooking(booking, { isDetail: false }));
+}
+
+export function normalizeBookingDetailResponse(booking = {}) {
+  const data = booking?.data || booking;
+  return normalizeBooking(data, { isDetail: true });
 }
 
 export function normalizeWalletResponse(payload = {}) {

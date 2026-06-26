@@ -9,6 +9,7 @@ import {
   normalizeUserBookingsResponse,
   normalizeVenueResponse,
   normalizeWalletResponse,
+  normalizeBookingDetailResponse,
 } from "@/services/bookingService";
 
 import { COOKIES } from "@/constants/cookies";
@@ -139,7 +140,7 @@ export async function getBookingByIdAction(bookingId) {
     const { payload } = await apiRequest(`/api/v1/bookings/${bookingId}`, {
       accessToken,
     });
-    return { success: true, data: payload.data };
+    return { success: true, data: normalizeBookingDetailResponse(payload.data) };
   } catch (error) {
     return { success: false, error: error.message };
   }
