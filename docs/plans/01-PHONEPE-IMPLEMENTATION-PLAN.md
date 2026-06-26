@@ -4,7 +4,7 @@
 
 This document consolidates the findings from **Phases 1–4** (Repository Audit, Documentation Audit, Payment Domain Analysis, Existing Payment System Audit) and presents the **target-state architecture and implementation plan** (Phases 5–9) for replacing the sandbox payment provider with a production-grade PhonePe PG v2 integration.
 
-The codebase is well-architected with a clean payment provider abstraction (ADR-004). The PhonePe integration documentation ([02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md)) is exceptionally detailed and serves as the authoritative specification. The primary work involves implementing a `phonepe-payment.provider.js` that implements the existing provider interface, adding webhook/redirect endpoints, and updating the frontend to invoke PhonePe's JS checkout bundle.
+The codebase is well-architected with a clean payment provider abstraction (ADR-004). The PhonePe integration documentation ([02-PAYMENT-INTEGRATION.md](docs/integrations/02-PAYMENT-INTEGRATION.md)) is exceptionally detailed and serves as the authoritative specification. The primary work involves implementing a `phonepe-payment.provider.js` that implements the existing provider interface, adding webhook/redirect endpoints, and updating the frontend to invoke PhonePe's JS checkout bundle.
 
 ### Design Decisions (Resolved)
 
@@ -45,31 +45,31 @@ The codebase is well-architected with a clean payment provider abstraction (ADR-
 
 | Component | File | Classification |
 |---|---|---|
-| Payment Provider Interface | [payment-provider.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payment-provider.js) | **Retain & Extend** |
-| Sandbox Payment Provider | [sandbox-payment.provider.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/sandbox-payment.provider.js) | **Retain** (test only) |
-| Payment Service | [payments.service.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.service.js) | **Refactor** — remove sandbox endpoints |
-| Payment Controller | [payments.controller.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.controller.js) | **Refactor** — remove sandbox handlers |
-| Payment Routes | [payments.routes.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.routes.js) | **Refactor** — remove sandbox routes |
-| Payment Repository | [payments.repository.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.repository.js) | **Retain** |
-| Reconciliation Service | [reconciliation.service.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/reconciliation.service.js) | **Retain** |
-| Payment Module Index | [payments/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/index.js) | **Refactor** — use shared provider factory |
-| Payment Validators | [payments.validators.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.validators.js) | **Retain** |
-| Booking Service (payment flow) | [bookings.service.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/bookings/bookings.service.js) | **Retain** — well-structured |
-| Booking Repository (payment txns) | [bookings.repository.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/bookings/bookings.repository.js) | **Retain** |
-| Bookings Module Index | [bookings/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/bookings/index.js) | **Refactor** — use shared provider factory |
-| Frontend Booking Client | [BookingClient.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/BookingClient.js) | **Refactor** — add PhonePe flow |
-| Frontend Booking Actions | [booking-actions.js](file:///c:/Users/manis/Projects/Pickleball/web/src/app/actions/booking-actions.js) | **Refactor** — remove sandbox, add redirect |
-| Postman Collection | [payments.postman_collection.json](file:///c:/Users/manis/Projects/Pickleball/server/postman/payments.postman_collection.json) | **Update** |
-| Unit Tests | [payment-hardening.test.js](file:///c:/Users/manis/Projects/Pickleball/server/tests/unit/payment-hardening.test.js), [payment-provider.test.js](file:///c:/Users/manis/Projects/Pickleball/server/tests/unit/payment-provider.test.js), [reconciliation-flow.test.js](file:///c:/Users/manis/Projects/Pickleball/server/tests/unit/reconciliation-flow.test.js), [wallet-flow.test.js](file:///c:/Users/manis/Projects/Pickleball/server/tests/unit/wallet-flow.test.js) | **Update** |
-| Integration Tests | [payment-booking-routes.test.js](file:///c:/Users/manis/Projects/Pickleball/server/tests/integration/payment-booking-routes.test.js) | **Update** |
+| Payment Provider Interface | [payment-provider.js](server/src/modules/payments/payment-provider.js) | **Retain & Extend** |
+| Sandbox Payment Provider | [sandbox-payment.provider.js](server/src/modules/payments/sandbox-payment.provider.js) | **Retain** (test only) |
+| Payment Service | [payments.service.js](server/src/modules/payments/payments.service.js) | **Refactor** — remove sandbox endpoints |
+| Payment Controller | [payments.controller.js](server/src/modules/payments/payments.controller.js) | **Refactor** — remove sandbox handlers |
+| Payment Routes | [payments.routes.js](server/src/modules/payments/payments.routes.js) | **Refactor** — remove sandbox routes |
+| Payment Repository | [payments.repository.js](server/src/modules/payments/payments.repository.js) | **Retain** |
+| Reconciliation Service | [reconciliation.service.js](server/src/modules/payments/reconciliation.service.js) | **Retain** |
+| Payment Module Index | [payments/index.js](server/src/modules/payments/index.js) | **Refactor** — use shared provider factory |
+| Payment Validators | [payments.validators.js](server/src/modules/payments/payments.validators.js) | **Retain** |
+| Booking Service (payment flow) | [bookings.service.js](server/src/modules/bookings/bookings.service.js) | **Retain** — well-structured |
+| Booking Repository (payment txns) | [bookings.repository.js](server/src/modules/bookings/bookings.repository.js) | **Retain** |
+| Bookings Module Index | [bookings/index.js](server/src/modules/bookings/index.js) | **Refactor** — use shared provider factory |
+| Frontend Booking Client | [BookingClient.js](web/src/components/features/booking/BookingClient.js) | **Refactor** — add PhonePe flow |
+| Frontend Booking Actions | [booking-actions.js](web/src/app/actions/booking-actions.js) | **Refactor** — remove sandbox, add redirect |
+| Postman Collection | [payments.postman_collection.json](server/postman/payments.postman_collection.json) | **Update** |
+| Unit Tests | [payment-hardening.test.js](server/tests/unit/payment-hardening.test.js), [payment-provider.test.js](server/tests/unit/payment-provider.test.js), [reconciliation-flow.test.js](server/tests/unit/reconciliation-flow.test.js), [wallet-flow.test.js](server/tests/unit/wallet-flow.test.js) | **Update** |
+| Integration Tests | [payment-booking-routes.test.js](server/tests/integration/payment-booking-routes.test.js) | **Update** |
 
 ### 1.4 Environment Variables
 
-**Current** (from [.env.example](file:///c:/Users/manis/Projects/Pickleball/server/.env.example)):
+**Current** (from [.env.example](server/.env.example)):
 - No PhonePe env vars exist yet
 - No `FRONTEND_BASE_URL` / `BACKEND_BASE_URL` exist yet
 
-**Required** (from [02-PAYMENT-INTEGRATION.md §2.4](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md)):
+**Required** (from [02-PAYMENT-INTEGRATION.md §2.4](docs/integrations/02-PAYMENT-INTEGRATION.md)):
 ```env
 # PhonePe Payment Gateway — Credentials provided by merchant dashboard
 # Required in SANDBOX/PRODUCTION environments; optional when NODE_ENV=test
@@ -91,7 +91,7 @@ BACKEND_BASE_URL=http://localhost:5000
 
 ### 1.5 Database Schema Assessment
 
-The [Payment model](file:///c:/Users/manis/Projects/Pickleball/server/prisma/schema.prisma) is **production-ready** for PhonePe:
+The [Payment model](server/prisma/schema.prisma) is **production-ready** for PhonePe:
 - ✅ `gateway` enum includes `phonepe`
 - ✅ `merchantOrderId` (unique)
 - ✅ `gatewayOrderId`, `gatewayPaymentId`
@@ -106,11 +106,11 @@ The [Payment model](file:///c:/Users/manis/Projects/Pickleball/server/prisma/sch
 ### 1.6 Provider Wiring (Critical Architectural Detail)
 
 > [!WARNING]
-> The `paymentProvider` is currently instantiated **twice** — once in [bookings/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/bookings/index.js) (injected into `bookingsService` for `createPaymentOrder()`) and once in [payments/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/index.js) (injected into `reconciliationService` for `refundPayment()`). Both currently hardcode `createSandboxPaymentProvider()`.
+> The `paymentProvider` is currently instantiated **twice** — once in [bookings/index.js](server/src/modules/bookings/index.js) (injected into `bookingsService` for `createPaymentOrder()`) and once in [payments/index.js](server/src/modules/payments/index.js) (injected into `reconciliationService` for `refundPayment()`). Both currently hardcode `createSandboxPaymentProvider()`.
 >
 > The updated architecture introduces a **shared provider factory** (`provider-factory.js`) that both module index files consume, ensuring a single provider configuration with consistent behavior.
 
-Current wiring in [routes/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/routes/index.js):
+Current wiring in [routes/index.js](server/src/routes/index.js):
 ```
 createRouter()
   ├── createDefaultBookingsService({ config, venueService })
@@ -148,13 +148,13 @@ createRouter()
 
 ### 2.2 ADR-004 Constraints (Binding)
 
-The payment provider interface from ADR-004 mandates three methods. The current [sandbox-payment.provider.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/sandbox-payment.provider.js) already implements all three:
+The payment provider interface from ADR-004 mandates three methods. The current [sandbox-payment.provider.js](server/src/modules/payments/sandbox-payment.provider.js) already implements all three:
 1. `createPaymentOrder({ booking, amount, currency })` → creates a payment order
 2. `getPaymentStatus({ payment })` → checks order status
 3. `refundPayment({ merchantRefundId, amount })` → initiates refund
 
 > [!IMPORTANT]
-> The current [assertPaymentProvider()](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payment-provider.js) only checks for `createPaymentOrder` (1 of 3 methods). The assertion must be expanded to validate all three methods, ensuring any new provider (PhonePe) implements the complete contract.
+> The current [assertPaymentProvider()](server/src/modules/payments/payment-provider.js) only checks for `createPaymentOrder` (1 of 3 methods). The assertion must be expanded to validate all three methods, ensuring any new provider (PhonePe) implements the complete contract.
 
 ### 2.3 Documentation-to-Implementation Gaps
 
@@ -239,7 +239,7 @@ stateDiagram-v2
 ## PHASE 5 — PhonePe Research Summary
 
 > [!NOTE]
-> The existing [02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md) is an 877-line, exhaustive PhonePe v2 integration specification. It covers OAuth, checkout, webhooks, refunds, wallet integration, reconciliation, security, and UAT testing. This document serves as the primary implementation reference.
+> The existing [02-PAYMENT-INTEGRATION.md](docs/integrations/02-PAYMENT-INTEGRATION.md) is an 877-line, exhaustive PhonePe v2 integration specification. It covers OAuth, checkout, webhooks, refunds, wallet integration, reconciliation, security, and UAT testing. This document serves as the primary implementation reference.
 >
 > **HTTP Client Decision**: All PhonePe API calls will use Node.js native `fetch` (available in Node 20+). No external HTTP library or PhonePe SDK will be installed. Token management, caching, retry logic, error handling, and observability are implemented in-house within `phonepe-auth.js` and `phonepe-payment.provider.js`.
 
@@ -401,7 +401,7 @@ createPaymentProviderFromEnv(config)
           })
 ```
 
-The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/routes/index.js) and the resulting provider instance is passed to both module constructors.
+The factory is called **once** in [routes/index.js](server/src/routes/index.js) and the resulting provider instance is passed to both module constructors.
 
 ---
 
@@ -410,7 +410,7 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
 ### Workstream 1: Backend PhonePe Provider (Core)
 
 #### Step 1.1: Environment Configuration
-- **Modify** [env.js](file:///c:/Users/manis/Projects/Pickleball/server/src/config/env.js) — Add PhonePe env vars to Joi schema:
+- **Modify** [env.js](server/src/config/env.js) — Add PhonePe env vars to Joi schema:
   - `PHONEPE_CLIENT_ID` — `string`, required when `NODE_ENV !== 'test'`, empty placeholder otherwise
   - `PHONEPE_CLIENT_SECRET` — `string`, required when `NODE_ENV !== 'test'`, empty placeholder otherwise
   - `PHONEPE_CLIENT_VERSION` — `number`, default `1`
@@ -420,7 +420,7 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - `PHONEPE_WEBHOOK_PASSWORD` — `string`, required when `NODE_ENV !== 'test'`
   - `FRONTEND_BASE_URL` — `string.uri()`, default `http://localhost:3000`
   - `BACKEND_BASE_URL` — `string.uri()`, default `http://localhost:5000`
-- **Modify** [.env.example](file:///c:/Users/manis/Projects/Pickleball/server/.env.example) — Add PhonePe env var placeholders with inline documentation comments
+- **Modify** [.env.example](server/.env.example) — Add PhonePe env var placeholders with inline documentation comments
 
 #### Step 1.2: PhonePe OAuth Token Manager
 - **Create** `server/src/modules/payments/phonepe-auth.js`
@@ -464,7 +464,7 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - **Error handling**: PhonePe errors are caught and wrapped in structured `AppError` with `code: 'PHONEPE_API_ERROR'`, preserving the original error message and status
 
 #### Step 1.4: Extend Payment Provider Interface
-- **Modify** [payment-provider.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payment-provider.js) — Expand `assertPaymentProvider` required methods array from `['createPaymentOrder']` to `['createPaymentOrder', 'getPaymentStatus', 'refundPayment']`
+- **Modify** [payment-provider.js](server/src/modules/payments/payment-provider.js) — Expand `assertPaymentProvider` required methods array from `['createPaymentOrder']` to `['createPaymentOrder', 'getPaymentStatus', 'refundPayment']`
 
 #### Step 1.5: Shared Provider Factory
 - **Create** `server/src/modules/payments/provider-factory.js`
@@ -472,9 +472,9 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
     - If `NODE_ENV === 'test'`: return `createSandboxPaymentProvider({ baseUrl })`
     - Otherwise: return `createPhonePePaymentProvider({ ...phonePeConfig })`
   - Single source of truth for provider selection
-- **Modify** [payments/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/index.js) — Accept `paymentProvider` as a parameter instead of hardcoding `createSandboxPaymentProvider()`
-- **Modify** [bookings/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/bookings/index.js) — Accept `paymentProvider` as a parameter instead of hardcoding `createSandboxPaymentProvider()`
-- **Modify** [routes/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/routes/index.js) — Call `createPaymentProviderFromEnv(config)` once, pass the result to both `createDefaultBookingsService()` and `createDefaultPaymentsRouter()`
+- **Modify** [payments/index.js](server/src/modules/payments/index.js) — Accept `paymentProvider` as a parameter instead of hardcoding `createSandboxPaymentProvider()`
+- **Modify** [bookings/index.js](server/src/modules/bookings/index.js) — Accept `paymentProvider` as a parameter instead of hardcoding `createSandboxPaymentProvider()`
+- **Modify** [routes/index.js](server/src/routes/index.js) — Call `createPaymentProviderFromEnv(config)` once, pass the result to both `createDefaultBookingsService()` and `createDefaultPaymentsRouter()`
 
 ---
 
@@ -500,7 +500,7 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - Exports `createWebhookRouter({ bookingsService, reconciliationService, config })`
   - Mounts `POST /phonepe` route
   - No authentication middleware (webhook auth is handled in controller)
-- **Modify** [routes/index.js](file:///c:/Users/manis/Projects/Pickleball/server/src/routes/index.js) — Mount at `/webhooks`
+- **Modify** [routes/index.js](server/src/routes/index.js) — Mount at `/webhooks`
 
 #### Step 2.3: Redirect Handler
 - **Create** `server/src/modules/payments/redirect.controller.js`
@@ -511,24 +511,24 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - If FAILED → call `bookingsService.handleProviderPaymentEvent()` → `302` redirect to `${FRONTEND_BASE_URL}/booking/failed?orderId=...`
   - If PENDING → `302` redirect to `${FRONTEND_BASE_URL}/booking/pending?orderId=...`
   - **Structured logging**: log redirect outcome per orderId
-- **Modify** [payments.routes.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.routes.js) — Add redirect route
+- **Modify** [payments.routes.js](server/src/modules/payments/payments.routes.js) — Add redirect route
 
 ---
 
 ### Workstream 3: Payment Cleanup
 
 #### Step 3.1: Remove Sandbox-Only Code from Production Routes
-- **Modify** [payments.service.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.service.js) — Remove `completeSandboxPayment()` and `failSandboxPayment()` methods
-- **Modify** [payments.controller.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.controller.js) — Remove sandbox handlers
-- **Modify** [payments.routes.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/payments.routes.js) — Remove sandbox routes (`GET /sandbox/:id/complete`, `GET /sandbox/:id/fail`)
-- **Retain** [sandbox-payment.provider.js](file:///c:/Users/manis/Projects/Pickleball/server/src/modules/payments/sandbox-payment.provider.js) — Used by test suite via provider factory when `NODE_ENV=test`; never instantiated in staging/production
+- **Modify** [payments.service.js](server/src/modules/payments/payments.service.js) — Remove `completeSandboxPayment()` and `failSandboxPayment()` methods
+- **Modify** [payments.controller.js](server/src/modules/payments/payments.controller.js) — Remove sandbox handlers
+- **Modify** [payments.routes.js](server/src/modules/payments/payments.routes.js) — Remove sandbox routes (`GET /sandbox/:id/complete`, `GET /sandbox/:id/fail`)
+- **Retain** [sandbox-payment.provider.js](server/src/modules/payments/sandbox-payment.provider.js) — Used by test suite via provider factory when `NODE_ENV=test`; never instantiated in staging/production
 
 ---
 
 ### Workstream 4: Frontend PhonePe Integration
 
 #### Step 4.1: Payment Initiation UX
-- **Modify** [BookingClient.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/BookingClient.js)
+- **Modify** [BookingClient.js](web/src/components/features/booking/BookingClient.js)
   - After `initiateBookingPaymentAction()` returns:
     - If `type === 'wallet_only'` → show success directly (no change from current flow)
     - If `type === 'phonepe'` and `redirect_url` is present:
@@ -539,7 +539,7 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - Remove sandbox auto-complete flow entirely (the `if (payment.type === 'sandbox')` branch)
 
 #### Step 4.2: PhonePe JS Bundle
-- **Modify** checkout page or [web/src/app/layout.js](file:///c:/Users/manis/Projects/Pickleball/web/src/app/layout.js) — Load PhonePe JS bundle via Next.js `<Script>` component:
+- **Modify** checkout page or [web/src/app/layout.js](web/src/app/layout.js) — Load PhonePe JS bundle via Next.js `<Script>` component:
   - Production: `https://mercury.phonepe.com/web/bundle/checkout.js`
   - Sandbox/UAT: `https://mercury-uat.phonepe.com/web/bundle/checkout.js`
   - Use `strategy="lazyOnload"` to avoid blocking page render
@@ -562,8 +562,8 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
   - Query param: `orderId`
 
 #### Step 4.4: Remove Sandbox Frontend Code
-- **Modify** [booking-actions.js](file:///c:/Users/manis/Projects/Pickleball/web/src/app/actions/booking-actions.js) — Remove `completeSandboxPaymentAction`
-- **Modify** [BookingClient.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/BookingClient.js) — Remove `completeSandboxPaymentAction` import and sandbox auto-complete flow
+- **Modify** [booking-actions.js](web/src/app/actions/booking-actions.js) — Remove `completeSandboxPaymentAction`
+- **Modify** [BookingClient.js](web/src/components/features/booking/BookingClient.js) — Remove `completeSandboxPaymentAction` import and sandbox auto-complete flow
 
 ---
 
@@ -619,11 +619,11 @@ The factory is called **once** in [routes/index.js](file:///c:/Users/manis/Proje
     - Monitoring and alerting for webhook failures
 
 #### Step 6.2: Documentation Updates
-- Update [.env.example](file:///c:/Users/manis/Projects/Pickleball/server/.env.example) with PhonePe vars and inline comments
-- Update [03-IMPLEMENTATION-STATUS.md](file:///c:/Users/manis/Projects/Pickleball/docs/ai/03-IMPLEMENTATION-STATUS.md) — Mark PhonePe as **Built**
-- Update [02-CODEBASE-MAP.md](file:///c:/Users/manis/Projects/Pickleball/docs/ai/02-CODEBASE-MAP.md) — Add new files to traceability matrix
-- Update [02-API-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/02-API-SPECIFICATION.md) — Add webhook and redirect endpoint specs
-- Update [llms.txt](file:///c:/Users/manis/Projects/Pickleball/llms.txt) — Update payment gateway line
+- Update [.env.example](server/.env.example) with PhonePe vars and inline comments
+- Update [03-IMPLEMENTATION-STATUS.md](docs/ai/03-IMPLEMENTATION-STATUS.md) — Mark PhonePe as **Built**
+- Update [02-CODEBASE-MAP.md](docs/ai/02-CODEBASE-MAP.md) — Add new files to traceability matrix
+- Update [02-API-SPECIFICATION.md](docs/specs/02-API-SPECIFICATION.md) — Add webhook and redirect endpoint specs
+- Update [llms.txt](llms.txt) — Update payment gateway line
 
 #### Step 6.3: Test Updates
 - Update existing payment tests to work with the provider factory pattern
