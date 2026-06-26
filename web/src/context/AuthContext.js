@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { authService } from "@/services/authService";
 
 const AuthContext = createContext(null);
@@ -8,17 +8,30 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isHydrated = useRef(false);
+
+  // Atomic session initializer to avoid exposing raw state setters
+  const initializeSession = useCallback((newSession) => {
+    isHydrated.current = true;
+    setSession(newSession);
+    setLoading(false);
+  }, []);
 
   // Initialize session on mount
   useEffect(() => {
+    if (isHydrated.current) return;
+
     async function initSession() {
       try {
         const activeSession = await authService.getSession();
+        if (isHydrated.current) return;
         setSession(activeSession);
       } catch (err) {
         console.error("Failed to initialize session in provider:", err);
       } finally {
-        setLoading(false);
+        if (!isHydrated.current) {
+          setLoading(false);
+        }
       }
     }
     initSession();
@@ -126,8 +139,9 @@ export function AuthProvider({ children }) {
       loginStaff,
       logoutCustomer,
       logoutStaff,
+      initializeSession,
     };
-  }, [session, loading, sendCustomerOtp, loginCustomer, completeOnboarding, loginStaff, logoutCustomer, logoutStaff]);
+  }, [session, loading, sendCustomerOtp, loginCustomer, completeOnboarding, loginStaff, logoutCustomer, logoutStaff, initializeSession]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
