@@ -7,7 +7,6 @@ import { getSession } from "@/lib/session";
 import { apiRequest } from "@/services/apiClient";
 
 import { COOKIES } from "@/constants/cookies";
-import { ROUTES } from "@/constants/routes";
 
 const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
 const REFRESH_COOKIE = COOKIES.REFRESH_TOKEN;
@@ -169,13 +168,13 @@ export async function signOutStaffAction() {
   }
 
   await clearSessionCookies();
-  redirect(ROUTES.STAFF_LOGIN);
+  redirect("/staff-login");
 }
 
 export async function signInStaffAction(formData) {
   const email = String(formData?.get("email") || "");
   const password = String(formData?.get("password") || "");
-  const next = String(formData?.get("next") || ROUTES.ADMIN);
+  const next = String(formData?.get("next") || "/admin/overview");
 
   const { payload, setCookie } = await apiRequest("/api/v1/auth/staff/login", {
     method: "POST",
@@ -190,5 +189,5 @@ export async function signInStaffAction(formData) {
     role,
   });
 
-  redirect(next.startsWith("/") ? next : ROUTES.ADMIN);
+  redirect(next.startsWith("/") ? next : "/admin/overview");
 }

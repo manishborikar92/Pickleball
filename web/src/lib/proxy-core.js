@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { canAccessRoute } from "@/lib/rbac";
 import { COOKIES } from "@/constants/cookies";
-import { ROUTES } from "@/constants/routes";
 
 export const SESSION_COOKIE_NAME = COOKIES.AUTH_ROLE;
 export const STAFF_SESSION_COOKIE_NAME = COOKIES.STAFF_ROLE;
@@ -172,12 +171,12 @@ export async function handleRouteAccess(request) {
   }
 
   // 1. Customer Login Page Guard
-  if (pathname === ROUTES.LOGIN) {
+  if (pathname === "/login") {
     if (isCustomerAuthenticated) {
       if (isCustomerFullyOnboarded) {
-        return withCookies(NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url)));
+        return withCookies(NextResponse.redirect(new URL("/dashboard/overview", request.url)));
       } else {
-        const onboardingUrl = new URL(ROUTES.ONBOARDING, request.url);
+        const onboardingUrl = new URL("/onboarding", request.url);
         const nextParam = request.nextUrl.searchParams.get("next");
         if (nextParam) onboardingUrl.searchParams.set("next", nextParam);
         return withCookies(NextResponse.redirect(onboardingUrl));
@@ -187,58 +186,58 @@ export async function handleRouteAccess(request) {
   }
 
   // 2. Customer Onboarding Page Guard
-  if (pathname === ROUTES.ONBOARDING) {
+  if (pathname === "/onboarding") {
     if (isCustomerFullyOnboarded) {
-      return withCookies(NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url)));
+      return withCookies(NextResponse.redirect(new URL("/dashboard/overview", request.url)));
     }
     if (isCustomerAuthenticated && !isCustomerFullyOnboarded) {
       return withCookies(getNextResponse());
     }
-    const loginUrl = new URL(ROUTES.LOGIN, request.url);
+    const loginUrl = new URL("/login", request.url);
     const nextParam = request.nextUrl.searchParams.get("next");
     if (nextParam) loginUrl.searchParams.set("next", nextParam);
     return withCookies(NextResponse.redirect(loginUrl));
   }
 
   // 3. Staff Login Page Guard
-  if (pathname === ROUTES.STAFF_LOGIN) {
+  if (pathname === "/staff-login") {
     if (isStaffAuthenticated) {
-      const nextParam = request.nextUrl.searchParams.get("next") || ROUTES.ADMIN;
-      const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : ROUTES.ADMIN;
+      const nextParam = request.nextUrl.searchParams.get("next") || "/admin/overview";
+      const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
       return withCookies(NextResponse.redirect(new URL(safeNext, request.url)));
     }
     return withCookies(getNextResponse());
   }
 
   // 4. Protected Customer Dashboard Route Guard
-  if (pathname.startsWith(ROUTES.DASHBOARD)) {
+  if (pathname.startsWith("/dashboard")) {
     if (!isCustomerAuthenticated) {
-      const loginUrl = new URL(ROUTES.LOGIN, request.url);
+      const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("next", pathname);
       return withCookies(NextResponse.redirect(loginUrl));
     }
 
     if (!isCustomerFullyOnboarded) {
-      const onboardingUrl = new URL(ROUTES.ONBOARDING, request.url);
+      const onboardingUrl = new URL("/onboarding", request.url);
       onboardingUrl.searchParams.set("next", pathname);
       return withCookies(NextResponse.redirect(onboardingUrl));
     }
 
     if (!canAccessRoute(pathname, customerRole)) {
-      return withCookies(NextResponse.redirect(new URL(ROUTES.DASHBOARD, request.url)));
+      return withCookies(NextResponse.redirect(new URL("/dashboard/overview", request.url)));
     }
   }
 
   // 5. Protected Staff Admin Route Guard
-  if (pathname.startsWith(ROUTES.ADMIN)) {
+  if (pathname.startsWith("/admin")) {
     if (!isStaffAuthenticated) {
-      const staffLoginUrl = new URL(ROUTES.STAFF_LOGIN, request.url);
+      const staffLoginUrl = new URL("/staff-login", request.url);
       staffLoginUrl.searchParams.set("next", pathname);
       return withCookies(NextResponse.redirect(staffLoginUrl));
     }
 
     if (!canAccessRoute(pathname, staffRole)) {
-      return withCookies(NextResponse.redirect(new URL(ROUTES.ADMIN, request.url)));
+      return withCookies(NextResponse.redirect(new URL("/admin/overview", request.url)));
     }
   }
 

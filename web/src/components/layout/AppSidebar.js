@@ -3,12 +3,13 @@
 import { BaseSidebar } from "./BaseSidebar";
 import { signOutCustomerAction } from "@/app/actions/auth-actions";
 import { useAuth } from "@/hooks/useAuth";
+import { VENUE } from "@/config/venue.config";
 
 const NAV_LINKS = [
-  { href: "/dashboard", label: "Overview", exact: true },
+  { href: "/dashboard/overview", label: "Overview", exact: true },
   { href: "/dashboard/bookings", label: "Bookings" },
   { href: "/dashboard/wallet", label: "Wallet" },
-  { href: "/venues/besa-nagpur/book", label: "Book Again" },
+  { href: `/venues/${VENUE.slug}/book`, label: "Book Again" },
 ];
 
 export function AppSidebar({ session: propSession }) {

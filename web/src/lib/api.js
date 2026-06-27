@@ -1,7 +1,4 @@
 import {
-  courts,
-} from "@/data/platform";
-import {
   getVenueAvailabilityAction,
   getVenueBySlugAction,
   getUserBookingsAction,
@@ -49,6 +46,12 @@ export async function getWallet() {
 }
 
 export async function getAdminOverview() {
+  // TODO: Replace with real admin API once developed.
+  const courts = [
+    { id: "court-1", name: "Court 1", status: "active" },
+    { id: "court-2", name: "Court 2", status: "active" },
+  ];
+
   return wait({
     stats: {
       revenueToday: 0,

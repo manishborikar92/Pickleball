@@ -17,7 +17,7 @@ export function BookingHeader() {
           Checkout
         </h1>
         <Link
-          href="/dashboard"
+          href="/dashboard/overview"
           className="flex items-center gap-1.5 text-sm font-bold text-muted transition-colors hover:text-accent"
           aria-label="Go to account"
         >

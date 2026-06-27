@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { venue } from "@/data/platform";
-import { MapPin } from "lucide-react";
+import { VENUE } from "@/config/venue.config";
 
 export function Footer() {
   return (
@@ -16,12 +15,12 @@ export function Footer() {
             <Link 
               href="/" 
               className="group inline-block w-fit rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-surface"
-              aria-label={`Go to ${venue.brandName} homepage`}
+              aria-label={`Go to ${VENUE.brandName} homepage`}
             >
               <div className="transition-transform duration-200 group-hover:scale-[1.02]">
                 <Image 
                   src="/baseline-full-logo.svg" 
-                  alt={`${venue.brandName} Full Logo`} 
+                  alt={`${VENUE.brandName} Full Logo`} 
                   width={160} 
                   height={45} 
                   className="h-auto w-40 sm:w-44" 
@@ -110,7 +109,7 @@ export function Footer() {
         {/* Bottom Bar - Fluid alignments without strict magic numbers */}
         <div className="mt-12 flex flex-col items-center border-t border-line/40 pt-4 text-center md:flex-row md:items-start md:text-left">
           <p className="shrink-0 text-xs font-semibold text-muted/65">
-            &copy; {new Date().getFullYear()} {venue.brandName}. All rights reserved.
+            &copy; {new Date().getFullYear()} {VENUE.brandName}. All rights reserved.
           </p>
         </div>
 

@@ -3,6 +3,7 @@ import { Header, Footer } from "@/components/layout";
 import { Button, Card } from "@/components/shared";
 import { XCircle, ArrowRight, RefreshCw } from "lucide-react";
 import { getPageMetadata } from "@/config/metadata";
+import { VENUE } from "@/config/venue.config";
 
 export const metadata = getPageMetadata({
   title: "Payment Failed",
@@ -32,8 +33,8 @@ export default async function BookingFailedPage(props) {
 
           <p className="mb-6 text-muted-foreground">
             {error === "missing_order_id"
-              ? "We couldn\u2019t identify your payment. Please try booking again."
-              : "Your payment could not be processed. Don\u2019t worry \u2014 no amount has been deducted. You can try again if your booking slot is still available."}
+              ? "We couldn’t identify your payment. Please try booking again."
+              : "Your payment could not be processed. Don’t worry — no amount has been deducted. You can try again if your booking slot is still available."}
           </p>
 
           {orderId && (
@@ -44,7 +45,7 @@ export default async function BookingFailedPage(props) {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Button asChild variant="primary" size="lg">
-              <Link href="/venues/besa-nagpur/book">
+              <Link href={`/venues/${VENUE.slug}/book`}>
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Try Again
               </Link>

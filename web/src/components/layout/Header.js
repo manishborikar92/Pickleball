@@ -3,7 +3,7 @@ import Image from "next/image";
 import { UserCircle, MapPin } from "lucide-react";
 import { Montserrat } from "next/font/google";
 import { Button } from "@/components/shared";
-import { venue } from "@/data/platform";
+import { VENUE } from "@/config/venue.config";
 
 const logoFont = Montserrat({
   subsets: ["latin"],
@@ -33,12 +33,12 @@ function BrandLogo() {
     <Link
       href="/"
       className="group flex items-center gap-1 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      aria-label={`Go to ${venue.brandName} homepage`}
+      aria-label={`Go to ${VENUE.brandName} homepage`}
     >
       <div className="flex shrink-0 items-center justify-center transition-transform group-hover:scale-105">
         <Image
           src="/baseline-logo.svg"
-          alt={`${venue.brandName} Logo`}
+          alt={`${VENUE.brandName} Logo`}
           width={40}
           height={40}
           className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11"
@@ -56,7 +56,7 @@ function BrandLogo() {
         {/* Location sub-label directly below logo */}
         <div className="mt-0.5 flex items-center gap-0.5 text-[6px] font-extrabold uppercase tracking-[0.15em] text-muted-foreground transition-colors group-hover:text-accent sm:text-[8px] leading-none">
           <MapPin className="h-1.5 w-1.5 shrink-0 text-accent/80" />
-          <span>{venue.name}</span>
+          <span>{VENUE.name}</span>
         </div>
       </div>
     </Link>
@@ -66,7 +66,7 @@ function BrandLogo() {
 function AccountButton() {
   return (
     <Link
-      href="/dashboard"
+      href="/dashboard/overview"
       className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-surface-panel hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-auto sm:gap-2 sm:px-4"
       aria-label="Go to Account Dashboard"
     >

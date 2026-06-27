@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { VENUE } from "@/config/venue.config";
 import { getVenue } from "@/lib/api";
 
 export default async function sitemap() {
@@ -22,7 +23,7 @@ export default async function sitemap() {
 
   // Dynamic routes (e.g. venues and court bookings)
   try {
-    const venueData = await getVenue("besa-nagpur");
+    const venueData = await getVenue(VENUE.slug);
     if (venueData && venueData.slug) {
       staticRoutes.push({
         url: `${baseUrl}/venues/${venueData.slug}/book`,

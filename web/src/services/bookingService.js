@@ -1,9 +1,9 @@
-import { VENUE_CONFIG } from "../config/venue.config.js";
+import { VENUE } from "../config/venue.config.js";
 
 const DEFAULT_BRAND = "Baseline Arena";
 
 export function enrichVenueConfiguration(venue = {}) {
-  const config = VENUE_CONFIG[venue.slug] || {};
+  const config = VENUE;
   
   // Use database coordinates if they exist (latitude/longitude), otherwise fall back to configuration
   const hasDbLocation = venue.latitude !== undefined && venue.latitude !== null &&

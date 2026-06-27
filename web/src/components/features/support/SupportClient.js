@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { InfoPageLayout } from "@/components/layout";
-import { venue } from "@/data/platform";
+import { VENUE } from "@/config/venue.config";
 import { Map } from "@/components/shared/Map";
 import { Button, Card } from "@/components/shared";
 import { Mail, Phone, Clock, MapPin, Send, ChevronDown } from "lucide-react";
@@ -125,7 +125,7 @@ export function SupportClient() {
                 <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Address</h4>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{venue.address}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{VENUE.address}</p>
                 </div>
               </Card>
 
@@ -133,7 +133,7 @@ export function SupportClient() {
                 <Clock className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Operational Hours</h4>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">{venue.hours}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">{VENUE.hours}</p>
                 </div>
               </Card>
 
@@ -143,17 +143,17 @@ export function SupportClient() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Telephone</h4>
                   <div className="mt-1 flex flex-col gap-1 text-sm font-semibold text-muted">
                     <a
-                      href={`tel:${venue.phone.replace(/\D/g, "")}`}
+                      href={`tel:${VENUE.phone.replace(/\D/g, "")}`}
                       className="transition-colors hover:text-accent"
                     >
-                      {venue.phone}
+                      {VENUE.phone}
                     </a>
-                    {venue.secondaryPhone && (
+                    {VENUE.secondaryPhone && (
                       <a
-                        href={`tel:${venue.secondaryPhone.replace(/\D/g, "")}`}
+                        href={`tel:${VENUE.secondaryPhone.replace(/\D/g, "")}`}
                         className="transition-colors hover:text-accent"
                       >
-                        {venue.secondaryPhone}
+                        {VENUE.secondaryPhone}
                       </a>
                     )}
                   </div>
@@ -166,10 +166,10 @@ export function SupportClient() {
                   <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Email Support</h4>
                   <p className="mt-1 text-sm">
                     <a
-                      href={`mailto:${venue.email}`}
+                      href={`mailto:${VENUE.email}`}
                       className="font-semibold text-muted transition-colors hover:text-accent"
                     >
-                      {venue.email}
+                      {VENUE.email}
                     </a>
                   </p>
                 </div>
@@ -179,10 +179,10 @@ export function SupportClient() {
             {/* Embedded interactive map */}
             <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-line bg-surface-panel shadow-md">
               <Map
-                lat={venue.location.lat}
-                lng={venue.location.lng}
-                name={venue.name}
-                address={venue.address}
+                lat={VENUE.location.lat}
+                lng={VENUE.location.lng}
+                name={VENUE.name}
+                address={VENUE.address}
               />
             </div>
 

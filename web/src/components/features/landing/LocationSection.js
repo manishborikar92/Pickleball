@@ -1,5 +1,5 @@
 import { Card, SectionHeader } from "@/components/shared";
-import { venue } from "@/data/platform";
+import { VENUE } from "@/config/venue.config";
 import { Map } from "@/components/shared/Map";
 
 export function LocationSection() {
@@ -20,35 +20,35 @@ export function LocationSection() {
             }}
           >
             <Map 
-              lat={venue.location.lat}
-              lng={venue.location.lng}
-              name={venue.name}
-              address={venue.address}
+              lat={VENUE.location.lat}
+              lng={VENUE.location.lng}
+              name={VENUE.name}
+              address={VENUE.address}
             />
           </div>
         </div>
 
         <div className="flex flex-col justify-center">
           <SectionHeader align="left" title="Find Us">
-            {venue.address}
+            {VENUE.address}
           </SectionHeader>
           
           <address className="mt-8 not-italic sm:mt-10">
             <dl className="grid gap-6 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 text-muted">
-              <LocationDetail label="Hours" value={venue.hours} />
+              <LocationDetail label="Hours" value={VENUE.hours} />
               <LocationDetail
                 label="Contact"
                 value={
                   <span className="flex flex-col gap-1">
-                    <a href={`mailto:${venue.email}`} className="hover:text-accent focus-visible:outline-accent">
-                      {venue.email}
+                    <a href={`mailto:${VENUE.email}`} className="hover:text-accent focus-visible:outline-accent">
+                      {VENUE.email}
                     </a>
-                    <a href={`tel:${venue.phone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
-                      {venue.phone}
+                    <a href={`tel:${VENUE.phone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
+                      {VENUE.phone}
                     </a>
-                    {venue.secondaryPhone && (
-                      <a href={`tel:${venue.secondaryPhone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
-                        {venue.secondaryPhone}
+                    {VENUE.secondaryPhone && (
+                      <a href={`tel:${VENUE.secondaryPhone.replace(/\D/g, '')}`} className="hover:text-accent focus-visible:outline-accent">
+                        {VENUE.secondaryPhone}
                       </a>
                     )}
                   </span>

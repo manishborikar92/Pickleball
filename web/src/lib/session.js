@@ -5,7 +5,6 @@ import { cache } from "react";
 import { canAccessRoute, getRolePermissions, roles } from "@/lib/rbac";
 import { apiRequest } from "@/services/apiClient";
 import { COOKIES } from "@/constants/cookies";
-import { ROUTES } from "@/constants/routes";
 
 export const SESSION_COOKIE = COOKIES.AUTH_ROLE;
 const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
@@ -47,30 +46,30 @@ export const getSession = cache(async function getSession(preferredType = null) 
  * for layouts and page routes on the server side.
  */
 export async function requireRouteAccess(pathname) {
-  const isStaffRoute = pathname.startsWith(ROUTES.ADMIN);
+  const isStaffRoute = pathname.startsWith("/admin");
   const session = await getSession(isStaffRoute ? "staff" : "customer");
 
   if (!session) {
     if (isStaffRoute) {
-      redirect(`${ROUTES.STAFF_LOGIN}?next=${encodeURIComponent(pathname)}`);
+      redirect(`/staff-login?next=${encodeURIComponent(pathname)}`);
     } else {
-      redirect(`${ROUTES.LOGIN}?next=${encodeURIComponent(pathname)}`);
+      redirect(`/login?next=${encodeURIComponent(pathname)}`);
     }
   }
 
   // Customer onboarding check: Must provide a name if authenticated as a customer
   if (session.role === "customer" && !session.user.name) {
-    if (pathname !== ROUTES.ONBOARDING) {
-      redirect(`${ROUTES.ONBOARDING}?next=${encodeURIComponent(pathname)}`);
+    if (pathname !== "/onboarding") {
+      redirect(`/onboarding?next=${encodeURIComponent(pathname)}`);
     }
-  } else if (session.role === "customer" && session.user.name && pathname === ROUTES.ONBOARDING) {
+  } else if (session.role === "customer" && session.user.name && pathname === "/onboarding") {
     // Already fully onboarded
-    redirect(ROUTES.DASHBOARD);
+    redirect("/dashboard/overview");
   }
 
   // Check RBAC permissions for the route
   if (!canAccessRoute(pathname, session.role)) {
-    redirect(isStaffRoute ? ROUTES.ADMIN : ROUTES.DASHBOARD);
+    redirect(isStaffRoute ? "/admin/overview" : "/dashboard/overview");
   }
 
   return session;

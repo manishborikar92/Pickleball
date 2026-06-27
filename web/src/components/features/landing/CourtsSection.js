@@ -1,5 +1,5 @@
 import { Badge, Card, SectionHeader } from "@/components/shared";
-import { venue } from "@/data/platform";
+import { VENUE } from "@/config/venue.config";
 import Image from "next/image";
 
 const COURT_TAGS = ["Outdoor", "Singles/Doubles", "Precision Lighting", "Sports Canteen", "Refreshments"];
@@ -43,7 +43,7 @@ export function CourtsSection() {
                   <Badge tone="accent">Outdoor Premium</Badge>
                 </div>
                 <p className="mt-4 text-xs sm:text-sm leading-relaxed text-muted">
-                  Fully-equipped professional pickleball courts mapping back to <strong className="font-medium text-foreground">{venue.name}</strong>.
+                  Fully-equipped professional pickleball courts mapping back to <strong className="font-medium text-foreground">{VENUE.name}</strong>.
                 </p>
               </div>
             </Card>

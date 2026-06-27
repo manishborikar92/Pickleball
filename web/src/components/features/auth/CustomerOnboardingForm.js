@@ -31,7 +31,8 @@ export function CustomerOnboardingForm({ phone: phoneProp, onSuccess, inline = f
       if (onSuccess) {
         onSuccess({ name: fullName, phone });
       } else {
-        const next = searchParams.get("next") || "/dashboard";
+        const nextParam = searchParams.get("next");
+        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";
         router.push(next);
         router.refresh();
       }

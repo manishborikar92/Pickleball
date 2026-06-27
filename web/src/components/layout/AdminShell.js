@@ -6,7 +6,7 @@ import { BaseSidebar } from "./BaseSidebar";
 import { signOutStaffAction } from "@/app/actions/auth-actions";
 
 const ADMIN_LINKS = [
-  { href: "/admin", label: "Overview", exact: true },
+  { href: "/admin/overview", label: "Overview", exact: true },
   { href: "/admin/bookings", label: "Bookings" },
   { href: "/admin/schedule", label: "Schedule" },
   { href: "/admin/pricing", label: "Pricing" },

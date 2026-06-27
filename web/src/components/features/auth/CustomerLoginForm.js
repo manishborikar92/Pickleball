@@ -45,7 +45,8 @@ export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = f
       if (onSuccess) {
         onSuccess({ phone, isNew: result.nextStep === "complete_onboarding" });
       } else {
-        const next = searchParams.get("next") || "/dashboard";
+        const nextParam = searchParams.get("next");
+        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";
         if (result.nextStep === "complete_onboarding") {
           router.push(`/onboarding?next=${encodeURIComponent(next)}`);
         } else {

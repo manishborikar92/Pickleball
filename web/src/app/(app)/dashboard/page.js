@@ -1,11 +1,5 @@
-import { DashboardOverview } from "@/components/features/dashboard";
-import { getUserBookings, getWallet } from "@/lib/api";
+import { redirect } from "next/navigation";
 
-export const metadata = {
-  title: "Dashboard",
-};
-
-export default async function DashboardPage() {
-  const [bookings, wallet] = await Promise.all([getUserBookings(), getWallet()]);
-  return <DashboardOverview bookings={bookings} wallet={wallet} />;
+export default function DashboardPage() {
+  redirect("/dashboard/overview");
 }

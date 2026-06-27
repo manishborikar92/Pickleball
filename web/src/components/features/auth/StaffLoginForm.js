@@ -18,7 +18,8 @@ import { Lock, Mail, Shield } from "lucide-react";
  */
 export function StaffLoginForm() {
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/admin";
+  const nextParam = searchParams.get("next");
+  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
 
   return (
     <Card className="p-8">

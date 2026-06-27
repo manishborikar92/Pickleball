@@ -113,7 +113,7 @@ export default async function BookingConfirmedPage(props) {
             )}
             <div className="flex flex-col gap-3">
               {isAuthError ? (
-                <Button href={`/login?redirectTo=${encodeURIComponent(`/booking/confirmed${redirectParam}`)}`} className="w-full justify-center">
+                <Button href={`/login?next=${encodeURIComponent(`/booking/confirmed${redirectParam}`)}`} className="w-full justify-center">
                   Log In to View Booking
                   <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>

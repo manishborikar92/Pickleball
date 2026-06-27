@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { VENUE } from "@/config/venue.config";
 import { Card, Loader } from "@/components/shared";
 import { Button } from "@/components/shared";
 import { Loader2, CheckCircle2, XCircle, ArrowRight } from "lucide-react";
@@ -98,7 +99,7 @@ function PendingContent() {
           Your payment could not be processed. No amount has been deducted.
         </p>
         <Button asChild variant="primary" size="lg">
-          <Link href="/venues/besa-nagpur/book">
+          <Link href={`/venues/${VENUE.slug}/book`}>
             Try Again
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
