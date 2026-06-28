@@ -36,7 +36,7 @@ Next.js Frontend                Express.js Backend              PhonePe PG
       │                                  │                           │  User pays
       │◄──────────── Redirect to redirectUrl ────────────────────────│
       │                                  │                           │
-      │── GET /api/payment/redirect ────►│                           │
+      │── GET /api/v1/payments/redirect ─►│                           │
       │                                  │── GET /checkout/v2/order ►│
       │                                  │◄── { state: COMPLETED } ──│
       │                                  │  [Confirm booking]        │
@@ -191,7 +191,7 @@ const payload = {
     type: 'PG_CHECKOUT',
     message: `Court booking — ${court_name} ${slot_date} ${slot_start_time}`,
     merchantUrls: {
-      redirectUrl: `${BACKEND_BASE_URL}/api/payment/redirect?orderId=${merchantOrderId}`,
+      redirectUrl: `${BACKEND_BASE_URL}/api/v1/payments/redirect?orderId=${merchantOrderId}`,
     },
     paymentModeConfig: {
       enabledPaymentModes: [
@@ -273,7 +273,7 @@ PhonePe's hosted page handles all UPI logic: intent (opens installed UPI apps), 
 After the transaction reaches a terminal state, PhonePe redirects the browser to the `redirectUrl` specified in the Create Payment request:
 
 ```
-GET https://api.besanagpur.com/api/payment/redirect?orderId=PP-abc123
+GET https://api.besanagpur.com/api/v1/payments/redirect?orderId=PP-abc123
 ```
 
 > The redirect is informational only. Never confirm the booking based on this redirect alone. Always verify via Order Status API.
@@ -281,7 +281,7 @@ GET https://api.besanagpur.com/api/payment/redirect?orderId=PP-abc123
 **Step 8 — Backend: Redirect Handler**
 
 ```javascript
-// GET /api/payment/redirect
+// GET /api/v1/payments/redirect
 router.get('/redirect', async (req, res) => {
   const { orderId } = req.query;
 
@@ -828,7 +828,7 @@ src/features/payment/
 ├── payment.service.js       ← Business logic (initiate, confirm, refund, rollback)
 ├── wallet.service.js        ← Credit issuance, redemption, rollback
 ├── routes/
-│   ├── payment.routes.js    ← /initiate, /redirect, /status/:orderId
+│   ├── payments.routes.js   ← /redirect, /status/:merchantOrderId, /:paymentId/refund, /:paymentId/refund/retry
 │   └── webhook.routes.js    ← POST /webhooks/phonepe (GET for health check)
 └── reconciliation.job.js    ← Nightly settlement reconciliation
 ```

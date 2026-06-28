@@ -2,7 +2,7 @@
 
 All endpoints are served under `/api/v1`. The backend is the single authority on pricing, availability, and booking state. The frontend never bypasses or replicates this logic.
 
-> **Implementation status:** the live backend currently implements root, health/liveness/readiness, authentication, onboarding, current-user, venue, booking, payment, wallet, review (Section 8), OpenAPI, and Swagger UI routes. Reward and admin operations in this document remain target product contracts to be implemented on top of the completed schema.
+> **Implementation status:** the live backend currently implements Root, Authentication, Onboarding, User Profile, Booking, Venue/Availability, Payment/Refund, and Review (Section 9) routes. Admin operations (Section 11) and Reward operations (Section 12) in this document remain target product contracts to be implemented on top of the completed schema.
 
 ---
 
@@ -55,9 +55,14 @@ Sends an OTP to the provided phone number via WhatsApp. Rate-limited per phone.
 {
   "success": true,
   "message": "OTP sent",
-  "data": { "phone": "+919876543210", "expires_in_seconds": 300 }
+  "data": {
+    "phone": "+919876543210",
+    "expires_in_seconds": 300,
+    "sandbox_otp": "123456"
+  }
 }
 ```
+*Note: `sandbox_otp` is only returned in sandbox/development mode.*
 
 **Errors:** `429 Too Many Requests` if rate limit exceeded.
 
@@ -79,6 +84,7 @@ Verifies the OTP, creates an auth session, sets the refresh-token cookie, and re
   "message": "OTP verified",
   "data": {
     "access_token": "<jwt>",
+    "expires_in": 3600,
     "user": {
       "id": "<uuid>",
       "phone": "+919876543210",
@@ -143,8 +149,6 @@ Verifies the OTP, creates an auth session, sets the refresh-token cookie, and re
 
 These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) only. They use email + password credentials managed in the `admin_credentials` table. WhatsApp OTP is never involved.
 
-Implementation status: `POST /auth/admin/login` is implemented and shares the same access/refresh/session lifecycle as customer OTP auth. Admin activation, reset-password, change-password, and admin provisioning are the target contract and require the email/provider and admin-management slice before exposure.
-
 ### `POST /auth/admin/login`
 
 *Public.* Authenticates an admin user with email and password.
@@ -157,9 +161,20 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 **Response `200`:**
 ```json
 {
-  "access_token": "<jwt>",
-  "user": { "id": "<uuid>", "name": "Ravi Kumar", "email": "manager@besanagpur.com" },
-  "next_step": "admin_dashboard"
+  "success": true,
+  "message": "Admin login successful",
+  "data": {
+    "access_token": "<jwt>",
+    "expires_in": 3600,
+    "user": {
+      "id": "<uuid>",
+      "email": "manager@besanagpur.com",
+      "name": "Ravi Kumar",
+      "roles": ["manager"],
+      "permissions": ["edit_schedule", "edit_pricing", "manage_bookings", "issue_credits"]
+    },
+    "next_step": "admin_dashboard"
+  }
 }
 ```
 
@@ -180,6 +195,11 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 
 ### `POST /auth/admin/activate`
 
+> [!WARNING]
+> **Implementation Status: Planned API Contract / Not Yet Implemented**
+> This endpoint is a planned future contract for the administrator onboarding lifecycle. It is not currently implemented in the live backend.
+> **Dependency:** Requires configuration of the production email provider and integration with the admin-management/invitation slice before it can be exposed.
+
 *Public (activation token acts as credential).* Sets the initial password for a newly provisioned admin account.
 
 **Body:**
@@ -194,9 +214,13 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 **Response `200`:**
 ```json
 {
-  "access_token": "<jwt>",
-  "user": { "id": "<uuid>", "name": "Ravi Kumar", "email": "manager@besanagpur.com" },
-  "next_step": "admin_dashboard"
+  "success": true,
+  "message": "Success",
+  "data": {
+    "access_token": "<jwt>",
+    "user": { "id": "<uuid>", "name": "Ravi Kumar", "email": "manager@besanagpur.com" },
+    "next_step": "admin_dashboard"
+  }
 }
 ```
 
@@ -205,6 +229,11 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 ---
 
 ### `POST /auth/admin/reset-password/request`
+
+> [!WARNING]
+> **Implementation Status: Planned API Contract / Not Yet Implemented**
+> This endpoint is a planned future contract for admin self-service password recovery. It is not currently implemented in the live backend.
+> **Dependency:** Requires configuration of the production email provider to dispatch password reset tokens.
 
 *Public.* Requests a password reset email. Always returns `200` regardless of whether the email is found (prevents account enumeration).
 
@@ -215,12 +244,23 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 
 **Response `200`:**
 ```json
-{ "message": "If that email is associated with an admin account, a reset link has been sent." }
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "message": "If that email is associated with an admin account, a reset link has been sent."
+  }
+}
 ```
 
 ---
 
 ### `POST /auth/admin/reset-password/confirm`
+
+> [!WARNING]
+> **Implementation Status: Planned API Contract / Not Yet Implemented**
+> This endpoint is a planned future contract for completing admin self-service password recovery. It is not currently implemented in the live backend.
+> **Dependency:** Requires configuration of the production email provider to generate and verify password reset tokens.
 
 *Public (reset token acts as credential).* Sets a new password using a valid reset token.
 
@@ -236,9 +276,13 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 **Response `200`:**
 ```json
 {
-  "access_token": "<jwt>",
-  "user": { "id": "<uuid>", "name": "Ravi Kumar" },
-  "next_step": "admin_dashboard"
+  "success": true,
+  "message": "Success",
+  "data": {
+    "access_token": "<jwt>",
+    "user": { "id": "<uuid>", "name": "Ravi Kumar" },
+    "next_step": "admin_dashboard"
+  }
 }
 ```
 
@@ -247,6 +291,11 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 ---
 
 ### `POST /auth/admin/change-password`
+
+> [!WARNING]
+> **Implementation Status: Planned API Contract / Not Yet Implemented**
+> This endpoint is a planned future contract for admin credential updates (including forced password changes). It is not currently implemented in the live backend.
+> **Dependency:** Bypassed in the current phase as seed administrators are set directly to `active` status. Will be implemented when self-serve admin settings are introduced.
 
 *Protected (JWT + admin session).* Allows a logged-in admin user to change their own password. Required when `next_step = "force_password_change"`.
 
@@ -259,7 +308,7 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 }
 ```
 
-**Response `200`:** Updated user object. Clears `force_password_change` flag.
+**Response `200`:** Updated user object inside success envelope. Clears `force_password_change` flag.
 
 **Errors:** `400 INVALID_CURRENT_PASSWORD`, `400 PASSWORD_MISMATCH`, `400 PASSWORD_TOO_WEAK`.
 
@@ -291,10 +340,12 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
   "message": "Session refreshed",
   "data": {
     "access_token": "<jwt>",
+    "expires_in": 3600,
     "user": {
       "id": "<uuid>",
       "phone": "+919876543210",
       "name": "Arjun Mehta",
+      "is_new_user": false,
       "onboarding_complete": true
     }
   }
@@ -327,14 +378,18 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 **Response `200`:**
 ```json
 {
-  "id": "<uuid>",
-  "phone": "+919876543210",
-  "name": "Arjun Mehta",
-  "onboarding_complete": true,
-  "wallet_credits": 500.00,
-  "roles": [
-    { "venue_id": "<uuid>", "venue_name": "Besa, Nagpur", "role": "customer" }
-  ]
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "phone": "+919876543210",
+    "name": "Arjun Mehta",
+    "onboarding_complete": true,
+    "roles": [
+      { "venue_id": "<uuid>", "venue_name": "Besa, Nagpur", "role": "customer" }
+    ],
+    "permissions": ["view_own_bookings"]
+  }
 }
 ```
 
@@ -343,12 +398,16 @@ Implementation status: `POST /auth/admin/login` is implemented and shares the sa
 **If `name` is `null`** (OTP verified but onboarding not finished):
 ```json
 {
-  "id": "<uuid>",
-  "phone": "+919876543210",
-  "name": null,
-  "onboarding_complete": false,
-  "wallet_credits": 0.00,
-  "roles": []
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "phone": "+919876543210",
+    "name": null,
+    "onboarding_complete": false,
+    "roles": [],
+    "permissions": ["view_own_bookings"]
+  }
 }
 ```
 
@@ -357,6 +416,11 @@ The frontend uses this response on app load to decide whether to show the name c
 ---
 
 ### `PATCH /users/me`
+
+> [!WARNING]
+> **Implementation Status: Planned API Contract / Not Yet Implemented**
+> This endpoint is a planned future contract for self-service customer profile updates (e.g. updating the user's name). It is not currently implemented in the live backend.
+> **Dependency:** Currently, name submission is handled once during registration/onboarding via `POST /auth/onboarding`. Full self-service profile modification is deferred until a profile/settings page is added to the customer web application.
 
 *Protected (JWT + onboarding complete).* Update name after onboarding is done. For initial name collection during onboarding, use `POST /auth/onboarding` instead.
 
@@ -378,20 +442,24 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200`:**
 ```json
 {
-  "data": [
-    {
-      "id": "<uuid>",
-      "court": { "id": "<uuid>", "name": "Court 1" },
-      "venue": { "id": "<uuid>", "name": "Besa, Nagpur" },
-      "slot_date": "2025-05-17",
-      "slot_start_time": "09:00",
-      "slot_end_time": "10:00",
-      "status": "confirmed",
-      "total_amount": 590.00,
-      "has_review": false
-    }
-  ],
-  "pagination": { "page": 1, "limit": 20, "total": 5 }
+  "success": true,
+  "message": "Success",
+  "data": {
+    "data": [
+      {
+        "id": "<uuid>",
+        "court_names": ["Court 1", "Court 2"],
+        "venue": { "id": "<uuid>", "name": "Besa, Nagpur" },
+        "slot_date": "2025-05-17",
+        "slot_start_time": "09:00",
+        "slot_end_time": "10:00",
+        "status": "confirmed",
+        "total_amount": 590.00,
+        "has_review": false
+      }
+    ],
+    "pagination": { "page": 1, "limit": 20, "total": 5 }
+  }
 }
 ```
 
@@ -404,17 +472,21 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200`:**
 ```json
 {
-  "balance": 500.00,
-  "transactions": [
-    {
-      "id": "<uuid>",
-      "type": "credit_issued",
-      "amount": 500.00,
-      "balance_after": 500.00,
-      "reason": "Force majeure cancellation — Court 1",
-      "created_at": "2025-05-10T14:30:00Z"
-    }
-  ]
+  "success": true,
+  "message": "Success",
+  "data": {
+    "balance": 500.00,
+    "transactions": [
+      {
+        "id": "<uuid>",
+        "type": "credit_issued",
+        "amount": 500.00,
+        "balance_after": 500.00,
+        "reason": "Force majeure cancellation — Court 1",
+        "created_at": "2025-05-10T14:30:00Z"
+      }
+    ]
+  }
 }
 ```
 
@@ -429,19 +501,23 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200`:**
 ```json
 {
-  "id": "<uuid>",
-  "name": "Besa, Nagpur",
-  "slug": "besa-nagpur",
-  "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
-  "city": "Nagpur",
-  "timezone": "Asia/Kolkata",
-  "advance_booking_days": 7,
-  "rollover_time": "08:00",
-  "phone": "+91 99704 09410",
-  "courts": [
-    { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
-    { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
-  ]
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "name": "Besa, Nagpur",
+    "slug": "besa-nagpur",
+    "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
+    "city": "Nagpur",
+    "timezone": "Asia/Kolkata",
+    "advance_booking_days": 7,
+    "rollover_time": "08:00",
+    "phone": "+91 99704 09410",
+    "courts": [
+      { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
+      { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
+    ]
+  }
 }
 ```
 
@@ -454,26 +530,24 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200`:**
 ```json
 {
-  "id": "<uuid>",
-  "name": "Besa, Nagpur",
-  "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
-  "city": "Nagpur",
-  "timezone": "Asia/Kolkata",
-  "advance_booking_days": 7,
-  "rollover_time": "08:00",
-  "phone": "+91 99704 09410",
-  "courts": [
-    { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
-    { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
-  ]
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "name": "Besa, Nagpur",
+    "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
+    "city": "Nagpur",
+    "timezone": "Asia/Kolkata",
+    "advance_booking_days": 7,
+    "rollover_time": "08:00",
+    "phone": "+91 99704 09410",
+    "courts": [
+      { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
+      { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
+    ]
+  }
 }
 ```
-
----
-
-### `GET /venues/:venueId/courts/:courtId`
-
-*Public.* Returns court details including cover image URL.
 
 ---
 
@@ -488,32 +562,36 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200`:**
 ```json
 {
-  "date": "2025-05-17",
-  "slot_duration_mins": 60,
-  "courts": [
-    {
-      "court_id": "<uuid>",
-      "court_name": "Court 1",
-      "environment": "Indoor",
-      "slots": [
-        { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 500.00 },
-        { "start_time": "09:00", "end_time": "10:00", "status": "booked" },
-        { "start_time": "10:00", "end_time": "11:00", "status": "available", "unit_price": 600.00 },
-        { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 600.00 }
-      ]
-    },
-    {
-      "court_id": "<uuid>",
-      "court_name": "Court 2",
-      "environment": "Indoor",
-      "slots": [
-        { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 550.00 },
-        { "start_time": "09:00", "end_time": "10:00", "status": "available", "unit_price": 660.00 },
-        { "start_time": "10:00", "end_time": "11:00", "status": "pending" },
-        { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 660.00 }
-      ]
-    }
-  ]
+  "success": true,
+  "message": "Success",
+  "data": {
+    "date": "2025-05-17",
+    "slot_duration_mins": 60,
+    "courts": [
+      {
+        "court_id": "<uuid>",
+        "court_name": "Court 1",
+        "environment": "Indoor",
+        "slots": [
+          { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 500.00 },
+          { "start_time": "09:00", "end_time": "10:00", "status": "booked" },
+          { "start_time": "10:00", "end_time": "11:00", "status": "available", "unit_price": 600.00 },
+          { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 600.00 }
+        ]
+      },
+      {
+        "court_id": "<uuid>",
+        "court_name": "Court 2",
+        "environment": "Indoor",
+        "slots": [
+          { "start_time": "08:00", "end_time": "09:00", "status": "available", "unit_price": 550.00 },
+          { "start_time": "09:00", "end_time": "10:00", "status": "available", "unit_price": 660.00 },
+          { "start_time": "10:00", "end_time": "11:00", "status": "pending" },
+          { "start_time": "11:00", "end_time": "12:00", "status": "available", "unit_price": 660.00 }
+        ]
+      }
+    ]
+  }
 }
 ```
 
@@ -539,32 +617,38 @@ The frontend uses this response on app load to decide whether to show the name c
   "venue_id": "<uuid>",
   "court_ids": ["<uuid1>", "<uuid2>"],
   "slot_date": "2025-05-17",
-  "slot_start_times": ["09:00", "10:00", "11:00"]
+  "slot_start_times": ["09:00", "10:00", "11:00"],
+  "coupon_code": "FIRST10"
 }
 ```
+*Note: `coupon_code` is optional.*
 
 **Response `200`:**
 ```json
 {
-  "court_count": 2,
-  "slot_count": 3,
-  "slot_unit_count": 6,
-  "session_start_time": "09:00",
-  "session_end_time": "12:00",
-  "session_duration_mins": 180,
-  "price_breakdown": {
-    "units": [
-      { "court_name": "Court 1", "slot_start_time": "09:00", "unit_price": 600.00 },
-      { "court_name": "Court 1", "slot_start_time": "10:00", "unit_price": 600.00 },
-      { "court_name": "Court 1", "slot_start_time": "11:00", "unit_price": 600.00 },
-      { "court_name": "Court 2", "slot_start_time": "09:00", "unit_price": 660.00 },
-      { "court_name": "Court 2", "slot_start_time": "10:00", "unit_price": 660.00 },
-      { "court_name": "Court 2", "slot_start_time": "11:00", "unit_price": 660.00 }
-    ],
-    "subtotal": 3780.00,
-    "coupon_discount": 0.00,
-    "tax": 0.00,
-    "total": 3780.00
+  "success": true,
+  "message": "Price preview calculated",
+  "data": {
+    "court_count": 2,
+    "slot_count": 3,
+    "slot_unit_count": 6,
+    "session_start_time": "09:00",
+    "session_end_time": "12:00",
+    "session_duration_mins": 180,
+    "price_breakdown": {
+      "units": [
+        { "court_id": "<uuid1>", "court_name": "Court 1", "slot_start_time": "09:00", "slot_end_time": "10:00", "unit_price": 600.00 },
+        { "court_id": "<uuid1>", "court_name": "Court 1", "slot_start_time": "10:00", "slot_end_time": "11:00", "unit_price": 600.00 },
+        { "court_id": "<uuid1>", "court_name": "Court 1", "slot_start_time": "11:00", "slot_end_time": "12:00", "unit_price": 600.00 },
+        { "court_id": "<uuid2>", "court_name": "Court 2", "slot_start_time": "09:00", "slot_end_time": "10:00", "unit_price": 660.00 },
+        { "court_id": "<uuid2>", "court_name": "Court 2", "slot_start_time": "10:00", "slot_end_time": "11:00", "unit_price": 660.00 },
+        { "court_id": "<uuid2>", "court_name": "Court 2", "slot_start_time": "11:00", "slot_end_time": "12:00", "unit_price": 660.00 }
+      ],
+      "subtotal": 3780.00,
+      "coupon_discount": 0.00,
+      "tax": 0.00,
+      "total": 3780.00
+    }
   }
 }
 ```
@@ -583,9 +667,11 @@ The frontend uses this response on app load to decide whether to show the name c
   "venue_id": "<uuid>",
   "court_ids": ["<uuid1>", "<uuid2>"],
   "slot_date": "2025-05-17",
-  "slot_start_times": ["09:00", "10:00", "11:00"]
+  "slot_start_times": ["09:00", "10:00", "11:00"],
+  "coupon_code": "FIRST10"
 }
 ```
+*Note: `coupon_code` is optional.*
 
 **Pre-lock validation (before any database write):**
 - All `court_ids` belong to the venue and are `status = 'active'`.
@@ -596,23 +682,27 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `201` — All units successfully locked:**
 ```json
 {
-  "booking_id": "<uuid>",
-  "status": "pending_payment",
-  "expires_at": "2025-05-17T04:19:00Z",
-  "court_count": 2,
-  "slot_unit_count": 6,
-  "session_start_time": "09:00",
-  "session_end_time": "12:00",
-  "session_duration_mins": 180,
-  "price_quote": {
-    "units": [
-      { "court_name": "Court 1", "slot_start_time": "09:00", "unit_price": 600.00 },
-      { "court_name": "Court 2", "slot_start_time": "09:00", "unit_price": 660.00 }
-    ],
-    "subtotal": 3780.00,
-    "coupon_discount": 0.00,
-    "tax": 0.00,
-    "total": 3780.00
+  "success": true,
+  "message": "Booking hold created",
+  "data": {
+    "booking_id": "<uuid>",
+    "status": "pending_payment",
+    "expires_at": "2025-05-17T04:19:00Z",
+    "court_count": 2,
+    "slot_unit_count": 6,
+    "session_start_time": "09:00",
+    "session_end_time": "12:00",
+    "session_duration_mins": 180,
+    "price_quote": {
+      "units": [
+        { "court_id": "<uuid1>", "court_name": "Court 1", "slot_start_time": "09:00", "slot_end_time": "10:00", "unit_price": 600.00 },
+        { "court_id": "<uuid2>", "court_name": "Court 2", "slot_start_time": "09:00", "slot_end_time": "10:00", "unit_price": 660.00 }
+      ],
+      "subtotal": 3780.00,
+      "coupon_discount": 0.00,
+      "tax": 0.00,
+      "total": 3780.00
+    }
   }
 }
 ```
@@ -623,7 +713,7 @@ The frontend uses this response on app load to decide whether to show the name c
   "error": {
     "code": "SLOTS_UNAVAILABLE",
     "message": "Some of your selected slots were just taken.",
-    "unavailable": [
+    "details": [
       { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "10:00" },
       { "court_id": "<uuid>", "court_name": "Court 2", "slot_start_time": "11:00" }
     ]
@@ -634,7 +724,7 @@ The frontend uses this response on app load to decide whether to show the name c
 **Errors:**
 - `400 Bad Request` — non-consecutive slots, invalid court_ids, slot outside the booking window, or slot in the past (code `SLOT_IN_PAST`).
 - `409 Conflict` — one or more slot units are taken (see above).
-- `429 Too Many Requests` — velocity check: 2 pending bookings already held.
+- `429 Too Many Requests` — velocity check: 2 pending bookings already held (code `HOLD_LIMIT_EXCEEDED`).
 
 ---
 
@@ -642,20 +732,53 @@ The frontend uses this response on app load to decide whether to show the name c
 
 *Protected.* Returns full booking details. User can only access their own bookings.
 
----
-
-### `POST /bookings/:bookingId/apply-coupon`
-
-*Session-authenticated (booking must belong to the session).* Applies a coupon and returns an updated price quote. Does not change the locked slot.
-
-**Body:**
+**Response `200`:**
 ```json
-{ "coupon_code": "FIRST50", "phone": "+919876543210" }
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "status": "pending_payment",
+    "court_names": ["Court 1", "Court 2"],
+    "venue": {
+      "id": "<uuid>",
+      "name": "Besa, Nagpur",
+      "slug": "besa-nagpur",
+      "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
+      "city": "Nagpur",
+      "timezone": "Asia/Kolkata",
+      "currency": "INR",
+      "phone": "+91 99704 09410",
+      "secondary_phone": null,
+      "email": "manager@besanagpur.com"
+    },
+    "slot_date": "2025-05-17",
+    "session_start_time": "09:00",
+    "session_end_time": "12:00",
+    "session_duration_mins": 180,
+    "court_count": 2,
+    "slot_unit_count": 6,
+    "total_amount": 3780.00,
+    "credits_applied": 0.00,
+    "expires_at": "2025-05-17T04:29:00Z",
+    "waiver_accepted": false,
+    "waiver_accepted_at": null,
+    "slots": [
+      {
+        "id": "<uuid>",
+        "court": { "id": "<uuid1>", "name": "Court 1" },
+        "slot_date": "2025-05-17",
+        "slot_start_time": "09:00",
+        "slot_end_time": "10:00",
+        "status": "pending_payment",
+        "unit_price": 600.00
+      }
+    ],
+    "payments": []
+  }
+}
 ```
-
-**Response `200`:** Updated `price_quote` object.
-
-**Errors:** `400` invalid/expired/exceeded coupon.
 
 ---
 
@@ -673,14 +796,21 @@ The frontend uses this response on app load to decide whether to show the name c
 
 **Response `200`:**
 ```json
-{ "waiver_accepted": true, "waiver_accepted_at": "2025-05-17T04:12:44Z" }
+{
+  "success": true,
+  "message": "Waiver accepted",
+  "data": {
+    "waiver_accepted": true,
+    "waiver_accepted_at": "2025-05-17T04:12:44Z"
+  }
+}
 ```
 
 ---
 
 ### `POST /bookings/:bookingId/initiate-payment`
 
-*Protected.* Computes the final price quote, applies wallet credits, creates a PhonePe order, and returns the PhonePe-hosted pay page URL. The frontend uses this URL with PhonePe's JS bundle to open the pay page (iFrame or redirect mode). See `08-PAYMENT-INTEGRATION.md` for the complete flow.
+*Protected.* Computes the final price quote, applies wallet credits, creates a PhonePe order, and returns the PhonePe-hosted pay page URL. The frontend uses this URL with PhonePe's JS bundle to open the pay page (iFrame or redirect mode).
 
 **Body:**
 ```json
@@ -690,48 +820,60 @@ The frontend uses this response on app load to decide whether to show the name c
 **Response `200` — Wallet-only (no PhonePe involved):**
 ```json
 {
-  "type": "wallet_only",
-  "booking_id": "<uuid>",
-  "credits_applied": 689.50,
-  "total_amount": 689.50,
-  "phonepe_amount": 0
+  "success": true,
+  "message": "Payment initiated",
+  "data": {
+    "type": "wallet_only",
+    "booking_id": "<uuid>",
+    "credits_applied": 689.50,
+    "total_amount": 689.50,
+    "phonepe_amount": 0,
+    "booking_status": "confirmed"
+  }
 }
 ```
 
 **Response `200` — PhonePe UPI payment required:**
 ```json
 {
-  "type": "phonepe",
-  "merchant_order_id": "PP-abc123",
-  "redirect_url": "https://mercury-uat.phonepe.com/transact/uat_v2?token=...",
-  "credits_applied": 200.00,
-  "phonepe_amount": 489.50,
-  "total_amount": 689.50,
-  "expires_at": "2025-05-17T04:29:00Z"
+  "success": true,
+  "message": "Payment initiated",
+  "data": {
+    "type": "phonepe",
+    "merchant_order_id": "PP-abc123",
+    "redirect_url": "https://mercury-uat.phonepe.com/transact/uat_v2?token=...",
+    "credits_applied": 200.00,
+    "phonepe_amount": 489.50,
+    "total_amount": 689.50,
+    "expires_at": "2025-05-17T04:29:00Z",
+    "payment_id": "<uuid>"
+  }
 }
 ```
 
-**Frontend usage (iFrame mode):**
-```javascript
-// Load once on checkout page:
-// <script src="https://mercury.phonepe.com/web/bundle/checkout.js"></script>
-
-window.PhonePeCheckout.transact({
-  tokenUrl: response.redirect_url,
-  callback: (result) => {
-    if (result === 'CONCLUDED') verifyPaymentStatus(response.merchant_order_id);
-    if (result === 'USER_CANCEL') showRetryUI();
-  },
-  type: 'IFRAME',  // or 'REDIRECT' for full-page fallback
-});
+**Response `200` — Booking already confirmed:**
+```json
+{
+  "success": true,
+  "message": "Payment initiated",
+  "data": {
+    "type": "already_confirmed",
+    "booking_id": "<uuid>",
+    "booking_status": "confirmed"
+  }
+}
 ```
 
 **Errors:**
-- `422 Unprocessable Entity` — waiver not yet accepted.
-- `410 Gone` — booking hold has expired.
-- `402 Payment Required` — PhonePe order creation failed (details in error body).
+- `422 Unprocessable Entity` — waiver not yet accepted (code `WAIVER_REQUIRED`).
+- `410 Gone` — booking hold has expired (code `BOOKING_EXPIRED`).
+- `402 Payment Required` — PhonePe order creation failed.
 
 ---
+
+## 8. Payment & Refund Endpoints
+
+These endpoints support payment callbacks, status checks, and manager-initiated refunds.
 
 ### `GET /payments/redirect`
 
@@ -756,14 +898,18 @@ window.PhonePeCheckout.transact({
 **Response `200`:**
 ```json
 {
-  "merchant_order_id": "PP-abc123",
-  "booking_id": "<uuid>",
-  "state": "COMPLETED",
-  "booking_status": "confirmed"
+  "success": true,
+  "message": "Success",
+  "data": {
+    "merchant_order_id": "PP-abc123",
+    "booking_id": "<uuid>",
+    "booking_status": "confirmed",
+    "payment_status": "success"
+  }
 }
 ```
 
-**`state` values:** `COMPLETED`, `FAILED`, `PENDING`, `CREATED`
+**`payment_status` values:** `initiated`, `success`, `failed`, `refund_pending`, `refunded`, `refund_failed`
 
 ---
 
@@ -807,7 +953,10 @@ window.PhonePeCheckout.transact({
 {
   "success": true,
   "message": "Refund initiated",
-  "data": { }
+  "data": {
+    "status": "refunded",
+    "merchantRefundId": "REFUND-abc123xyz"
+  }
 }
 ```
 
@@ -822,13 +971,16 @@ window.PhonePeCheckout.transact({
 {
   "success": true,
   "message": "Refund retry initiated",
-  "data": { }
+  "data": {
+    "status": "refunded",
+    "merchantRefundId": "REFUND-abc123xyz"
+  }
 }
 ```
 
 ---
 
-## 8. Review Endpoints
+## 9. Review Endpoints
 
 Reviews are a first-class, self-contained domain. Every endpoint is namespaced under `/reviews`; the booking and admin domains do not own or expose review routes. A review is anchored 1:1 to a **completed** booking (`bookings.status = 'completed'`) via a unique `booking_id`, while its public value (ratings, summaries) is aggregated at the venue level.
 
@@ -851,14 +1003,18 @@ Rejected when the booking is not found or not owned by the caller (`404`), is no
 **Response `201`:**
 ```json
 {
-  "id": "<uuid>",
-  "booking_id": "<uuid>",
-  "venue_id": "<uuid>",
-  "rating": 4,
-  "comment": "Great court, fast surface.",
-  "photo_url": null,
-  "is_published": true,
-  "created_at": "<timestamp>"
+  "success": true,
+  "message": "Review submitted",
+  "data": {
+    "id": "<uuid>",
+    "booking_id": "<uuid>",
+    "venue_id": "<uuid>",
+    "rating": 4,
+    "comment": "Great court, fast surface.",
+    "photo_url": null,
+    "is_published": true,
+    "created_at": "<timestamp>"
+  }
 }
 ```
 
@@ -870,9 +1026,27 @@ Rejected when the booking is not found or not owned by the caller (`404`), is no
 
 **Query params:** `venue_id` (UUID, required), `limit` (default 10, max 50), `page` (default 1).
 
-**Response `200`:** paginated `data[]` of public reviews plus `meta.summary`:
+**Response `200`:**
 ```json
 {
+  "success": true,
+  "message": "Reviews retrieved",
+  "data": [
+    {
+      "id": "<uuid>",
+      "booking_id": "<uuid>",
+      "venue_id": "<uuid>",
+      "rating": 4,
+      "comment": "Great court, fast surface.",
+      "photo_url": null,
+      "is_published": true,
+      "created_at": "<timestamp>",
+      "user": {
+        "id": "<uuid>",
+        "name": "Arjun Mehta"
+      }
+    }
+  ],
   "meta": {
     "pagination": { "page": 1, "limit": 10, "total": 24, "total_pages": 3 },
     "summary": { "average_rating": 4.6, "total_reviews": 24 }
@@ -886,6 +1060,24 @@ Rejected when the booking is not found or not owned by the caller (`404`), is no
 
 *Protected (onboarded user).* Returns the authenticated user's own review for a booking, or `404` if none exists. Lets the booking owner check whether they have already reviewed a session.
 
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "id": "<uuid>",
+    "booking_id": "<uuid>",
+    "venue_id": "<uuid>",
+    "rating": 4,
+    "comment": "Great court, fast surface.",
+    "photo_url": null,
+    "is_published": true,
+    "created_at": "<timestamp>"
+  }
+}
+```
+
 ---
 
 ### `GET /reviews/moderation?venue_id=<uuid>`
@@ -893,6 +1085,40 @@ Rejected when the booking is not found or not owned by the caller (`404`), is no
 *Protected.* Requires the `manage_bookings` permission on the target venue. Returns **all** reviews for the venue (published and unpublished), enriched with the reviewer's phone and booking session details for moderation.
 
 **Query params:** `venue_id` (UUID, required), `limit` (default 20, max 50), `page` (default 1), `is_published` (boolean, optional filter).
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Reviews retrieved",
+  "data": [
+    {
+      "id": "<uuid>",
+      "booking_id": "<uuid>",
+      "venue_id": "<uuid>",
+      "rating": 4,
+      "comment": "Great court, fast surface.",
+      "photo_url": null,
+      "is_published": true,
+      "created_at": "<timestamp>",
+      "user": {
+        "id": "<uuid>",
+        "name": "Arjun Mehta",
+        "phone": "+919876543210"
+      },
+      "booking": {
+        "id": "<uuid>",
+        "slot_date": "2025-05-17T00:00:00.000Z",
+        "session_start_time": "2025-05-17T09:00:00.000Z",
+        "session_end_time": "2025-05-17T12:00:00.000Z"
+      }
+    }
+  ],
+  "meta": {
+    "pagination": { "page": 1, "limit": 20, "total": 24, "total_pages": 2 }
+  }
+}
+```
 
 ---
 
@@ -902,9 +1128,30 @@ Rejected when the booking is not found or not owned by the caller (`404`), is no
 
 **Body (`application/json`):** `{ "is_published": false }`
 
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Review updated",
+  "data": {
+    "id": "<uuid>",
+    "booking_id": "<uuid>",
+    "venue_id": "<uuid>",
+    "rating": 4,
+    "comment": "Great court, fast surface.",
+    "photo_url": null,
+    "is_published": false,
+    "created_at": "<timestamp>"
+  }
+}
+```
+
 ---
 
-## 9. Admin Endpoints
+## 10. Admin Endpoints
+
+> [!WARNING]
+> **Implementation Status:** Target Product Contracts / Not Implemented in the live backend.
 
 All admin endpoints require a valid JWT. The `Permission` column specifies the exact capability checked by `requirePermission()` middleware, which resolves through `venue_user_roles` → `roles` → `role_permissions` at request time.
 
@@ -1032,7 +1279,10 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 
 
-## 10. Reward Engine Endpoints
+## 11. Reward Engine Endpoints
+
+> [!WARNING]
+> **Implementation Status:** Target Product Contracts / Not Implemented in the live backend.
 
 ### `GET /rewards/instances`
 
@@ -1121,7 +1371,7 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 ---
 
-## 11. Error Response Format
+## 12. Error Response Format
 
 All errors follow a consistent structure:
 
@@ -1180,3 +1430,4 @@ All errors follow a consistent structure:
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
+

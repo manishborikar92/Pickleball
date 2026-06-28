@@ -539,6 +539,10 @@ On desktop, the layout switches to a two-column arrangement: date/slot selection
 
 ## 6. Admin Panel — Auth Pages
 
+> [!NOTE]
+> **Implementation Status: Planned API Contracts / Not Yet Implemented**
+> The admin login page screen (`/admin/login`) and its underlying endpoint (`POST /auth/admin/login`) are fully implemented and functional. The remaining auth-related screens and pages (`/admin/activate`, `/admin/forgot-password`, `/admin/reset-password`, and `/admin/change-password`) are planned future contracts. They are currently inactive in the backend, awaiting configuration of the production email provider.
+
 The admin panel is a separate authenticated surface at `/admin`. It uses credential-based auth entirely independent of the customer OTP flow.
 
 ### 6.1 Admin Login Page — `/admin/login`

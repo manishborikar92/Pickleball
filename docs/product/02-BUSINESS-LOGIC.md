@@ -118,6 +118,10 @@ On `POST /auth/otp/verify`:
 
 ### 2.5 Admin Auth — Credential-Based Flow
 
+> [!NOTE]
+> **Implementation Status: Planned API Contracts / Not Yet Implemented**
+> The core login endpoint (`POST /auth/admin/login`) is fully functional. However, the administrative lifecycle endpoints (`POST /auth/admin/activate`, `POST /auth/admin/reset-password/*`, and `POST /auth/admin/change-password`) are planned future contracts and are not yet implemented in the live backend. They are pending configuration of the production email provider and full integration of the admin panel screens.
+
 #### Account Provisioning
 
 Admin accounts are never self-registered. A super admin creates them via the admin panel or a backend script:
