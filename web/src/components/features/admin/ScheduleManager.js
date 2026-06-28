@@ -44,7 +44,7 @@ export function ScheduleManager() {
       title="Schedule Manager"
       description="Standard hours, slot duration, and daily exceptions stay venue-scoped."
     >
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-start shrink-0">
         <OperatingTemplate />
         <Card className="flex h-full flex-col justify-center p-5 sm:p-6">
           <h3 className="text-lg font-black tracking-tight sm:text-xl">Schedule Exceptions</h3>
@@ -52,7 +52,7 @@ export function ScheduleManager() {
         </Card>
       </div>
 
-      <div className="mt-5 sm:mt-6">
+      <div className="mt-5 sm:mt-6 md:flex-1 md:min-h-0 md:overflow-hidden flex flex-col">
         <DataTable
           {...table}
           columns={COLUMNS}
@@ -60,6 +60,7 @@ export function ScheduleManager() {
           emptyTitle="No schedule exceptions"
           emptyDescription="There are currently no active blocks or modified hours."
           mobileCardRenderer={MobileExceptionCard}
+          className="md:flex-1 md:min-h-0"
         />
       </div>
     </ManagerSurface>

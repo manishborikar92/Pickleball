@@ -15,7 +15,7 @@ export function CourtsManager({ courts }) {
       title="Courts"
       description="Court metadata and status changes remain isolated to the venue domain."
     >
-      <SimpleRows rows={rows} />
+      <SimpleRows rows={rows} className="md:flex-1 md:min-h-0" />
     </ManagerSurface>
   );
 }

@@ -16,16 +16,16 @@ const ADMIN_LINKS = [
 
 export function AdminShell({ session, children }) {
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row">
+    <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row md:h-screen md:overflow-hidden">
       <BaseSidebar
-        title="Baseline Arena Ops"
+        title="Baseline Arena"
         logoSrc="/baseline-logo.svg"
         navLinks={ADMIN_LINKS}
         session={session}
         signOutAction={signOutStaffAction}
         sessionInfoRenderer={AdminSessionCard}
       />
-      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 md:h-full md:overflow-hidden flex flex-col">{children}</main>
     </div>
   );
 }

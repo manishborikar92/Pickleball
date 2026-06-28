@@ -14,9 +14,9 @@ export default async function CustomerLayout({ children }) {
   const session = await requireRouteAccess("/dashboard");
 
   return (
-    <div className="min-h-screen bg-background text-foreground md:flex">
+    <div className="min-h-screen bg-background text-foreground md:flex md:h-screen md:overflow-hidden">
       <AppSidebar session={session} />
-      <main className="min-w-0 flex-1 p-5 sm:p-8">{children}</main>
+      <main className="min-w-0 flex-1 p-5 sm:p-8 md:h-full md:overflow-hidden flex flex-col">{children}</main>
     </div>
   );
 }

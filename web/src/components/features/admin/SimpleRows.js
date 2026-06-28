@@ -49,7 +49,7 @@ const COLUMNS = [
   },
 ];
 
-export function SimpleRows({ rows = [] }) {
+export function SimpleRows({ rows = [], className }) {
   const table = useTable(rows, {
     columns: COLUMNS,
     defaultPageSize: 100, // Show all since search/pagination are disabled
@@ -63,6 +63,7 @@ export function SimpleRows({ rows = [] }) {
       enableFiltering={false}
       enablePagination={false}
       mobileCardRenderer={MobileCardRow}
+      className={className}
     />
   );
 }

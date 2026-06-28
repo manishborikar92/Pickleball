@@ -54,6 +54,8 @@ export function DataTable({
 
   // Custom mobile card renderer
   mobileCardRenderer,
+
+  className,
 }) {
   const hasData = data.length > 0;
   const allRowIds = data.map((row) => row.id || row.key);
@@ -65,7 +67,7 @@ export function DataTable({
   }
 
   return (
-    <Card className="flex flex-col overflow-hidden">
+    <Card className={cn("flex flex-col overflow-hidden", className)}>
       {/* 1. Header toolbar (Search / Filter / Bulk Operations) */}
       {(enableSearch || enableFiltering) && (
         <TableToolbar
@@ -106,12 +108,9 @@ export function DataTable({
         /* 5. Main Responsive Grid Listing */
         <>
           {/* DESKTOP TABLE VIEW */}
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto md:block md:flex-1 md:min-h-0 overflow-y-auto">
             <table className="w-full border-collapse text-left text-sm text-muted">
-              <thead className={cn(
-                "border-b border-line bg-surface-soft/40 text-xs font-bold uppercase tracking-wider text-foreground",
-                enableStickyHeader && "sticky top-0 z-10"
-              )}>
+              <thead className="border-b border-line bg-surface-panel text-xs font-bold uppercase tracking-wider text-foreground sticky top-0 z-10">
                 <tr>
                   {/* Global select checkbox header */}
                   {enableSelection && (
@@ -203,7 +202,7 @@ export function DataTable({
           </div>
 
           {/* MOBILE CARD LIST VIEW */}
-          <div className="divide-y divide-line md:hidden">
+          <div className="divide-y divide-line md:hidden flex-1 min-h-0 overflow-y-auto">
             {data.map((row, rowIndex) => {
               const key = getRowKey(row, rowIndex);
               const isSelected = selectedRowIds.has(key);

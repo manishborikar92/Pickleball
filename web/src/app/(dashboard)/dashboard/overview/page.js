@@ -27,7 +27,7 @@ function DashboardSkeleton() {
 
 export default function DashboardOverviewPage() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 md:space-y-0 md:h-full md:min-h-0 md:overflow-hidden md:flex md:flex-col">
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>

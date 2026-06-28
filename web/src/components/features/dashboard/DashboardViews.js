@@ -111,7 +111,7 @@ const TRANSACTION_COLUMNS = [
 /* ── Main View Components ────────────────────────── */
 
 export function DashboardOverview({ bookings = [], wallet }) {
-  const upcoming = bookings.filter((booking) => booking.status === "confirmed").slice(0, 2);
+  const upcoming = bookings.filter((booking) => booking.status === "confirmed").slice(0, 4);
 
   const table = useTable(upcoming, {
     columns: BOOKING_COLUMNS,
@@ -123,19 +123,21 @@ export function DashboardOverview({ bookings = [], wallet }) {
   const ctaLabel = lastBooking ? "Book Again" : "Book Court";
 
   return (
-    <div className="space-y-8 sm:space-y-10">
-      <SectionHeader align="left" title="Player Dashboard">
-        Review upcoming games, wallet credits, and booking history from one account surface.
-      </SectionHeader>
+    <div className="space-y-8 sm:space-y-10 md:space-y-6 flex flex-col md:h-full md:min-h-0 md:overflow-hidden">
+      <div className="shrink-0">
+        <SectionHeader align="left" title="Player Dashboard">
+          Review upcoming games, wallet credits, and booking history from one account surface.
+        </SectionHeader>
+      </div>
       
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 shrink-0">
         <Metric label="Upcoming" value={String(bookings.filter((booking) => booking.status === "confirmed").length)} />
         <Metric label="Wallet Credits" value={formatCurrency(wallet.balance)} />
         <Metric label="Past Sessions" value={String(bookings.filter((booking) => booking.status === "completed").length)} className="sm:col-span-2 lg:col-span-1" />
       </div>
       
-      <Card className="flex flex-col p-5 sm:p-6 lg:p-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+      <Card className="flex flex-col p-5 sm:p-6 lg:p-8 md:flex-1 md:min-h-0 md:overflow-hidden">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4 shrink-0">
           <h2 className="text-xl font-black sm:text-2xl">Upcoming Bookings</h2>
           <Button href={ctaHref} className="w-full sm:w-auto">
             {ctaLabel}
@@ -151,6 +153,7 @@ export function DashboardOverview({ bookings = [], wallet }) {
           emptyTitle="No upcoming bookings"
           emptyDescription="You have no confirmed sessions scheduled."
           mobileCardRenderer={MobileBookingCard}
+          className="md:flex-1 md:min-h-0"
         />
       </Card>
     </div>
@@ -164,10 +167,12 @@ export function BookingsView({ bookings = [] }) {
   });
 
   return (
-    <div className="space-y-8 sm:space-y-10">
-      <SectionHeader align="left" title="My Bookings">
-        Bookings are grouped by status and ready for future pagination from the API.
-      </SectionHeader>
+    <div className="space-y-8 sm:space-y-10 flex flex-col md:h-full md:min-h-0 md:overflow-hidden">
+      <div className="shrink-0">
+        <SectionHeader align="left" title="My Bookings">
+          Bookings are grouped by status and ready for future pagination from the API.
+        </SectionHeader>
+      </div>
       
       <DataTable
         {...table}
@@ -176,6 +181,7 @@ export function BookingsView({ bookings = [] }) {
         emptyTitle="No bookings in this group yet"
         emptyDescription="Once you complete court reservations, they will show up here."
         mobileCardRenderer={MobileBookingCard}
+        className="md:flex-1 md:min-h-0"
       />
     </div>
   );
@@ -190,12 +196,16 @@ export function WalletView({ wallet }) {
   });
 
   return (
-    <div className="space-y-8 sm:space-y-10">
-      <SectionHeader align="left" title="Wallet & Credits">
-        Credits from cancellations are applied during checkout automatically.
-      </SectionHeader>
+    <div className="space-y-8 sm:space-y-10 flex flex-col md:h-full md:min-h-0 md:overflow-hidden">
+      <div className="shrink-0">
+        <SectionHeader align="left" title="Wallet & Credits">
+          Credits from cancellations are applied during checkout automatically.
+        </SectionHeader>
+      </div>
       
-      <Metric label="Available Balance" value={formatCurrency(wallet.balance)} />
+      <div className="shrink-0">
+        <Metric label="Available Balance" value={formatCurrency(wallet.balance)} />
+      </div>
       
       <DataTable
         {...table}
@@ -203,6 +213,7 @@ export function WalletView({ wallet }) {
         emptyTitle="No transactions found"
         emptyDescription="There is no credit or debit transaction history associated with this wallet."
         mobileCardRenderer={MobileTransactionCard}
+        className="md:flex-1 md:min-h-0"
       />
     </div>
   );

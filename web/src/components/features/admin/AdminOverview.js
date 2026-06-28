@@ -11,19 +11,21 @@ export function AdminOverview({ overview }) {
   ];
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <SectionHeader align="left" title="Admin Command Center">
-        Live operational context for venue managers, staff, and future super-admin venue orchestration.
-      </SectionHeader>
+    <div className="space-y-6 sm:space-y-8 flex flex-col md:h-full md:min-h-0 md:overflow-hidden">
+      <div className="shrink-0">
+        <SectionHeader align="left" title="Admin Command Center">
+          Live operational context for venue managers, staff, and future super-admin venue orchestration.
+        </SectionHeader>
+      </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 shrink-0">
         {metrics.map(({ label, value }) => (
           <MetricCard key={label} label={label} value={value} />
         ))}
       </div>
 
-      <div className="min-w-0">
-        <AdminTable title="Today's Activity" rows={overview.bookings} />
+      <div className="min-w-0 md:flex-1 md:min-h-0 md:overflow-hidden flex flex-col">
+        <AdminTable title="Today's Activity" rows={overview.bookings} className="md:flex-1 md:min-h-0" />
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ const COLUMNS = [
   },
 ];
 
-export function AdminTable({ title, rows = [] }) {
+export function AdminTable({ title, rows = [], className }) {
   const table = useTable(rows, {
     columns: COLUMNS,
     defaultSortBy: "id",
@@ -60,6 +60,7 @@ export function AdminTable({ title, rows = [] }) {
       emptyDescription="Try clearing your search query or adjusting options."
       searchPlaceholder="Search by player name..."
       mobileCardRenderer={MobileCardRow}
+      className={className}
     />
   );
 }
