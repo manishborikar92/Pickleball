@@ -47,19 +47,24 @@ const BOOKING_COLUMNS = [
     key: "actions",
     label: "",
     className: "text-right",
-    render: (_, row) => {
-      if (!row.hasReview && row.status === "completed") {
-        return (
+    render: (_, row) => (
+      <div className="flex items-center justify-end gap-3">
+        <Link
+          href={`/booking/confirmed?bookingId=${row.id}`}
+          className="text-xs font-bold text-accent transition-colors hover:text-accent-dim focus-visible:outline-none focus-visible:underline"
+        >
+          View
+        </Link>
+        {!row.hasReview && row.status === "completed" && (
           <Link
             href={`/review/${row.id}`}
             className="text-xs font-bold text-accent transition-colors hover:text-accent-dim focus-visible:outline-none focus-visible:underline"
           >
             Rate Session
           </Link>
-        );
-      }
-      return null;
-    },
+        )}
+      </div>
+    ),
   },
 ];
 
@@ -252,14 +257,22 @@ function MobileBookingCard(row) {
           <Currency value={row.amount} />
         </div>
         
-        {!row.hasReview && row.status === "completed" && (
+        <div className="flex items-center gap-3">
           <Link
-            href={`/review/${row.id}`}
+            href={`/booking/confirmed?bookingId=${row.id}`}
             className="text-xs font-bold text-accent transition-colors hover:text-accent-dim"
           >
-            Rate Session
+            View
           </Link>
-        )}
+          {!row.hasReview && row.status === "completed" && (
+            <Link
+              href={`/review/${row.id}`}
+              className="text-xs font-bold text-accent transition-colors hover:text-accent-dim"
+            >
+              Rate Session
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );
