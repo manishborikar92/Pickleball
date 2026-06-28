@@ -1,20 +1,17 @@
 /**
  * cookies.js — Server-side cookie mutation operations.
  *
- * Uses `cookies()` from next/headers, which is ONLY available in:
+ * Uses cookies() from next/headers — ONLY available in:
  *   - Server Actions ("use server" files invoked as actions)
  *   - Route Handlers
  *
- * NOT available in: proxy.js, Server Component rendering, client components.
- * For proxy cookie operations, use NextResponse.cookies directly with
- * constants from auth.config.js.
+ * For proxy cookie operations, use NextResponse.cookies with
+ * constants from @/config/auth.config and helpers from @/lib/auth.
  */
 
 import { cookies } from "next/headers";
-import { COOKIE_NAMES, COOKIE_MAX_AGE, secureCookieOptions } from "@/config/auth.config";
-
-// Re-export constants so existing imports from "@/lib/cookies" still work
-export { COOKIE_NAMES, extractCookieValue, secureCookieOptions } from "@/config/auth.config";
+import { COOKIE_NAMES, COOKIE_MAX_AGE } from "@/config/auth.config";
+import { secureCookieOptions } from "@/lib/auth";
 
 export async function setSessionCookies({ accessToken, refreshToken, user, role = "customer" }) {
   const cookieStore = await cookies();

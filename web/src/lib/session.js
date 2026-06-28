@@ -4,7 +4,7 @@ import { cache } from "react";
 
 import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
 import { apiRequest } from "@/lib/apiClient";
-import { COOKIE_NAMES } from "@/lib/cookies";
+import { COOKIE_NAMES } from "@/config/auth.config";
 
 /**
  * getSession — Resolves the active authenticated session.

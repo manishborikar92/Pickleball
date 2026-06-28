@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
+import { COOKIE_NAMES, COOKIE_MAX_AGE } from "@/config/auth.config";
 import {
-  COOKIE_NAMES,
-  COOKIE_MAX_AGE,
   secureCookieOptions,
   extractCookieValue,
   getApiBaseUrl,
   isTokenExpired,
   resolveRole,
-} from "@/config/auth.config";
+} from "@/lib/auth";
 
 // ── Cookie helpers (NextResponse context) ──
 

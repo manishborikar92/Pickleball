@@ -12,7 +12,7 @@ import {
   normalizeBookingDetailResponse,
 } from "@/lib/normalizers";
 
-import { COOKIE_NAMES } from "@/lib/cookies";
+import { COOKIE_NAMES } from "@/config/auth.config";
 
 async function getAccessToken() {
   const cookieStore = await cookies();

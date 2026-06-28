@@ -5,8 +5,9 @@ import { redirect } from "next/navigation";
 
 import { getSession } from "@/lib/session";
 import { apiRequest } from "@/lib/apiClient";
-import { COOKIE_NAMES, extractCookieValue, setSessionCookies, clearSessionCookies } from "@/lib/cookies";
-import { resolveRole } from "@/config/auth.config";
+import { COOKIE_NAMES } from "@/config/auth.config";
+import { extractCookieValue, resolveRole } from "@/lib/auth";
+import { setSessionCookies, clearSessionCookies } from "@/lib/cookies";
 
 export async function getSessionAction() {
   return await getSession();

@@ -7,7 +7,8 @@
  * by proxy.js (at the network boundary) and Server Actions (for mutations).
  */
 
-import { getApiBaseUrl, COOKIE_NAMES } from "@/config/auth.config";
+import { COOKIE_NAMES } from "@/config/auth.config";
+import { getApiBaseUrl } from "@/lib/auth";
 
 /**
  * Makes an API request to the backend.
