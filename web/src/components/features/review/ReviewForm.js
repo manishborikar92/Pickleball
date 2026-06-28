@@ -6,6 +6,7 @@ import { ArrowLeft, UserCircle } from "lucide-react";
 
 import { Button, Card } from "@/components/shared";
 import { validateReview } from "@/lib/validation";
+import { submitReview } from "@/app/(booking)/review/actions";
 
 /* ── Main Component ──────────────────────────────── */
 
@@ -14,6 +15,9 @@ export function ReviewForm({ bookingId }) {
   const [comment, setComment] = useState("");
   const [photoName, setPhotoName] = useState("");
   const [error, setError] = useState("");
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -25,7 +29,47 @@ export function ReviewForm({ bookingId }) {
       return;
     }
 
-    setError("Review submission is not available until the review API is enabled.");
+    setIsSubmitting(true);
+
+    try {
+      const result = await submitReview(bookingId, {
+        rating: validation.value.rating,
+        comment: validation.value.comment || undefined,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+
+      setIsSuccess(true);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isSuccess) {
+    return (
+      <main className="min-h-screen bg-background pb-8 md:pb-12">
+        <ReviewHeader />
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-6 px-4 py-16 sm:px-6 md:px-8">
+          <Card className="w-full max-w-md p-8 text-center">
+            <div className="mb-4 text-6xl">✅</div>
+            <h2 className="text-2xl font-black">Thank you!</h2>
+            <p className="mt-2 text-muted">Your review has been submitted successfully.</p>
+            <div className="mt-6 flex flex-col gap-3">
+              <Button asChild>
+                <Link href="/dashboard/bookings">View My Bookings</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/">Back to Home</Link>
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -53,11 +97,12 @@ export function ReviewForm({ bookingId }) {
         {error && <FormError message={error} />}
 
         <div className="pt-2 sm:pt-4">
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full text-lg transition-transform active:scale-[0.98]"
+            disabled={isSubmitting}
           >
-            Submit Review
+            {isSubmitting ? "Submitting..." : "Submit Review"}
           </Button>
         </div>
       </form>

@@ -27,6 +27,12 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.ok(response.body.paths['/bookings/{bookingId}/waiver']);
   assert.ok(response.body.paths['/bookings/{bookingId}/initiate-payment']);
   assert.ok(response.body.paths['/payments/status/{merchantOrderId}']);
+  assert.ok(response.body.paths['/reviews']);
+  assert.ok(response.body.paths['/reviews'].post);
+  assert.ok(response.body.paths['/reviews'].get);
+  assert.ok(response.body.paths['/reviews/me']);
+  assert.ok(response.body.paths['/reviews/moderation']);
+  assert.ok(response.body.paths['/reviews/{reviewId}']);
   assert.ok(response.body.components.securitySchemes.bearerAuth);
 });
 
@@ -78,6 +84,11 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'GET /api/v1/payments/status/{merchantOrderId}',
     'GET /api/v1/payments/redirect',
     'POST /api/v1/webhooks/phonepe',
+    'POST /api/v1/reviews',
+    'GET /api/v1/reviews',
+    'GET /api/v1/reviews/me',
+    'GET /api/v1/reviews/moderation',
+    'PATCH /api/v1/reviews/{reviewId}',
     'GET /api/v1/docs/openapi.json',
     'GET /api/v1/docs',
   ].forEach((route) => {

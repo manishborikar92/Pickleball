@@ -2,7 +2,7 @@
 
 All endpoints are served under `/api/v1`. The backend is the single authority on pricing, availability, and booking state. The frontend never bypasses or replicates this logic.
 
-> **Implementation status:** the live backend currently implements root, health/liveness/readiness, authentication, onboarding, current-user, OpenAPI, and Swagger UI routes. Booking, payment, wallet, review, reward, and admin operations in this document are target product contracts to be implemented on top of the completed schema.
+> **Implementation status:** the live backend currently implements root, health/liveness/readiness, authentication, onboarding, current-user, venue, booking, payment, wallet, review (Section 8), OpenAPI, and Swagger UI routes. Reward and admin operations in this document remain target product contracts to be implemented on top of the completed schema.
 
 ---
 
@@ -422,6 +422,31 @@ The frontend uses this response on app load to decide whether to show the name c
 
 ## 5. Venue & Court Endpoints
 
+### `GET /venues/slug/:slug`
+
+*Public.* Returns venue details by its URL-friendly slug.
+
+**Response `200`:**
+```json
+{
+  "id": "<uuid>",
+  "name": "Besa, Nagpur",
+  "slug": "besa-nagpur",
+  "address": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa–Manish Nagar Road, Nagpur",
+  "city": "Nagpur",
+  "timezone": "Asia/Kolkata",
+  "advance_booking_days": 7,
+  "rollover_time": "08:00",
+  "phone": "+91 99704 09410",
+  "courts": [
+    { "id": "<uuid>", "name": "Court 1", "environment": "Indoor", "status": "active" },
+    { "id": "<uuid>", "name": "Court 2", "environment": "Indoor", "status": "active" }
+  ]
+}
+```
+
+---
+
 ### `GET /venues/:venueId`
 
 *Public.* Returns venue details.
@@ -628,16 +653,6 @@ The frontend uses this response on app load to decide whether to show the name c
 
 ---
 
-### `POST /bookings/:bookingId/claim`
-
-*Protected (user must be OTP-verified).* Links the booking to the authenticated user. Called after OTP verification is complete.
-
-**Body:** *(none — user identity comes from the JWT)*
-
-**Response `200`:** Booking object with `user_id` now populated.
-
----
-
 ### `POST /bookings/:bookingId/waiver`
 
 *Protected.* Records waiver acceptance. Both fields must be true to proceed to payment.
@@ -712,11 +727,9 @@ window.PhonePeCheckout.transact({
 
 ---
 
-### `GET /api/payment/redirect`
+### `GET /payments/redirect`
 
 *Public.* Called by PhonePe's hosted pay page after the transaction reaches a terminal state (redirect back). Verifies payment status via Order Status API, confirms or fails the booking, then redirects the browser to the Next.js success or failure page.
-
-This endpoint is **not** under `/api/v1` — it is a top-level redirect handler callable by PhonePe without auth.
 
 **Query params:** `orderId` (PhonePe's `merchantOrderId`)
 
@@ -730,7 +743,7 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ---
 
-### `GET /api/payment/status/:merchantOrderId`
+### `GET /payments/status/:merchantOrderId`
 
 *Protected.* Polls the backend for the current payment state. Used by the frontend during the PENDING polling loop (max 5 polls, 5-second interval) and after the iFrame `CONCLUDED` callback.
 
@@ -748,7 +761,7 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ---
 
-### `POST /api/webhooks/phonepe`
+### `POST /webhooks/phonepe`
 
 *Public (verified by PhonePe SHA256 auth header).* Receives server-to-server payment event callbacks. This is the **primary** confirmation mechanism — the redirect handler is the secondary. Both are idempotent.
 
@@ -782,35 +795,77 @@ This endpoint is **not** under `/api/v1` — it is a top-level redirect handler 
 
 ## 8. Review Endpoints
 
-### `POST /bookings/:bookingId/review`
+Reviews are a first-class, self-contained domain. Every endpoint is namespaced under `/reviews`; the booking and admin domains do not own or expose review routes. A review is anchored 1:1 to a **completed** booking (`bookings.status = 'completed'`) via a unique `booking_id`, while its public value (ratings, summaries) is aggregated at the venue level.
 
-*Protected.* Submits a review for a past booking. Only callable if `slot_date + slot_end_time < NOW()` and no existing review for this booking.
+### `POST /reviews`
 
-**Body (multipart/form-data):**
+*Protected (onboarded user).* Submits a review for one of the caller's completed bookings.
+
+Rejected when the booking is not found or not owned by the caller (`404`), is not yet completed (`400`, `BOOKING_NOT_COMPLETED`), or already has a review (`409`, `DUPLICATE_REVIEW`).
+
+**Body (`application/json`):**
 
 | Field | Type | Required |
 |---|---|---|
+| `booking_id` | UUID | Yes |
 | `rating` | Integer (1–5) | Yes |
-| `comment` | String | No |
-| `photo` | File (image) | No |
+| `comment` | String (≤ 1000) | No |
+
+> Photo uploads (`photo_url`) are reserved in the schema and will be enabled when Cloudflare R2 integration lands.
 
 **Response `201`:**
 ```json
 {
   "id": "<uuid>",
+  "booking_id": "<uuid>",
+  "venue_id": "<uuid>",
   "rating": 4,
   "comment": "Great court, fast surface.",
-  "photo_url": "https://r2.example.com/reviews/<uuid>.jpg"
+  "photo_url": null,
+  "is_published": true,
+  "created_at": "<timestamp>"
 }
 ```
 
 ---
 
-### `GET /venues/:venueId/reviews`
+### `GET /reviews?venue_id=<uuid>`
 
-*Public.* Returns published reviews for the venue landing page.
+*Public.* Returns published reviews for a venue, newest first, with an aggregate rating summary. Used by venue-facing pages.
 
-**Query params:** `limit` (default 10), `page`.
+**Query params:** `venue_id` (UUID, required), `limit` (default 10, max 50), `page` (default 1).
+
+**Response `200`:** paginated `data[]` of public reviews plus `meta.summary`:
+```json
+{
+  "meta": {
+    "pagination": { "page": 1, "limit": 10, "total": 24, "total_pages": 3 },
+    "summary": { "average_rating": 4.6, "total_reviews": 24 }
+  }
+}
+```
+
+---
+
+### `GET /reviews/me?booking_id=<uuid>`
+
+*Protected (onboarded user).* Returns the authenticated user's own review for a booking, or `404` if none exists. Lets the booking owner check whether they have already reviewed a session.
+
+---
+
+### `GET /reviews/moderation?venue_id=<uuid>`
+
+*Protected.* Requires the `manage_bookings` permission on the target venue. Returns **all** reviews for the venue (published and unpublished), enriched with the reviewer's phone and booking session details for moderation.
+
+**Query params:** `venue_id` (UUID, required), `limit` (default 20, max 50), `page` (default 1), `is_published` (boolean, optional filter).
+
+---
+
+### `PATCH /reviews/:reviewId`
+
+*Protected.* Publishes or unpublishes a review. Authorization is enforced in the service layer against the review's own `venue_id` (the caller must hold `manage_bookings` for that venue); callers without access receive `404` to avoid leaking review existence.
+
+**Body (`application/json`):** `{ "is_published": false }`
 
 ---
 

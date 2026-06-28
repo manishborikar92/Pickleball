@@ -32,6 +32,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── health/            # Liveness/Readiness endpoints
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
 │   │       ├── payments/          # Gateway logic: PhonePe provider, webhook, redirect, reconciliation
+│   │       ├── reviews/           # Venue reviews: submission, public listing, and moderation
 │   │       ├── users/             # User profile, wallet, and history
 │   │       └── venues/            # Venues, courts, and availability
 │   └── tests/                     # Node.js native test suite
@@ -58,6 +59,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **Database Client Layer (`server/src/lib/prisma.js`)**: Configures the connection pool, handles transaction logging, and logs query metrics. *Owner: Database Architect*.
 - **Authentication Module (`server/src/modules/auth/`)**: Handles OTP dispatch via WhatsApp API, credential verification, and JSON Web Token (JWT) session cookies. *Owner: Security Engineer*.
 - **User Profile & Wallet Module (`server/src/modules/users/`)**: Manages user onboard states, user profile fields, and wallet ledger logs. *Owner: Core Developer*.
+- **Reviews Module (`server/src/modules/reviews/`)**: Owns all `/reviews` routes — submission for completed bookings, public venue listings with rating summaries, the owner's own-review lookup, and permission-gated moderation. Reviews depend one-way on bookings (eligibility gate) and never the reverse. *Owner: Core Developer*.
 - **API Spec & OpenAPI Modules (`server/src/modules/openapi/`)**: Compiles Swagger specs and serves OpenAPI schemas. *Owner: Tech Lead*.
 
 ### 2.2 Frontend Components (`web/src/`)
@@ -101,5 +103,5 @@ This matrix establishes bidirectional mapping between product specifications and
 | **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(booking)/venues/[slug]/book` |
 | **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(dashboard)/dashboard` |
 | **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(dashboard)/dashboard/wallet` |
-| **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews (Planned)` | `web/src/components/features/review` |
+| **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews` | `web/src/components/features/review` |
 | **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(dashboard)/dashboard/rewards` |

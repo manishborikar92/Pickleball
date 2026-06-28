@@ -10,6 +10,8 @@ import { createDefaultPaymentsRouter } from '../modules/payments/index.js';
 import { createDefaultVenuesRouter, createDefaultVenuesService } from '../modules/venues/index.js';
 import { createPaymentProviderFromEnv } from '../modules/payments/provider-factory.js';
 import { createWebhookRouter } from '../modules/payments/webhook.routes.js';
+import { createDefaultReviewsService, createReviewsRouter } from '../modules/reviews/index.js';
+import { createRequireVenuePermission } from '../middleware/authorize.middleware.js';
 
 export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   const router = Router();
@@ -28,6 +30,7 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   const paymentProvider = createPaymentProviderFromEnv(config);
 
   const bookingsService = createDefaultBookingsService({ config, venueService, paymentProvider });
+  const reviewsService = createDefaultReviewsService({ authorizationService });
 
   const { router: paymentsRouter, reconciliationService } = createDefaultPaymentsRouter({
     bookingsService,
@@ -36,12 +39,16 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
     paymentProvider,
   });
 
+  // Create venue permission middleware factory for admin routes
+  const requireVenuePermission = createRequireVenuePermission({ authorizationService });
+
   router.use('/auth', createDefaultAuthRouter({ config, userService, authService: authorizationService }));
   router.use('/users', createDefaultUsersRouter({ userService }));
   router.use('/venues', createDefaultVenuesRouter({ venueService }));
   router.use('/bookings', createBookingsRouter({ bookingsService }));
   router.use('/payments', paymentsRouter);
   router.use('/webhooks', createWebhookRouter({ bookingsService, reconciliationService, config }));
+  router.use('/reviews', createReviewsRouter({ reviewsService, requireVenuePermission }));
   router.use('/docs', createOpenApiRouter({ config }));
 
   return router;

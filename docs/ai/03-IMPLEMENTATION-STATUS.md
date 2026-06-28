@@ -24,7 +24,7 @@ We classify codebase features using the following lifecycle states:
 | Sandbox Payment Provider | **Built** (test-only) | `docs/adrs/ADR-004-booking-lifecycle-payments.md` | `server/src/modules/payments/sandbox-payment.provider.js` |
 | PhonePe Payments | **Built** | `docs/integrations/02-PAYMENT-INTEGRATION.md` | `server/src/modules/payments/phonepe-payment.provider.js` |
 | Wallet Transaction Logic | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
-| Reviews Submission | **Planned** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/reviews` |
+| Reviews & Moderation | **Built** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/reviews` |
 | Reward Scratch Cards | **Planned** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/rewards` |
 
 ---
@@ -64,8 +64,16 @@ We classify codebase features using the following lifecycle states:
 - [x] **Wallet Credits Schema**: Prisma balance tracks (`User.walletCredits`).
 - [x] **Refund Credit workflows**: Transactions reserve credits at initiation and roll back credits to user wallets immediately upon hold expiration.
 
-### 2.6 Review & Rewards (Planned / Deferred)
-- [ ] **Review Ratings API**: Submits ratings.
+### 2.6 Reviews (Built)
+- [x] **Review Submission API**: `POST /reviews` records a 1–5 rating and optional comment for the caller's own **completed** booking; enforces ownership, completion, and one-review-per-booking (unique `booking_id`).
+- [x] **Public Venue Listing**: `GET /reviews?venue_id=` returns published reviews (newest first) plus an aggregate rating summary, paginated.
+- [x] **Owner Self-Lookup**: `GET /reviews/me?booking_id=` returns the caller's own review for a booking.
+- [x] **Moderation Listing**: `GET /reviews/moderation?venue_id=` returns all reviews (published + unpublished) with reviewer/booking detail, gated by the `manage_bookings` venue permission.
+- [x] **Moderation Action**: `PATCH /reviews/:reviewId` publishes/unpublishes a review; authorization resolved in the service against the review's own `venue_id`.
+- [x] **Tests**: `tests/unit/reviews-service.test.js` and `tests/integration/review-routes.test.js`; OpenAPI + Postman coverage.
+- [ ] **Photo Uploads**: `photo_url` reserved in schema; awaiting Cloudflare R2 integration. (*Deferred*)
+
+### 2.7 Rewards (Planned / Deferred)
 - [ ] **Reward Configs**: Scans and dispenses pre-calculated Reward instances.
 - [ ] **Scratch Canvas UI**: Interactive HTML5 scratch-off canvas components.
 - [ ] **Spinner Wheel**: Wheel interactive layouts. (*Deferred*)

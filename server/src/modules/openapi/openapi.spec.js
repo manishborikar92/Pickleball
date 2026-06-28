@@ -816,6 +816,107 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
+      [`/reviews`]: {
+        post: {
+          tags: ['Reviews'],
+          summary: 'Submit a review for a completed booking',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['booking_id', 'rating'],
+                  properties: {
+                    booking_id: { type: 'string', format: 'uuid', example: '44444444-4444-4444-8444-444444444444' },
+                    rating: { type: 'integer', minimum: 1, maximum: 5, example: 5 },
+                    comment: { type: 'string', maxLength: 1000, example: 'Great court, fast surface.' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Review submitted', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Booking not completed or invalid payload', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            404: { description: 'Booking not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'A review already exists for this booking', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+        get: {
+          tags: ['Reviews'],
+          summary: 'List published reviews for a venue',
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 50, default: 10 } },
+          ],
+          responses: {
+            200: { description: 'Published reviews with rating summary', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Missing or invalid venue_id', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/reviews/me`]: {
+        get: {
+          tags: ['Reviews'],
+          summary: 'Get the authenticated user\'s review for a booking',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'booking_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'The caller\'s review for the booking', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Review not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/reviews/moderation`]: {
+        get: {
+          tags: ['Reviews'],
+          summary: 'List all reviews (published and unpublished) for a managed venue',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 50, default: 20 } },
+            { name: 'is_published', in: 'query', required: false, schema: { type: 'boolean' } },
+          ],
+          responses: {
+            200: { description: 'Moderation view of venue reviews', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            403: { description: 'Missing manage_bookings permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/reviews/{reviewId}`]: {
+        patch: {
+          tags: ['Reviews'],
+          summary: 'Moderate a review (publish or unpublish)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'reviewId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['is_published'],
+                  properties: {
+                    is_published: { type: 'boolean', example: false },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Review moderation state updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Review not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
       [`/docs/openapi.json`]: {
         get: {
           tags: ['Documentation'],
