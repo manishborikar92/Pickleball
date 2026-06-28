@@ -108,7 +108,7 @@ export function DataTable({
         /* 5. Main Responsive Grid Listing */
         <>
           {/* DESKTOP TABLE VIEW */}
-          <div className="hidden overflow-x-auto md:block md:flex-1 md:min-h-0 overflow-y-auto">
+          <div className="hidden overflow-x-auto md:block md:flex-1 md:min-h-0 overflow-y-auto hide-scrollbar">
             <table className="w-full border-collapse text-left text-sm text-muted">
               <thead className="border-b border-line bg-surface-panel text-xs font-bold uppercase tracking-wider text-foreground sticky top-0 z-10">
                 <tr>
@@ -202,7 +202,7 @@ export function DataTable({
           </div>
 
           {/* MOBILE CARD LIST VIEW */}
-          <div className="divide-y divide-line md:hidden flex-1 min-h-0 overflow-y-auto">
+          <div className="divide-y divide-line md:hidden flex-1 min-h-0 overflow-y-auto hide-scrollbar">
             {data.map((row, rowIndex) => {
               const key = getRowKey(row, rowIndex);
               const isSelected = selectedRowIds.has(key);

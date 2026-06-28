@@ -46,22 +46,26 @@ const BOOKING_COLUMNS = [
   {
     key: "actions",
     label: "",
-    className: "text-right",
+    className: "text-left md:w-[150px]",
+    sortable: false,
     render: (_, row) => (
-      <div className="flex items-center justify-end gap-3">
-        <Link
-          href={`/booking/confirmed?bookingId=${row.id}`}
-          className="text-xs font-bold text-accent transition-colors hover:text-accent-dim focus-visible:outline-none focus-visible:underline"
-        >
-          View
-        </Link>
-        {!row.hasReview && row.status === "completed" && (
-          <Link
+      <div className="flex items-center justify-start">
+        {!row.hasReview && row.status === "completed" ? (
+          <Button
             href={`/review/${row.id}`}
-            className="text-xs font-bold text-accent transition-colors hover:text-accent-dim focus-visible:outline-none focus-visible:underline"
+            variant="primary"
+            className="py-1 px-3.5 text-xs min-h-[2rem] w-28"
           >
             Rate Session
-          </Link>
+          </Button>
+        ) : (
+          <Button
+            href={`/booking/confirmed?bookingId=${row.id}`}
+            variant="secondary"
+            className="py-1 px-3.5 text-xs min-h-[2rem] w-28"
+          >
+            View
+          </Button>
         )}
       </div>
     ),
@@ -257,20 +261,23 @@ function MobileBookingCard(row) {
           <Currency value={row.amount} />
         </div>
         
-        <div className="flex items-center gap-3">
-          <Link
-            href={`/booking/confirmed?bookingId=${row.id}`}
-            className="text-xs font-bold text-accent transition-colors hover:text-accent-dim"
-          >
-            View
-          </Link>
-          {!row.hasReview && row.status === "completed" && (
-            <Link
+        <div className="flex items-center justify-start gap-2">
+          {!row.hasReview && row.status === "completed" ? (
+            <Button
               href={`/review/${row.id}`}
-              className="text-xs font-bold text-accent transition-colors hover:text-accent-dim"
+              variant="primary"
+              className="py-1 px-3 text-xs min-h-[2rem] w-28"
             >
               Rate Session
-            </Link>
+            </Button>
+          ) : (
+            <Button
+              href={`/booking/confirmed?bookingId=${row.id}`}
+              variant="secondary"
+              className="py-1 px-3 text-xs min-h-[2rem] w-28"
+            >
+              View
+            </Button>
           )}
         </div>
       </div>
