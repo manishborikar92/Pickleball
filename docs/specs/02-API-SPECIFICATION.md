@@ -638,6 +638,12 @@ The frontend uses this response on app load to decide whether to show the name c
 
 ---
 
+### `GET /bookings/:bookingId`
+
+*Protected.* Returns full booking details. User can only access their own bookings.
+
+---
+
 ### `POST /bookings/:bookingId/apply-coupon`
 
 *Session-authenticated (booking must belong to the session).* Applies a coupon and returns an updated price quote. Does not change the locked slot.
@@ -787,9 +793,38 @@ window.PhonePeCheckout.transact({
 
 ---
 
-### `GET /bookings/:bookingId`
+### `POST /payments/:paymentId/refund`
 
-*Protected.* Returns full booking details. User can only access their own bookings.
+*Protected (Requires `issue_credits` permission for the associated venue).* Initiates a refund for a payment.
+
+**Body (`application/json`):**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `amount` | Number | No | Optional amount to refund. If omitted, full refund may be issued. |
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Refund initiated",
+  "data": { }
+}
+```
+
+---
+
+### `POST /payments/:paymentId/refund/retry`
+
+*Protected (Requires `issue_credits` permission for the associated venue).* Retries a previously failed refund attempt.
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Refund retry initiated",
+  "data": { }
+}
+```
 
 ---
 
