@@ -1,54 +1,44 @@
+/**
+ * cookies.js — Server-side cookie mutation operations.
+ *
+ * Uses `cookies()` from next/headers, which is ONLY available in:
+ *   - Server Actions ("use server" files invoked as actions)
+ *   - Route Handlers
+ *
+ * NOT available in: proxy.js, Server Component rendering, client components.
+ * For proxy cookie operations, use NextResponse.cookies directly with
+ * constants from auth.config.js.
+ */
+
 import { cookies } from "next/headers";
+import { COOKIE_NAMES, COOKIE_MAX_AGE, secureCookieOptions } from "@/config/auth.config";
 
-export const COOKIE_NAMES = {
-  ACCESS_TOKEN: "pb_access_token",
-  REFRESH_TOKEN: "pb_refresh_token",
-  AUTH_ROLE: "pb_auth_role",
-  STAFF_ROLE: "pb_staff_role",
-  USER_ONBOARDED: "pb_user_onboarded",
-};
-
-export function extractCookieValue(setCookie, name) {
-  if (!setCookie) return "";
-  const match = setCookie.match(new RegExp(`${name}=([^;]*)`));
-  return match?.[1] || "";
-}
-
-function secureCookieOptions(maxAge) {
-  return {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge,
-  };
-}
+// Re-export constants so existing imports from "@/lib/cookies" still work
+export { COOKIE_NAMES, extractCookieValue, secureCookieOptions } from "@/config/auth.config";
 
 export async function setSessionCookies({ accessToken, refreshToken, user, role = "customer" }) {
   const cookieStore = await cookies();
 
   if (accessToken) {
-    cookieStore.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, secureCookieOptions(15 * 60));
+    cookieStore.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, secureCookieOptions(COOKIE_MAX_AGE.ACCESS_TOKEN));
   }
 
   if (refreshToken) {
-    cookieStore.set(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, secureCookieOptions(60 * 60 * 24 * 30));
+    cookieStore.set(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, secureCookieOptions(COOKIE_MAX_AGE.REFRESH_TOKEN));
   }
 
   if (user) {
-    cookieStore.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(60 * 60 * 24 * 30));
+    cookieStore.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     if (role !== "customer") {
-      cookieStore.set(COOKIE_NAMES.STAFF_ROLE, role, secureCookieOptions(60 * 60 * 24 * 30));
+      cookieStore.set(COOKIE_NAMES.STAFF_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     }
-    cookieStore.set(COOKIE_NAMES.USER_ONBOARDED, String(Boolean(user.onboarding_complete)), secureCookieOptions(60 * 60 * 24 * 30));
+    cookieStore.set(COOKIE_NAMES.USER_ONBOARDED, String(Boolean(user.onboarding_complete)), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }
 }
 
 export async function clearSessionCookies() {
   const cookieStore = await cookies();
-  cookieStore.delete({ name: COOKIE_NAMES.ACCESS_TOKEN, path: "/" });
-  cookieStore.delete({ name: COOKIE_NAMES.REFRESH_TOKEN, path: "/" });
-  cookieStore.delete({ name: COOKIE_NAMES.AUTH_ROLE, path: "/" });
-  cookieStore.delete({ name: COOKIE_NAMES.STAFF_ROLE, path: "/" });
-  cookieStore.delete({ name: COOKIE_NAMES.USER_ONBOARDED, path: "/" });
+  for (const name of Object.values(COOKIE_NAMES)) {
+    cookieStore.delete({ name, path: "/" });
+  }
 }

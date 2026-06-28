@@ -8,16 +8,29 @@ import { COOKIE_NAMES } from "@/lib/cookies";
 
 /**
  * getSession — Resolves the active authenticated session.
- * Cached per request via React cache().
+ *
+ * Read-only: reads cookies and calls the API. Never refreshes tokens
+ * and never writes cookies. Token refresh happens in proxy.js BEFORE
+ * this code runs, so the access token in cookies is always fresh.
+ *
+ * If the API returns 401 despite proxy refresh, the token is genuinely
+ * invalid — return null and let requireRouteAccess handle the redirect.
+ *
+ * Cached per request via React cache() so parallel calls in the same
+ * render (e.g. layout + page) only hit the API once.
  */
 export const getSession = cache(async function getSession() {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value || "";
   const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
+
   if (!accessToken && !refreshToken) return null;
 
   try {
-    const { payload } = await apiRequest("/api/v1/users/me", { accessToken });
+    const { payload } = await apiRequest("/api/v1/users/me", {
+      accessToken,
+      refreshToken,
+    });
     const role = cookieStore.get(COOKIE_NAMES.AUTH_ROLE)?.value || "customer";
     return {
       user: {
@@ -34,8 +47,11 @@ export const getSession = cache(async function getSession() {
 });
 
 /**
- * requireRouteAccess — Asserts authentication and authorization access constraints
- * for layouts and page routes on the server side.
+ * requireRouteAccess — Asserts authentication and authorization for
+ * server layouts. If session is null (user not authenticated or token
+ * invalid), redirects to login. The proxy has already attempted token
+ * refresh before this runs, so a null session here means genuinely
+ * unauthenticated.
  */
 export async function requireRouteAccess(pathname) {
   const isStaffRoute = pathname.startsWith("/admin");
@@ -49,7 +65,6 @@ export async function requireRouteAccess(pathname) {
     }
   }
 
-  // Customer onboarding check: Must provide a name if authenticated as a customer
   if (session.role === "customer" && !session.user.name) {
     if (pathname !== "/onboarding") {
       redirect(`/onboarding?next=${encodeURIComponent(pathname)}`);
@@ -58,7 +73,6 @@ export async function requireRouteAccess(pathname) {
     redirect("/dashboard/overview");
   }
 
-  // Check RBAC permissions for the route
   if (!canAccessRoute(pathname, session.role)) {
     redirect(isStaffRoute ? "/admin/overview" : "/dashboard/overview");
   }

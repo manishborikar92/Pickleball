@@ -1,148 +1,61 @@
-import { cookies } from "next/headers";
-import { COOKIE_NAMES, extractCookieValue } from "@/lib/cookies";
+/**
+ * apiClient.js — Stateless server-side API fetch wrapper.
+ *
+ * This module NEVER reads or writes cookies and NEVER performs token refresh.
+ * It accepts tokens as explicit parameters and returns the response.
+ * Token management (reading cookies, refreshing, persisting) is handled
+ * by proxy.js (at the network boundary) and Server Actions (for mutations).
+ */
 
-const activeRefreshes = new Map();
+import { getApiBaseUrl, COOKIE_NAMES } from "@/config/auth.config";
 
-function getApiBaseUrl() {
-  return process.env.API_BASE_URL
-    || process.env.NEXT_PUBLIC_API_BASE_URL
-    || "http://localhost:5000";
-}
-
+/**
+ * Makes an API request to the backend.
+ *
+ * @param {string} path - API endpoint path (e.g. "/api/v1/users/me")
+ * @param {object} options
+ * @param {string} options.method - HTTP method (default: "GET")
+ * @param {object} options.body - Request body (will be JSON-stringified)
+ * @param {string} options.accessToken - Bearer token for Authorization header
+ * @param {string} options.refreshToken - Refresh token sent as Cookie header
+ * @returns {{ payload: object, setCookie: string|null }}
+ * @throws {Error} with `.status` property on non-2xx responses
+ */
 export async function apiRequest(path, {
   method = "GET",
   body,
-  accessToken,
-  refreshToken,
-} = {}, _isRetry = false) {
+  accessToken = "",
+  refreshToken = "",
+} = {}) {
   const headers = {
     "Content-Type": "application/json",
   };
 
-  let token = accessToken;
-  if (!token) {
-    try {
-      const cookieStore = await cookies();
-      token = cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value || "";
-    } catch {
-      // Ignore if called in a context where cookies() is not available
-    }
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (refreshToken) {
+    headers.Cookie = `${COOKIE_NAMES.REFRESH_TOKEN}=${refreshToken}`;
   }
 
-  let rToken = refreshToken;
-  if (!rToken) {
-    try {
-      const cookieStore = await cookies();
-      rToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
-    } catch {}
-  }
-
-  if (rToken) {
-    headers.Cookie = `${COOKIE_NAMES.REFRESH_TOKEN}=${rToken}`;
-  }
-
-  let response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const response = await fetch(`${getApiBaseUrl()}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
     cache: "no-store",
   });
 
-  // Handle 401 or missing token, and try to refresh
-  if ((response.status === 401 || !token) && !_isRetry && rToken) {
-    try {
-      let refreshPromise = activeRefreshes.get(rToken);
-      if (!refreshPromise) {
-        refreshPromise = (async () => {
-          const refreshResponse = await fetch(`${getApiBaseUrl()}/api/v1/auth/refresh`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Cookie": `${COOKIE_NAMES.REFRESH_TOKEN}=${rToken}`,
-            },
-            cache: "no-store",
-          });
-
-          if (!refreshResponse.ok) {
-            throw new Error(`Refresh failed with status ${refreshResponse.status}`);
-          }
-
-          const refreshPayload = await refreshResponse.json();
-          const newAccessToken = refreshPayload.data.access_token;
-          const setCookieHeader = refreshResponse.headers.get("set-cookie");
-          const newRefreshToken = extractCookieValue(setCookieHeader, COOKIE_NAMES.REFRESH_TOKEN) || rToken;
-
-          return { newAccessToken, newRefreshToken };
-        })();
-
-        activeRefreshes.set(rToken, refreshPromise);
-      }
-
-      try {
-        const { newAccessToken, newRefreshToken } = await refreshPromise;
-
-        // Save new tokens to cookies
-        try {
-          const cookieStore = await cookies();
-          const secure = process.env.NODE_ENV === "production";
-          cookieStore.set(COOKIE_NAMES.ACCESS_TOKEN, newAccessToken, {
-            httpOnly: true,
-            secure,
-            sameSite: "lax",
-            path: "/",
-            maxAge: 15 * 60,
-          });
-          cookieStore.set(COOKIE_NAMES.REFRESH_TOKEN, newRefreshToken, {
-            httpOnly: true,
-            secure,
-            sameSite: "lax",
-            path: "/",
-            maxAge: 60 * 60 * 24 * 30,
-          });
-        } catch (err) {
-          console.warn("Could not write refreshed cookies in current context:", err.message);
-        }
-
-        // Retry the original request with the new access token
-        const retryHeaders = {
-          ...headers,
-          Authorization: `Bearer ${newAccessToken}`,
-        };
-        if (newRefreshToken) {
-          retryHeaders.Cookie = `${COOKIE_NAMES.REFRESH_TOKEN}=${newRefreshToken}`;
-        }
-
-        response = await fetch(`${getApiBaseUrl()}${path}`, {
-          method,
-          headers: retryHeaders,
-          body: body === undefined ? undefined : JSON.stringify(body),
-          cache: "no-store",
-        });
-      } finally {
-        activeRefreshes.delete(rToken);
-      }
-    } catch (refreshErr) {
-      console.error("Failed to automatically refresh token:", refreshErr);
-      try {
-        const cookieStore = await cookies();
-        cookieStore.delete({ name: COOKIE_NAMES.ACCESS_TOKEN, path: "/" });
-        cookieStore.delete({ name: COOKIE_NAMES.REFRESH_TOKEN, path: "/" });
-        cookieStore.delete({ name: COOKIE_NAMES.AUTH_ROLE, path: "/" });
-        cookieStore.delete({ name: COOKIE_NAMES.STAFF_ROLE, path: "/" });
-        cookieStore.delete({ name: COOKIE_NAMES.USER_ONBOARDED, path: "/" });
-      } catch (cookieErr) {
-        console.warn("Failed to clear session cookies on refresh failure:", cookieErr.message);
-      }
-    }
+  if (response.status === 204) {
+    return { payload: null, setCookie: response.headers.get("set-cookie") };
   }
 
-  const payload = response.status === 204 ? null : await response.json();
+  const payload = await response.json();
+
   if (!response.ok) {
-    throw new Error(payload?.message || `API request failed with ${response.status}`);
+    const error = new Error(payload?.message || `API request failed with ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return {
