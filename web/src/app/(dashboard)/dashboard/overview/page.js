@@ -28,7 +28,6 @@ function DashboardSkeleton() {
 export default function DashboardOverviewPage() {
   return (
     <div className="space-y-8">
-      <SectionHeader title="Player Dashboard" />
       <Suspense fallback={<DashboardSkeleton />}>
         <DashboardContent />
       </Suspense>

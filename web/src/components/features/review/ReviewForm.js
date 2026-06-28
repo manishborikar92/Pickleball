@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ArrowLeft, UserCircle } from "lucide-react";
 
 import { Button, Card } from "@/components/shared";
 import { validateReview } from "@/lib/validation";
@@ -68,17 +69,28 @@ export function ReviewForm({ bookingId }) {
 
 function ReviewHeader() {
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-background/90 px-4 backdrop-blur-xl sm:h-16 sm:px-6 md:px-8">
-      <Link
-        href="/"
-        className="grid h-9 w-9 place-items-center rounded-full bg-surface-high text-base font-bold transition-colors hover:bg-surface-high/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10 sm:w-10 sm:text-xl"
-        aria-label="Close and go back"
-      >
-        ✕
-      </Link>
-      <h1 className="text-base font-black sm:text-xl md:text-2xl">Leave a Review</h1>
-      {/* Spacer to maintain perfect center alignment for the title */}
-      <div className="h-9 w-9 sm:h-10 sm:w-10" aria-hidden="true" />
+    <header className="sticky top-0 z-30 border-b border-line bg-background/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-sm font-bold text-muted transition-colors hover:text-accent"
+          aria-label="Back to home"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Back</span>
+        </Link>
+        <h1 className="text-lg font-black text-foreground sm:text-xl">
+          Leave a Review
+        </h1>
+        <Link
+          href="/dashboard/overview"
+          className="flex items-center gap-1.5 text-sm font-bold text-muted transition-colors hover:text-accent"
+          aria-label="Go to account"
+        >
+          <UserCircle className="h-5 w-5" />
+          <span className="hidden sm:inline">Account</span>
+        </Link>
+      </div>
     </header>
   );
 }
