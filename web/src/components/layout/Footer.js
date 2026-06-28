@@ -56,11 +56,6 @@ export function Footer() {
             </h3>
             <ul className="flex flex-col gap-2 text-xs sm:text-sm">
               <li>
-                <Link href="/interest" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
-                  Join the Waitlist
-                </Link>
-              </li>
-              <li>
                 <Link href="/venues/besa-nagpur/book" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
                   Book Court Slots
                 </Link>

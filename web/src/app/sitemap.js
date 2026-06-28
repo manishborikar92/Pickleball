@@ -8,7 +8,6 @@ export default async function sitemap() {
   return [
     "",
     "/about",
-    "/interest",
     "/privacy",
     "/support",
     "/terms",

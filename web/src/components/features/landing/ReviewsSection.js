@@ -15,7 +15,7 @@ const reviews = [
     label: "Intermediate Player",
     rating: 5,
     quote:
-      "Nagpur has been desperately needing dedicated pickleball courts. The location in Besa is perfect for players from Manish Nagar and Somalwada. I signed up for their early-access waitlist, and the process was super smooth. Really looking forward to the floodlights for late evening matches!",
+      "Nagpur has been desperately needing dedicated pickleball courts. The location in Besa is perfect for players from Manish Nagar and Somalwada. Booked my first session online, and the process was super smooth. Really looking forward to the floodlights for late evening matches!",
   },
   {
     id: "review-3",
@@ -39,7 +39,7 @@ const reviews = [
     label: "DUPR 3.5 Player",
     rating: 4,
     quote:
-      "The website looks slick and clean, was able to fill out the interest form in under a minute. Nagpur has a lot of tennis players switching to pickleball, so having two dedicated courts in a growing area like Besa is a smart move. Hoping they stick to the launch timeline!",
+      "The website looks slick and clean, and the booking flow is super smooth. Nagpur has a lot of tennis players switching to pickleball, so having two dedicated courts in a growing area like Besa is a smart move. Hoping to see more court slots open up soon!",
   },
   {
     id: "review-6",

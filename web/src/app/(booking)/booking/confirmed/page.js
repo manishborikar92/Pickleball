@@ -103,7 +103,7 @@ export default async function BookingConfirmedPage(props) {
               <ShieldAlert className="h-10 w-10 text-red-400" />
             </div>
             <h1 className="mb-2 text-2xl font-bold text-foreground">Booking Details Unavailable</h1>
-            <p className="mb-6 text-muted-foreground text-sm">
+            <p className="mb-6 text-muted text-sm">
               We successfully received your payment, but we couldn&apos;t retrieve the reservation details right now. Please check your Dashboard under &apos;My Bookings&apos; or contact our support team.
             </p>
             {errorMsg && (

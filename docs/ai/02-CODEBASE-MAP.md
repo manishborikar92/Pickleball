@@ -38,7 +38,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 └── web/                           # Next.js 16 App Router Frontend
     └── src/
         ├── app/                   # Next.js Page routes (grouped by domain)
-        │   ├── (marketing)/       # Static/cached public pages (landing, about, terms, privacy, support, interest)
+        │   ├── (marketing)/       # Static/cached public pages (landing, about, terms, privacy, support)
         │   ├── (booking)/         # Dynamic booking flow (venue selection, checkout, confirmation)
         │   ├── (auth)/            # Auth views (login, onboarding, staff-login) + co-located actions
         │   ├── (dashboard)/       # Customer authenticated views (overview, bookings, wallet)
