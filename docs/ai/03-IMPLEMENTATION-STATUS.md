@@ -15,7 +15,7 @@ We classify codebase features using the following lifecycle states:
 | Feature Module | Status | Target Specification | Mapped Directory |
 |---|---|---|---|
 | Customer Auth (OTP) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
-| Edge Route Proxy | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
+| Thin Redirect Proxy | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
 | Customer Profiles | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
 | Staff Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
 | Scheduling & Hours | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/venues` |
@@ -37,7 +37,7 @@ We classify codebase features using the following lifecycle states:
 - [x] **Profile Creation**: Customer entries are auto-generated upon verifying OTP.
 - [x] **In-Context Authentication**: Login modal holds consecutive slot parameter state variables.
 - [x] **Onboarding Redirects**: Forces redirect to `/onboarding` if profile properties are missing.
-- [x] **Token Rotation**: Silent authentication refreshes execute rotation checks via `web/src/lib/proxy-core.js`.
+- [x] **Token Rotation**: Silent authentication refreshes handled in `web/src/lib/apiClient.js` on 401 responses. Proxy is thin redirect-only.
 
 ### 2.2 Staff Authentication & Management (Partial)
 - [x] **Email & Password Guards**: Restricts dashboard panels to staff.

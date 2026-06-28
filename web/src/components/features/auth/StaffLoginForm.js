@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Button, Card, FormField, Input } from "@/components/shared";
-import { signInStaffAction } from "@/app/actions/auth-actions";
+import { signInStaffAction } from "@/app/(auth)/actions";
 import { Lock, Mail, Shield } from "lucide-react";
 
 /**

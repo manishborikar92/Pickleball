@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
-import { formatCurrency } from "@/lib/booking-engine";
+import { formatCurrency } from "@/lib/bookingEngine";
 import { CheckCircle2, X, Lock, CalendarDays, Clock } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 import { useOverlay } from "@/hooks/useOverlay";

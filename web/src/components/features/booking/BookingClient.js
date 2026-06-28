@@ -3,14 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Card } from "@/components/shared";
-import { useAuth } from "@/hooks/useAuth";
 import { AuthFlow } from "./AuthFlow";
 import { BookingHeader } from "./BookingHeader";
 import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
-import { buildDateWindow, getSlotRange } from "@/lib/booking-engine";
+import { buildDateWindow, getSlotRange } from "@/lib/bookingEngine";
 import { validateCoupon } from "@/lib/validation";
 import {
   acceptBookingWaiverAction,
@@ -18,8 +17,8 @@ import {
   getVenueAvailabilityAction,
   initiateBookingPaymentAction,
   previewBookingPriceAction,
-} from "@/app/actions/booking-actions";
-import { buildBookingSelectionPayload } from "@/services/bookingService";
+} from "@/app/(booking)/venues/[slug]/book/actions";
+import { buildBookingSelectionPayload } from "@/lib/normalizers";
 
 const INITIAL_AUTH = {
   step: "closed",
@@ -44,8 +43,8 @@ export function BookingClient({
   courts,
   availability,
   initialDate,
+  session: activeSession,
 }) {
-  const { session: activeSession } = useAuth();
 
   const dates = useMemo(
     () => buildDateWindow({

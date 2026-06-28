@@ -4,18 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
-import { useAuth } from "@/hooks/useAuth";
+import { sendCustomerOtpAction, verifyCustomerOtpAction } from "@/app/(auth)/actions";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 
 /**
- * CustomerLoginForm — Phone + OTP authentication using shared steps and AuthContext.
+ * CustomerLoginForm — Phone + OTP authentication using server actions directly.
  */
 export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { sendCustomerOtp, loginCustomer } = useAuth();
-  
+
   const [step, setStep] = useState("phone"); // "phone" | "otp"
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -25,7 +24,8 @@ export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = f
     setLoading(true);
     setError("");
     try {
-      await sendCustomerOtp(verifiedPhone);
+      const res = await sendCustomerOtpAction(verifiedPhone);
+      if (!res.success) throw new Error(res.error);
       setPhone(verifiedPhone);
       setStep("otp");
     } catch (err) {
@@ -40,14 +40,17 @@ export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = f
     setError("");
 
     try {
-      const result = await loginCustomer(phone, otpCode);
+      const res = await verifyCustomerOtpAction(phone, otpCode);
+      if (!res.success) throw new Error(res.error);
+
+      const nextStep = res.data?.next_step;
 
       if (onSuccess) {
-        onSuccess({ phone, isNew: result.nextStep === "complete_onboarding" });
+        onSuccess({ phone, isNew: nextStep === "complete_onboarding" });
       } else {
         const nextParam = searchParams.get("next");
         const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";
-        if (result.nextStep === "complete_onboarding") {
+        if (nextStep === "complete_onboarding") {
           router.push(`/onboarding?next=${encodeURIComponent(next)}`);
         } else {
           router.push(next);

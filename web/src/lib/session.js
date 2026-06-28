@@ -2,31 +2,23 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 
-import { canAccessRoute, getRolePermissions, roles } from "@/lib/rbac";
-import { apiRequest } from "@/services/apiClient";
-import { COOKIES } from "@/constants/cookies";
-
-export const SESSION_COOKIE = COOKIES.AUTH_ROLE;
-const ACCESS_COOKIE = COOKIES.ACCESS_TOKEN;
+import { canAccessRoute, getRolePermissions } from "@/lib/rbac";
+import { apiRequest } from "@/lib/apiClient";
+import { COOKIE_NAMES } from "@/lib/cookies";
 
 /**
  * getSession — Resolves the active authenticated session.
- * 
- * Supports an optional preferredType ('customer' | 'staff') to target a specific scope,
- * and falls back to dynamic resolution based on available session cookies.
- * 
- * Session values are resolved from backend-issued HTTP-only cookies and
- * hydrated through the Express API.
+ * Cached per request via React cache().
  */
-export const getSession = cache(async function getSession(preferredType = null) {
+export const getSession = cache(async function getSession() {
   const cookieStore = await cookies();
-  const accessToken = cookieStore.get(ACCESS_COOKIE)?.value || "";
-  const refreshToken = cookieStore.get(COOKIES.REFRESH_TOKEN)?.value || "";
+  const accessToken = cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value || "";
+  const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
   if (!accessToken && !refreshToken) return null;
 
   try {
     const { payload } = await apiRequest("/api/v1/users/me", { accessToken });
-    const role = cookieStore.get(SESSION_COOKIE)?.value || "customer";
+    const role = cookieStore.get(COOKIE_NAMES.AUTH_ROLE)?.value || "customer";
     return {
       user: {
         id: payload.data.id,
@@ -47,7 +39,7 @@ export const getSession = cache(async function getSession(preferredType = null) 
  */
 export async function requireRouteAccess(pathname) {
   const isStaffRoute = pathname.startsWith("/admin");
-  const session = await getSession(isStaffRoute ? "staff" : "customer");
+  const session = await getSession();
 
   if (!session) {
     if (isStaffRoute) {
@@ -63,7 +55,6 @@ export async function requireRouteAccess(pathname) {
       redirect(`/onboarding?next=${encodeURIComponent(pathname)}`);
     }
   } else if (session.role === "customer" && session.user.name && pathname === "/onboarding") {
-    // Already fully onboarded
     redirect("/dashboard/overview");
   }
 

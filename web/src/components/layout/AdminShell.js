@@ -1,9 +1,8 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/shared";
 import { BaseSidebar } from "./BaseSidebar";
-import { signOutStaffAction } from "@/app/actions/auth-actions";
+import { signOutStaffAction } from "@/app/(auth)/actions";
 
 const ADMIN_LINKS = [
   { href: "/admin/overview", label: "Overview", exact: true },
@@ -15,10 +14,7 @@ const ADMIN_LINKS = [
   { href: "/admin/settings", label: "Settings" },
 ];
 
-export function AdminShell({ session: propSession, children }) {
-  const { session: hookSession } = useAuth();
-  const session = hookSession || propSession;
-
+export function AdminShell({ session, children }) {
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground md:flex-row">
       <BaseSidebar

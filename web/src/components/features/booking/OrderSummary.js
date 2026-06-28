@@ -1,6 +1,6 @@
 import { Button } from "@/components/shared";
 import { Card } from "@/components/shared";
-import { formatCurrency } from "@/lib/booking-engine";
+import { formatCurrency } from "@/lib/bookingEngine";
 import { Tag, Lock, ShieldCheck, CalendarDays } from "lucide-react";
 
 /**

@@ -1,23 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
-import { useAuth } from "@/hooks/useAuth";
-import { authService } from "@/services/authService";
+import { completeOnboardingAction } from "@/app/(auth)/actions";
 import { NameForm } from "./steps/NameForm";
 
 /**
- * CustomerOnboardingForm — Profile registration using shared step and AuthContext.
+ * CustomerOnboardingForm — Profile registration using server actions directly.
  */
-export function CustomerOnboardingForm({ phone: phoneProp, onSuccess, inline = false }) {
+export function CustomerOnboardingForm({ onSuccess, inline = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { completeOnboarding } = useAuth();
-  
-  const [phone] = useState(() => {
-    return phoneProp || authService.resolvePendingPhone() || "";
-  });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -26,10 +21,11 @@ export function CustomerOnboardingForm({ phone: phoneProp, onSuccess, inline = f
     setError("");
 
     try {
-      await completeOnboarding(fullName, phone);
+      const res = await completeOnboardingAction(fullName);
+      if (!res.success) throw new Error(res.error);
 
       if (onSuccess) {
-        onSuccess({ name: fullName, phone });
+        onSuccess({ name: fullName });
       } else {
         const nextParam = searchParams.get("next");
         const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";

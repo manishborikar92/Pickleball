@@ -35,16 +35,19 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── users/             # User profile, wallet, and history
 │   │       └── venues/            # Venues, courts, and availability
 │   └── tests/                     # Node.js native test suite
-└── web/                           # Next.js App Router Frontend
+└── web/                           # Next.js 16 App Router Frontend
     └── src/
         ├── app/                   # Next.js Page routes (grouped by domain)
-        │   ├── (app)/dashboard    # Private customer views (bookings, wallet)
-        │   ├── (auth)/            # Auth views (login, onboarding)
-        │   ├── (public)/          # Landing page and booking slot selection
-        │   └── (staff)/admin      # Staff administrative dashboards
-        ├── components/            # Reusable UI React components
-        ├── lib/                   # Next.js proxy-core and client-side RBAC
-        └── proxy.js               # Edge request interceptor
+        │   ├── (marketing)/       # Static/cached public pages (landing, about, terms, privacy, support, interest)
+        │   ├── (booking)/         # Dynamic booking flow (venue selection, checkout, confirmation)
+        │   ├── (auth)/            # Auth views (login, onboarding, staff-login) + co-located actions
+        │   ├── (dashboard)/       # Customer authenticated views (overview, bookings, wallet)
+        │   └── (admin)/           # Staff admin dashboards (overview, bookings, schedule, pricing, courts, users, settings)
+        ├── components/            # Reusable UI React components (features, layout, shared, seo)
+        ├── lib/                   # Server utilities (apiClient, session, cookies, rbac, normalizers, bookingEngine)
+        ├── config/                # Application configuration (venue, metadata, map)
+        ├── hooks/                 # Client-side hooks (useOverlay, useTable)
+        └── proxy.js               # Thin redirect-only proxy (cookie presence checks, no data fetching)
 ```
 
 ---
@@ -58,10 +61,14 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **API Spec & OpenAPI Modules (`server/src/modules/openapi/`)**: Compiles Swagger specs and serves OpenAPI schemas. *Owner: Tech Lead*.
 
 ### 2.2 Frontend Components (`web/src/`)
-- **Proxy Interception (`web/proxy.js` & `web/src/lib/proxy-core.js`)**: Extracts auth headers from incoming secure requests. *Owner: Security Engineer*.
-- **Onboarding Page (`web/src/app/(auth)/onboarding`)**: Handles onboarding flows. *Owner: Frontend Engineer*.
-- **Private Dashboard (`web/src/app/(app)/dashboard`)**: Renders bookings list, wallet balance, and transaction history. *Owner: Frontend Engineer*.
-- **Admin Panel (`web/src/app/(staff)/admin`)**: Operator interface for schedules. *Owner: Frontend Engineer*.
+- **Thin Proxy (`web/proxy.js`)**: Lightweight cookie-presence checks and redirects. No data fetching or token refresh. *Owner: Security Engineer*.
+- **Server Auth (`web/src/lib/session.js`)**: Single auth check via `getSession()` memoized with React `cache()`. *Owner: Security Engineer*.
+- **API Client (`web/src/lib/apiClient.js`)**: Server-only API client with automatic token refresh on 401 responses. *Owner: Core Developer*.
+- **Cookie Management (`web/src/lib/cookies.js`)**: Centralized cookie operations (set, clear, extract). *Owner: Core Developer*.
+- **Marketing Pages (`web/src/app/(marketing)/`)**: Static/cached pages with shared Header + Footer layout. *Owner: Frontend Engineer*.
+- **Booking Flow (`web/src/app/(booking)/`)**: Dynamic booking with co-located server actions. *Owner: Frontend Engineer*.
+- **Customer Dashboard (`web/src/app/(dashboard)/`)**: Renders bookings list, wallet balance with Suspense streaming. *Owner: Frontend Engineer*.
+- **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, courts, users. *Owner: Frontend Engineer*.
 
 ---
 
@@ -91,8 +98,8 @@ This matrix establishes bidirectional mapping between product specifications and
 | **Customer Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `User`, `OtpRequest` | `server/src/modules/auth` | `web/src/components/features/auth` |
 | **Staff Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `StaffCredential` | `server/src/modules/auth` | `web/src/app/(auth)/staff-login` |
 | **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/venues` | `web/src/components/features/booking` |
-| **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(public)/booking` |
-| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(app)/dashboard` |
-| **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(app)/dashboard/wallet` |
+| **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(booking)/venues/[slug]/book` |
+| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(dashboard)/dashboard` |
+| **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(dashboard)/dashboard/wallet` |
 | **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews (Planned)` | `web/src/components/features/review` |
-| **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(app)/dashboard/rewards` |
+| **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(dashboard)/dashboard/rewards` |

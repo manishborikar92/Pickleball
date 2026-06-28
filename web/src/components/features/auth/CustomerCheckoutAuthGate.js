@@ -3,14 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Card, FormAlert } from "@/components/shared";
-import { useAuth } from "@/hooks/useAuth";
-import { authService } from "@/services/authService";
+import {
+  sendCustomerOtpAction,
+  verifyCustomerOtpAction,
+  completeOnboardingAction,
+  getSessionAction,
+} from "@/app/(auth)/actions";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 import { NameForm } from "./steps/NameForm";
 
 /**
  * CustomerCheckoutAuthGate — Inline phone verification and profile onboarding.
+ * Calls server actions directly instead of going through AuthContext.
  */
 export function CustomerCheckoutAuthGate({
   inline = false,
@@ -20,8 +25,7 @@ export function CustomerCheckoutAuthGate({
   initialPhone = "",
   initialStep = "phone",
 }) {
-  const { sendCustomerOtp, loginCustomer, completeOnboarding } = useAuth();
-  const [step, setStep] = useState(initialStep); // phone, otp, name
+  const [step, setStep] = useState(initialStep);
   const [phone, setPhone] = useState(initialPhone);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,7 +34,8 @@ export function CustomerCheckoutAuthGate({
     setLoading(true);
     setError("");
     try {
-      await sendCustomerOtp(verifiedPhone);
+      const res = await sendCustomerOtpAction(verifiedPhone);
+      if (!res.success) throw new Error(res.error);
       setPhone(verifiedPhone);
       setStep("otp");
     } catch (err) {
@@ -45,11 +50,14 @@ export function CustomerCheckoutAuthGate({
     setError("");
 
     try {
-      const result = await loginCustomer(phone, otpCode);
-      const session = await authService.getSession("customer");
+      const res = await verifyCustomerOtpAction(phone, otpCode);
+      if (!res.success) throw new Error(res.error);
+
+      const nextStep = res.data?.next_step;
+      const session = await getSessionAction();
       const existingName = session?.user?.name || "";
 
-      if (result.nextStep !== "complete_onboarding" && existingName) {
+      if (nextStep !== "complete_onboarding" && existingName) {
         if (onSuccess) {
           onSuccess({ name: existingName, phone, isNew: false });
         }
@@ -72,7 +80,8 @@ export function CustomerCheckoutAuthGate({
     setError("");
 
     try {
-      await completeOnboarding(fullName, phone);
+      const res = await completeOnboardingAction(fullName);
+      if (!res.success) throw new Error(res.error);
       if (onSuccess) {
         onSuccess({ name: fullName, phone, isNew: true });
       }

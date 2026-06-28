@@ -17,14 +17,14 @@ import {
 import {
   buildDateWindow,
   getPaymentReceiptDetails,
-} from "../src/lib/booking-engine.js";
+} from "../src/lib/bookingEngine.js";
 import {
   buildBookingSelectionPayload,
   normalizeAvailabilityResponse,
   normalizePricePreviewResponse,
   normalizeBooking,
   normalizeBookingDetailResponse,
-} from "../src/services/bookingService.js";
+} from "../src/lib/normalizers.js";
 
 test("role permissions are permission-key based and expandable", () => {
   assert.equal(hasPermission("manager", "edit_pricing"), true);

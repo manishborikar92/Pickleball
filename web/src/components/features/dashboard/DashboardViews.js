@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Badge, Button, Card, SectionHeader } from "@/components/shared";
 import { DataTable, StatusBadge, Currency, DateTime, TransactionType, TransactionDate } from "@/components/shared/Table";
 import { useTable } from "@/hooks/useTable";
-import { formatCurrency } from "@/lib/booking-engine";
+import { formatCurrency } from "@/lib/bookingEngine";
 
 
 /* ── Column Definitions ─────────────────────────── */

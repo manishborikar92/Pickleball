@@ -23,10 +23,11 @@ This platform solves these friction points through:
 ## 2. Technology Stack
 
 ### 2.1 Frontend (`web/`)
-- **Core Framework**: Next.js (App Router, Server-Side Rendering)
-- **Styling**: Vanilla CSS and Tailwind CSS (premium dark aesthetic with HSL accent styling)
-- **State Management**: React Context & Hooks (client-side state hooks holding checkout configurations)
-- **Edge Routing**: A custom `proxy.js` edge handler that intercepts cookies and manages silent JWT token rotation.
+- **Core Framework**: Next.js 16 (App Router, Cache Components, Partial Prerendering, Server Components)
+- **Styling**: Tailwind CSS 4 (premium dark aesthetic with CSS custom properties)
+- **State Management**: Server-side session via `getSession()` — no global client auth context
+- **Proxy**: Thin redirect-only `proxy.js` — cookie presence checks, no data fetching or token refresh
+- **Route Groups**: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`
 
 ### 2.2 Backend (`server/`)
 - **Core Framework**: Express.js (Node 20+)
@@ -57,10 +58,11 @@ This platform solves these friction points through:
 │   ├── prisma/                    # Schema definition, migrations, & seeding
 │   ├── src/                       # Backend module controller/service logic
 │   └── tests/                     # Node native unit/integration tests
-└── web/                           # Next.js App Router Frontend
-    ├── src/app/                   # Frontend page routing and middleware
-    ├── src/components/            # UI components (auth modal, booking grids)
-    └── proxy.js                   # Edge request proxy mapping sessions
+└── web/                           # Next.js 16 App Router Frontend
+    ├── src/app/                   # Pages: (marketing), (booking), (auth), (dashboard), (admin)
+    ├── src/components/            # UI components (features, layout, shared, seo)
+    ├── src/lib/                   # Server utilities (apiClient, session, cookies, rbac)
+    └── proxy.js                   # Thin redirect-only proxy (cookie checks only)
 ```
 
 ---

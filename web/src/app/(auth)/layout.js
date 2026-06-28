@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import "../globals.css";
 
 export const metadata = {
   title: {
@@ -53,7 +52,7 @@ export default function AuthLayout({ children }) {
 
         {/* Minimal Auth Footer */}
         <footer className="py-6 text-center text-[10px] sm:text-xs text-muted/30 font-medium">
-          <p>© {new Date().getFullYear()} Baseline Arena. All rights reserved.</p>
+          <p>© 2026 Baseline Arena. All rights reserved.</p>
         </footer>
       </div>
   );

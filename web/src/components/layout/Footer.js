@@ -2,6 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { VENUE } from "@/config/venue.config";
 
+const CURRENT_YEAR = 2026;
+
 export function Footer() {
   return (
     <footer className="border-t border-line bg-surface py-12 sm:py-16">
@@ -109,7 +111,7 @@ export function Footer() {
         {/* Bottom Bar - Fluid alignments without strict magic numbers */}
         <div className="mt-12 flex flex-col items-center border-t border-line/40 pt-4 text-center md:flex-row md:items-start md:text-left">
           <p className="shrink-0 text-xs font-semibold text-muted/65">
-            &copy; {new Date().getFullYear()} {VENUE.brandName}. All rights reserved.
+            &copy; {CURRENT_YEAR} {VENUE.brandName}. All rights reserved.
           </p>
         </div>
 

@@ -1,9 +1,9 @@
 /* eslint-disable @next/next/no-img-element */
+import { connection } from "next/server";
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
-
 export async function GET(request) {
+  await connection();
   try {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get("title") || "Baseline Arena";

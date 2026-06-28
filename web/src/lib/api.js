@@ -5,7 +5,7 @@ import {
   getWalletAction,
   getPaymentStatusAction,
   getBookingByIdAction,
-} from "@/app/actions/booking-actions";
+} from "@/app/(booking)/venues/[slug]/book/actions";
 
 const wait = (value) =>
   Promise.resolve(value);

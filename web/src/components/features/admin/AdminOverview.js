@@ -1,6 +1,6 @@
 import { Card, SectionHeader } from "@/components/shared";
 import { AdminTable } from "./AdminTable";
-import { formatCurrency } from "@/lib/booking-engine";
+import { formatCurrency } from "@/lib/bookingEngine";
 
 export function AdminOverview({ overview }) {
   const metrics = [

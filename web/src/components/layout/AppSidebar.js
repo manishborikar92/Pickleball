@@ -1,8 +1,7 @@
 "use client";
 
 import { BaseSidebar } from "./BaseSidebar";
-import { signOutCustomerAction } from "@/app/actions/auth-actions";
-import { useAuth } from "@/hooks/useAuth";
+import { signOutCustomerAction } from "@/app/(auth)/actions";
 import { VENUE } from "@/config/venue.config";
 
 const NAV_LINKS = [
@@ -12,10 +11,7 @@ const NAV_LINKS = [
   { href: `/venues/${VENUE.slug}/book`, label: "Book Again" },
 ];
 
-export function AppSidebar({ session: propSession }) {
-  const { session: hookSession } = useAuth();
-  const session = hookSession || propSession;
-
+export function AppSidebar({ session }) {
   return (
     <BaseSidebar
       title="Baseline Arena"

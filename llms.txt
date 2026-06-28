@@ -1,6 +1,6 @@
 # Pickleball Booking Platform Context
 
-This repository contains a Next.js frontend and an Express.js/PostgreSQL backend for a Pickleball Court Booking Platform.
+This repository contains a Next.js 16 frontend and an Express.js/PostgreSQL backend for a Pickleball Court Booking Platform.
 
 ## Primary Documentation
 - Main Index: [docs/README.md](docs/README.md)
@@ -16,6 +16,7 @@ This repository contains a Next.js frontend and an Express.js/PostgreSQL backend
 - Frontend Pages Root: [web/src/app](web/src/app)
 
 ## Core Architecture Snapshot
+- **Frontend**: Next.js 16 App Router with Cache Components, Partial Prerendering, Server Components, and thin redirect-only proxy. Route groups: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`. Server-side auth via `getSession()` — no client-side auth context.
 - **Availability Ownership**: Handled fully inside the `venues` module; availability slots are generated dynamically from base schedules and exception overlays.
 - **Concurrency Safety**: Double-bookings are prevented atomically at slot hold creation time by a PostgreSQL partial unique index (`booking_slots_no_double_book`) on the `booking_slots` table.
 - **Booking Holds**: Active holds are represented as pending bookings (status `pending_payment`) with a 10-minute expiration TTL.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/shared";
-import { formatCurrency } from "@/lib/booking-engine";
+import { formatCurrency } from "@/lib/bookingEngine";
 
 /**
  * Renders status value inside standard Badge container with curated tones.

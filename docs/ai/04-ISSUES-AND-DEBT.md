@@ -33,8 +33,8 @@ Our QA gating requires all tests to pass prior to merging.
 
 ### 2.2 Frontend Tests (`web/tests/`)
 - **Framework**: Node.js native test runner.
-- **Pass Metrics**: All 11 frontend test cases are passing successfully.
-  - Passes: 11
+- **Pass Metrics**: All 16 frontend test cases are passing successfully.
+  - Passes: 16
   - Failures: 0
 - **Execution Command**:
   ```bash

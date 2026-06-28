@@ -63,12 +63,10 @@ export function useTable(
     setSortBy((currentSortBy) => {
       if (currentSortBy === columnKey) {
         setSortOrder((currentOrder) => (currentOrder === "asc" ? "desc" : "asc"));
-        return columnKey;
       } else {
-        setSortBy(columnKey);
         setSortOrder("asc");
-        return columnKey;
       }
+      return columnKey;
     });
     setPage(1);
   }, []);
