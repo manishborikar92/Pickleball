@@ -45,12 +45,12 @@ function createTestApp(serviceOverrides = {}, configOverrides = {}) {
     },
     async logoutCurrent() {},
     async logoutAll() {},
-    async loginStaff() {
+    async loginAdmin() {
       return {
-        access_token: 'staff-access-token',
-        refreshToken: { raw: 'staff-refresh-1' },
+        access_token: 'admin-access-token',
+        refreshToken: { raw: 'admin-refresh-1' },
         user: {
-          id: 'staff-user-1',
+          id: 'admin-user-1',
           email: 'manager@besanagpur.com',
           name: 'Ravi Kumar',
         },
@@ -171,17 +171,17 @@ test('POST /auth/logout clears refresh cookie', async () => {
   assert.match(response.headers['set-cookie'][0], /pb_refresh_token=;/);
 });
 
-test('POST /auth/staff/login sets refresh cookie and returns staff next step', async () => {
+test('POST /auth/admin/login sets refresh cookie and returns admin next step', async () => {
   const app = createTestApp();
 
   const response = await request(app)
-    .post('/api/v1/auth/staff/login')
+    .post('/api/v1/auth/admin/login')
     .send({ email: 'manager@besanagpur.com', password: 'SecurePass123!' });
 
   assert.equal(response.status, 200);
-  assert.equal(response.body.data.access_token, 'staff-access-token');
+  assert.equal(response.body.data.access_token, 'admin-access-token');
   assert.equal(response.body.data.next_step, 'admin_dashboard');
-  assert.match(response.headers['set-cookie'][0], /pb_refresh_token=staff-refresh-1/);
+  assert.match(response.headers['set-cookie'][0], /pb_refresh_token=admin-refresh-1/);
 });
 
 test('POST /auth/logout-all clears refresh cookie after revoking sessions', async () => {

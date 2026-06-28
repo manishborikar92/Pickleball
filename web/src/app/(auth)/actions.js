@@ -80,7 +80,7 @@ export async function signOutCustomerAction() {
   redirect("/");
 }
 
-export async function signOutStaffAction() {
+export async function signOutAdminAction() {
   const cookieStore = await cookies();
   const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
 
@@ -92,15 +92,15 @@ export async function signOutStaffAction() {
   }
 
   await clearSessionCookies();
-  redirect("/staff-login");
+  redirect("/admin/login");
 }
 
-export async function signInStaffAction(formData) {
+export async function signInAdminAction(formData) {
   const email = String(formData?.get("email") || "");
   const password = String(formData?.get("password") || "");
   const next = String(formData?.get("next") || "/admin/overview");
 
-  const { payload, setCookie } = await apiRequest("/api/v1/auth/staff/login", {
+  const { payload, setCookie } = await apiRequest("/api/v1/auth/admin/login", {
     method: "POST",
     body: { email, password },
   });

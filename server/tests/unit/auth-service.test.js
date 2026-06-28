@@ -30,10 +30,10 @@ function createMemoryRepository(clock = () => fixedNow) {
   const otps = [];
   const sessions = new Map();
   const refreshTokens = new Map();
-  const staffCredentials = new Map();
+  const adminCredentials = new Map();
 
   return {
-    data: { users, otps, sessions, refreshTokens, staffCredentials },
+    data: { users, otps, sessions, refreshTokens, adminCredentials },
     async createOtpRequest(record) {
       const saved = { id: nextId('otp'), createdAt: clock(), ...record };
       otps.push(saved);
@@ -63,23 +63,23 @@ function createMemoryRepository(clock = () => fixedNow) {
       users.set(phone, user);
       return { user, isNewUser: true };
     },
-    async findStaffCredentialByEmail({ email }) {
-      return staffCredentials.get(email.toLowerCase()) || null;
+    async findAdminCredentialByEmail({ email }) {
+      return adminCredentials.get(email.toLowerCase()) || null;
     },
-    async recordStaffLoginFailure({ id }) {
-      const credential = [...staffCredentials.values()].find((item) => item.id === id);
+    async recordAdminLoginFailure({ id }) {
+      const credential = [...adminCredentials.values()].find((item) => item.id === id);
       credential.failedLoginAttempts += 1;
       return credential;
     },
-    async recordStaffLoginSuccess({ id, ipAddress }) {
-      const credential = [...staffCredentials.values()].find((item) => item.id === id);
+    async recordAdminLoginSuccess({ id, ipAddress }) {
+      const credential = [...adminCredentials.values()].find((item) => item.id === id);
       credential.failedLoginAttempts = 0;
       credential.lastLoginIp = ipAddress;
       credential.lastLoginAt = fixedNow;
       return credential;
     },
-    async unlockStaffCredential(id) {
-      const credential = [...staffCredentials.values()].find((item) => item.id === id);
+    async unlockAdminCredential(id) {
+      const credential = [...adminCredentials.values()].find((item) => item.id === id);
       credential.failedLoginAttempts = 0;
       credential.lockedUntil = null;
       credential.status = 'active';
@@ -231,22 +231,22 @@ test('refreshSession rotates refresh token and revokes the used token', async ()
   assert.notEqual(oldToken.revokedAt, null);
 });
 
-test('loginStaff issues token pair for an active staff credential', async () => {
+test('loginAdmin issues token pair for an active admin credential', async () => {
   const repository = createMemoryRepository();
-  const staffUser = {
-    id: 'staff-user-1',
+  const adminUser = {
+    id: 'admin-user-1',
     phone: '+919999999999',
     name: 'Ravi Kumar',
     isPhoneVerified: true,
   };
-  repository.data.staffCredentials.set('manager@besanagpur.com', {
-    id: 'staff-credential-1',
+  repository.data.adminCredentials.set('manager@besanagpur.com', {
+    id: 'admin-credential-1',
     email: 'manager@besanagpur.com',
     passwordHash: await createPasswordHash('SecurePass123!'),
     status: 'active',
     forcePasswordChange: false,
     failedLoginAttempts: 0,
-    user: staffUser,
+    user: adminUser,
     roles: ['manager'],
     permissions: ['manage_bookings'],
   });
@@ -259,7 +259,7 @@ test('loginStaff issues token pair for an active staff credential', async () => 
     randomBytes: () => Buffer.alloc(32, 7),
   });
 
-  const result = await service.loginStaff({
+  const result = await service.loginAdmin({
     email: 'Manager@BesaNagpur.com',
     password: 'SecurePass123!',
     ipAddress: '127.0.0.1',
@@ -348,25 +348,25 @@ test('verifyCustomerOtp blocks verification after maxAttempts limit is reached',
   );
 });
 
-test('loginStaff automatically unlocks and resets attempts if lock has expired', async () => {
+test('loginAdmin automatically unlocks and resets attempts if lock has expired', async () => {
   const repository = createMemoryRepository();
-  const staffUser = {
-    id: 'staff-user-1',
+  const adminUser = {
+    id: 'admin-user-1',
     phone: '+919999999999',
     name: 'Ravi Kumar',
     isPhoneVerified: true,
   };
 
   const pastLockTime = new Date(fixedNow.getTime() - 60000);
-  repository.data.staffCredentials.set('manager@besanagpur.com', {
-    id: 'staff-credential-1',
+  repository.data.adminCredentials.set('manager@besanagpur.com', {
+    id: 'admin-credential-1',
     email: 'manager@besanagpur.com',
     passwordHash: await createPasswordHash('SecurePass123!'),
     status: 'locked',
     forcePasswordChange: false,
     failedLoginAttempts: 10,
     lockedUntil: pastLockTime,
-    user: staffUser,
+    user: adminUser,
     roles: ['manager'],
     permissions: ['manage_bookings'],
   });
@@ -379,7 +379,7 @@ test('loginStaff automatically unlocks and resets attempts if lock has expired',
     randomBytes: () => Buffer.alloc(32, 7),
   });
 
-  const result = await service.loginStaff({
+  const result = await service.loginAdmin({
     email: 'manager@besanagpur.com',
     password: 'SecurePass123!',
     ipAddress: '127.0.0.1',
@@ -388,7 +388,7 @@ test('loginStaff automatically unlocks and resets attempts if lock has expired',
 
   assert.equal(result.user.email, 'manager@besanagpur.com');
 
-  const cred = repository.data.staffCredentials.get('manager@besanagpur.com');
+  const cred = repository.data.adminCredentials.get('manager@besanagpur.com');
   assert.equal(cred.status, 'active');
   assert.equal(cred.failedLoginAttempts, 0);
   assert.equal(cred.lockedUntil, null);
@@ -619,7 +619,7 @@ test('AuthService.hasPermission evaluates user permissions at a venue correctly'
   const userWithPerm = {
     id: 'user-with-perm',
     phone: '+919876543210',
-    name: 'Authorized Staff',
+    name: 'Authorized Admin',
     isPhoneVerified: true,
     permissions: ['issue_credits'],
   };

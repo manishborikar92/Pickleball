@@ -54,12 +54,12 @@ export const getSession = cache(async function getSession() {
  * unauthenticated.
  */
 export async function requireRouteAccess(pathname) {
-  const isStaffRoute = pathname.startsWith("/admin");
+  const isAdminRoute = pathname.startsWith("/admin");
   const session = await getSession();
 
   if (!session) {
-    if (isStaffRoute) {
-      redirect(`/staff-login?next=${encodeURIComponent(pathname)}`);
+    if (isAdminRoute) {
+      redirect(`/admin/login?next=${encodeURIComponent(pathname)}`);
     } else {
       redirect(`/login?next=${encodeURIComponent(pathname)}`);
     }
@@ -74,7 +74,7 @@ export async function requireRouteAccess(pathname) {
   }
 
   if (!canAccessRoute(pathname, session.role)) {
-    redirect(isStaffRoute ? "/admin/overview" : "/dashboard/overview");
+    redirect(isAdminRoute ? "/admin/overview" : "/dashboard/overview");
   }
 
   return session;

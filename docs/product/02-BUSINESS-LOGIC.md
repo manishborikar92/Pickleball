@@ -46,7 +46,7 @@ All admin API queries are filtered to the venue(s) the requesting user has a rol
 
 The platform uses **two entirely separate authentication systems** that coexist under the same JWT verification layer:
 
-| Dimension | Customer (OTP) | Staff (Password) |
+| Dimension | Customer (OTP) | Admin (Password) |
 |---|---|---|
 | Roles | `customer` | `super_admin`, `manager`, `staff` |
 | Login identifier | Phone number | Email address |
@@ -54,7 +54,7 @@ The platform uses **two entirely separate authentication systems** that coexist 
 | Account creation | Self-serve (OTP flow) | Admin-provisioned (script or admin panel) |
 | Entry point | Booking page auth gate | `/admin/login` page |
 | Password reset | Not applicable | Email reset token (no OTP cost) |
-| `staff_credentials` row | Never created | Always required |
+| `admin_credentials` row | Never created | Always required |
 | JWT issued | ✓ (same format) | ✓ (same format) |
 
 Both systems issue the same access-token shape and session model. The `requireAuth` middleware is auth-method-agnostic: it verifies the JWT signature, expiry, and subject/session claims. Role resolution always comes from `venue_user_roles` to `role_permissions`, regardless of how the token was obtained.
@@ -116,16 +116,16 @@ On `POST /auth/otp/verify`:
 
 ---
 
-### 2.5 Staff Auth — Credential-Based Flow
+### 2.5 Admin Auth — Credential-Based Flow
 
 #### Account Provisioning
 
-Staff accounts are never self-registered. A super admin creates them via the admin panel or a backend script:
+Admin accounts are never self-registered. A super admin creates them via the admin panel or a backend script:
 
 ```
-POST /admin/staff { email, name, role_id, venue_id }
-  → Creates users record (name pre-set — no onboarding step for staff)
-  → Creates staff_credentials record (status = 'pending_activation')
+POST /admin/accounts { email, name, role_id, venue_id }
+  → Creates users record (name pre-set — no onboarding step for admins)
+  → Creates admin_credentials record (status = 'pending_activation')
   → Assigns venue_user_roles record
   → Generates activation_token (raw), stores activation_token_hash (bcrypt)
   → Sends activation email with link:
@@ -137,9 +137,9 @@ Activation tokens expire after **72 hours**. If expired, the super admin re-send
 #### Account Activation (First-Time Password Set)
 
 ```
-Staff clicks email link → /admin/activate?token=xxx
+Admin clicks email link → /admin/activate?token=xxx
   → Frontend shows password creation form
-  → POST /auth/staff/activate { token, password, password_confirm }
+  → POST /auth/admin/activate { token, password, password_confirm }
   → Backend bcrypt-verifies token against activation_token_hash
   → If valid and not expired:
       password_hash set, activation_token_hash cleared
@@ -151,11 +151,11 @@ Staff clicks email link → /admin/activate?token=xxx
 #### Login Flow
 
 ```
-Staff navigates to /admin/login
+Admin navigates to /admin/login
   → Enters email + password
-  → POST /auth/staff/login { email, password }
+  → POST /auth/admin/login { email, password }
   → Backend:
-      1. Find staff_credentials by email
+      1. Find admin_credentials by email
       2. Check status: suspended → 403; locked + locked_until > NOW() → 423
       3. bcrypt.compare(password, password_hash)
       4. If fail: increment failed_login_attempts
@@ -170,20 +170,20 @@ Staff navigates to /admin/login
 #### Password Reset Flow
 
 ```
-Staff clicks "Forgot password" on /admin/login
-  → Enters email → POST /auth/staff/reset-password/request { email }
+Admin clicks "Forgot password" on /admin/login
+  → Enters email → POST /auth/admin/reset-password/request { email }
   → Backend:
-      Find staff_credentials by email
+      Find admin_credentials by email
       If not found: respond 200 (do not reveal whether email exists — security)
       If found: generate reset_token (raw), store password_reset_token_hash (bcrypt)
                set password_reset_expires_at = NOW() + 1 hour
                Send reset email with link: /admin/reset-password?token=[raw_token]
   → Always returns 200 with generic message
 
-Staff clicks email link → /admin/reset-password?token=xxx
-  → Enters new password → POST /auth/staff/reset-password/confirm { token, password, password_confirm }
+Admin clicks email link → /admin/reset-password?token=xxx
+  → Enters new password → POST /auth/admin/reset-password/confirm { token, password, password_confirm }
   → Backend:
-      Find staff_credentials where reset token hash matches AND expires_at > NOW()
+      Find admin_credentials where reset token hash matches AND expires_at > NOW()
       If invalid/expired: 400 INVALID_RESET_TOKEN
       If valid:
         Set new password_hash, clear reset token fields
@@ -192,7 +192,7 @@ Staff clicks email link → /admin/reset-password?token=xxx
         JWT issued, next_step = "admin_dashboard"
 ```
 
-**Note:** WhatsApp OTP is never used in the staff password reset flow. Reset is entirely email-based.
+**Note:** WhatsApp OTP is never used in the admin password reset flow. Reset is entirely email-based.
 
 #### Security Controls
 
@@ -206,12 +206,12 @@ Staff clicks email link → /admin/reset-password?token=xxx
 | Token expiry | Activation: 72 hours; Password reset: 1 hour |
 | Force password change | Set on provision; must change before accessing any admin route |
 | Suspension | Immediate effect on new logins; active sessions can be revoked through the session tables |
-| HTTPS | All staff auth endpoints HTTPS only in production |
+| HTTPS | All admin auth endpoints HTTPS only in production |
 
 #### Account Deactivation / Suspension
 
 ```
-Admin sets staff_credentials.status = 'suspended'
+Admin sets admin_credentials.status = 'suspended'
 → All future login attempts rejected with 403 ACCOUNT_SUSPENDED
 → Active auth sessions are revoked when the admin suspension workflow is implemented
 ```
@@ -220,7 +220,7 @@ Admin sets staff_credentials.status = 'suspended'
 
 ### 2.6 Shared JWT Layer
 
-Both customer OTP auth and staff password auth issue the same JWT format:
+Both customer OTP auth and admin password auth issue the same JWT format:
 
 ```json
 { "sub": "<user_id>", "sid": "<session_id>", "roles": [], "permissions": [], "exp": <epoch> }
@@ -245,8 +245,8 @@ requirePermission('edit_pricing'):
 requireOnboarding:
   1. requireAuth
   2. Check req.user.name IS NOT NULL → proceed or 403 ONBOARDING_INCOMPLETE
-  (Note: staff users always have name set at provisioning, so this check
-   trivially passes for all staff; requireOnboarding is only meaningful
+  (Note: admin users always have name set at provisioning, so this check
+   trivially passes for all admins; requireOnboarding is only meaningful
    for customer-facing routes)
 ```
 
@@ -256,17 +256,17 @@ requireOnboarding:
 |---|:---:|:---:|:---:|---|
 | Landing page, `/book`, availability API | | | | Fully public |
 | `POST /auth/otp/*` | | | | Customer OTP |
-| `POST /auth/staff/login` | | | | Staff credential endpoint |
-| `POST /auth/staff/activate`, `reset-password/*` | | | | Token-based only |
+| `POST /auth/admin/login` | | | | Admin credential endpoint |
+| `POST /auth/admin/activate`, `reset-password/*` | | | | Token-based only |
 | `/login` page | | | | Redirects away if already authenticated + onboarded |
 | `/onboarding` page | ✓ | | | Redirects away if `name IS NOT NULL` |
 | `GET /users/me`, `POST /auth/onboarding` | ✓ | | | Auth but not onboarding required |
-| `POST /auth/staff/change-password` | ✓ | | | Accessible even when `force_password_change` blocks other routes |
+| `POST /auth/admin/change-password` | ✓ | | | Accessible even when `force_password_change` blocks other routes |
 | `POST /bookings/hold`, waiver, payment | ✓ | ✓ | | Core booking actions |
 | `/bookings`, `/wallet`, `/rewards` pages | ✓ | ✓ | | Protected customer pages |
 | `/review/[id]` | ✓ | ✓ | | Booking owner also verified |
-| `/admin/login` page | | | | Redirects away if already staff-authenticated |
-| All `/admin/*` routes | ✓ | ✓ | ✓ | Staff only |
+| `/admin/login` page | | | | Redirects away if already admin-authenticated |
+| All `/admin/*` routes | ✓ | ✓ | ✓ | Admin only |
 
 ### 2.8 Edge Cases
 
@@ -280,19 +280,19 @@ User re-enters phone → OTP → existing `users` record found → `next_step: "
 `users.phone` is `UNIQUE`. OTP verify is an upsert — same phone always resolves to the same `users` row.
 
 **Duplicate email prevention:**
-`staff_credentials.email` is `UNIQUE`. Admin provisioning endpoint returns `409 EMAIL_ALREADY_EXISTS` if email is already in use.
+`admin_credentials.email` is `UNIQUE`. Admin provisioning endpoint returns `409 EMAIL_ALREADY_EXISTS` if email is already in use.
 
-**Staff phone number:**
-Staff users have a `users.phone` if they want one (for future WhatsApp communications), but it is not required and is not used for auth. Staff never go through OTP.
+**Admin phone number:**
+Admin users have a `users.phone` if they want one (for future WhatsApp communications), but it is not required and is not used for auth. Admins never go through OTP.
 
-**Customer who later becomes staff:**
-Scenario: A user who booked as a customer is later promoted to staff. The same `users` record is used. A `staff_credentials` row is created for them. A `venue_user_roles` row is updated to a non-customer role. Their next customer OTP login will return `next_step: "admin_dashboard"` instead of `resume_booking`. They can still access their booking history via customer routes with the same JWT.
+**Customer who later becomes an admin user:**
+Scenario: A user who booked as a customer is later promoted to an admin role. The same `users` record is used. A `admin_credentials` row is created for them. A `venue_user_roles` row is updated to a non-customer role. Their next customer OTP login will return `next_step: "admin_dashboard"` instead of `resume_booking`. They can still access their booking history via customer routes with the same JWT.
 
 **Admin access to customer-facing routes:**
 Admin users have `onboarding_complete = true` (name is always set at provisioning). They can therefore also access customer-facing routes (`requireOnboarding` passes). This is by design — admins may need to test the booking flow.
 
 **Force password change blocking:**
-If `staff_credentials.force_password_change = true`, login returns `next_step: "force_password_change"`. The admin panel frontend redirects to the change-password screen. All other admin routes return `403 FORCE_PASSWORD_CHANGE_REQUIRED` until the password is updated.
+If `admin_credentials.force_password_change = true`, login returns `next_step: "force_password_change"`. The admin panel frontend redirects to the change-password screen. All other admin routes return `403 FORCE_PASSWORD_CHANGE_REQUIRED` until the password is updated.
 
 ---
 

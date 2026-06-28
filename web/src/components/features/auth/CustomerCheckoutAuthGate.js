@@ -20,7 +20,7 @@ import { NameForm } from "./steps/NameForm";
 export function CustomerCheckoutAuthGate({
   inline = false,
   onSuccess,
-  showStaffLoginLink = false,
+  showAdminLoginLink = false,
   collectName = true,
   initialPhone = "",
   initialStep = "phone",
@@ -126,15 +126,15 @@ export function CustomerCheckoutAuthGate({
 
       {errorBanner}
 
-      {showStaffLoginLink && (
+      {showAdminLoginLink && (
         <div className="mt-4 text-center border-t border-line/40 pt-4">
           <p className="text-xs text-muted">
-            Accessing staff portal?{" "}
+            Accessing admin portal?{" "}
             <Link
-              href="/staff-login"
+              href="/admin/login"
               className="font-bold text-accent hover:underline"
             >
-              Staff Sign-In
+              Admin Sign-In
             </Link>
           </p>
         </div>

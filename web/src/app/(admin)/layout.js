@@ -9,7 +9,7 @@ export const metadata = {
   },
 };
 
-export default async function StaffLayout({ children }) {
+export default async function AdminLayout({ children }) {
   await connection();
   const session = await requireRouteAccess("/admin");
   return (

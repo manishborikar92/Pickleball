@@ -53,8 +53,8 @@ export const createAuthRepository = ({ prisma } = {}) => {
     return { user, isNewUser: true };
   },
 
-  async findStaffCredentialByEmail({ email }) {
-    const credential = await db().staffCredential.findUnique({
+  async findAdminCredentialByEmail({ email }) {
+    const credential = await db().adminCredential.findUnique({
       where: { email: email.toLowerCase() },
       include: {
         user: {
@@ -75,8 +75,8 @@ export const createAuthRepository = ({ prisma } = {}) => {
     };
   },
 
-  async recordStaffLoginFailure({ id, lockedUntil = null }) {
-    return db().staffCredential.update({
+  async recordAdminLoginFailure({ id, lockedUntil = null }) {
+    return db().adminCredential.update({
       where: { id },
       data: {
         failedLoginAttempts: { increment: 1 },
@@ -90,8 +90,8 @@ export const createAuthRepository = ({ prisma } = {}) => {
     });
   },
 
-  async recordStaffLoginSuccess({ id, ipAddress = null }) {
-    return db().staffCredential.update({
+  async recordAdminLoginSuccess({ id, ipAddress = null }) {
+    return db().adminCredential.update({
       where: { id },
       data: {
         failedLoginAttempts: 0,
@@ -102,8 +102,8 @@ export const createAuthRepository = ({ prisma } = {}) => {
     });
   },
 
-  async unlockStaffCredential(id) {
-    return db().staffCredential.update({
+  async unlockAdminCredential(id) {
+    return db().adminCredential.update({
       where: { id },
       data: {
         failedLoginAttempts: 0,

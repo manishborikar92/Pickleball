@@ -6,7 +6,7 @@ The Express.js REST API server is the core business logic engine, database coord
 
 ## 1. Responsibilities
 
-- **Authentication & Sessions**: Manages customer OTP delivery (WhatsApp) and verification, and staff credential logins. Handles JSON Web Token (JWT) session creation, verification, and rotation.
+- **Authentication & Sessions**: Manages customer OTP delivery (WhatsApp) and verification, and admin credential logins. Handles JSON Web Token (JWT) session creation, verification, and rotation.
 - **Database Coordination**: Abstracts PostgreSQL queries using Prisma ORM. Encapsulates connection pools and atomic database-level unique constraint checks (partial unique index).
 - **Validation**: Guards all endpoints via Joi schema validations, rejecting dirty payloads before processing.
 - **Integrations**: Connects to WhatsApp Business API and PhonePe gateway, and handles webhook security validation.

@@ -10,7 +10,7 @@ import {
 
 // ── Cookie helpers (NextResponse context) ──
 
-function setTokenCookies(response, { accessToken, refreshToken, role, staffRole, onboarded }) {
+function setTokenCookies(response, { accessToken, refreshToken, role, adminRole, onboarded }) {
   if (accessToken) {
     response.cookies.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, secureCookieOptions(COOKIE_MAX_AGE.ACCESS_TOKEN));
   }
@@ -20,8 +20,8 @@ function setTokenCookies(response, { accessToken, refreshToken, role, staffRole,
   if (role) {
     response.cookies.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }
-  if (staffRole) {
-    response.cookies.set(COOKIE_NAMES.STAFF_ROLE, staffRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+  if (adminRole) {
+    response.cookies.set(COOKIE_NAMES.ADMIN_ROLE, adminRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }
   if (onboarded !== undefined) {
     response.cookies.set(COOKIE_NAMES.USER_ONBOARDED, String(onboarded), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
@@ -54,13 +54,13 @@ async function refreshTokens(refreshToken) {
     const newRefreshToken = extractCookieValue(setCookieHeader, COOKIE_NAMES.REFRESH_TOKEN) || refreshToken;
     const user = payload.data?.user;
     const role = resolveRole(user);
-    const staffRole = role !== "customer" ? role : "";
+    const adminRole = role !== "customer" ? role : "";
 
     return {
       accessToken: payload.data.access_token,
       refreshToken: newRefreshToken,
       role,
-      staffRole,
+      adminRole,
       onboarded: Boolean(user?.onboarding_complete),
     };
   } catch (err) {
@@ -77,7 +77,7 @@ export async function proxy(request) {
   let accessToken = request.cookies.get(COOKIE_NAMES.ACCESS_TOKEN)?.value || "";
   let refreshToken = request.cookies.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
   let customerRole = request.cookies.get(COOKIE_NAMES.AUTH_ROLE)?.value || "";
-  let staffRole = request.cookies.get(COOKIE_NAMES.STAFF_ROLE)?.value || "";
+  let adminRole = request.cookies.get(COOKIE_NAMES.ADMIN_ROLE)?.value || "";
   let onboarded = request.cookies.get(COOKIE_NAMES.USER_ONBOARDED)?.value === "true";
 
   let tokensRefreshed = false;
@@ -96,7 +96,7 @@ export async function proxy(request) {
       accessToken = newTokens.accessToken;
       refreshToken = newTokens.refreshToken;
       customerRole = newTokens.role === "customer" ? "customer" : customerRole;
-      staffRole = newTokens.staffRole || staffRole;
+      adminRole = newTokens.adminRole || adminRole;
       onboarded = newTokens.onboarded;
       tokensRefreshed = true;
     } else {
@@ -104,13 +104,13 @@ export async function proxy(request) {
       accessToken = "";
       refreshToken = "";
       customerRole = "";
-      staffRole = "";
+      adminRole = "";
       onboarded = false;
     }
   }
 
   const hasToken = !!(accessToken || refreshToken);
-  const hasStaffRole = !!staffRole;
+  const hasAdminRole = !!adminRole;
   const hasCustomerRole = customerRole === "customer";
 
   // ── Helper to create a redirect with refreshed cookies ──
@@ -129,10 +129,11 @@ export async function proxy(request) {
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
-  if (pathname.startsWith("/admin") && (!hasToken || !hasStaffRole)) {
-    const staffLoginUrl = new URL("/staff-login", request.url);
-    staffLoginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(staffLoginUrl);
+  // The admin login page lives under /admin/login; it must stay reachable while unauthenticated.
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login" && (!hasToken || !hasAdminRole)) {
+    const adminLoginUrl = new URL("/admin/login", request.url);
+    adminLoginUrl.searchParams.set("next", pathname);
+    return NextResponse.redirect(adminLoginUrl);
   }
 
   // Unboarded customers → onboarding
@@ -161,7 +162,7 @@ export async function proxy(request) {
     if (nextParam) loginUrl.searchParams.set("next", nextParam);
     return NextResponse.redirect(loginUrl);
   }
-  if (pathname === "/staff-login" && hasToken && hasStaffRole) {
+  if (pathname === "/admin/login" && hasToken && hasAdminRole) {
     const nextParam = request.nextUrl.searchParams.get("next") || "/admin/overview";
     const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
     return redirectWithCookies(new URL(safeNext, request.url));
@@ -178,7 +179,7 @@ export async function proxy(request) {
       `${COOKIE_NAMES.ACCESS_TOKEN}=${newTokens.accessToken}`,
       `${COOKIE_NAMES.REFRESH_TOKEN}=${newTokens.refreshToken}`,
       newTokens.role ? `${COOKIE_NAMES.AUTH_ROLE}=${newTokens.role}` : "",
-      newTokens.staffRole ? `${COOKIE_NAMES.STAFF_ROLE}=${newTokens.staffRole}` : "",
+      newTokens.adminRole ? `${COOKIE_NAMES.ADMIN_ROLE}=${newTokens.adminRole}` : "",
       `${COOKIE_NAMES.USER_ONBOARDED}=${newTokens.onboarded}`,
     ].filter(Boolean).join("; ");
     requestHeaders.set("cookie", cookieParts);
@@ -199,5 +200,5 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ["/login", "/onboarding", "/staff-login", "/dashboard/:path*", "/admin/:path*"],
+  matcher: ["/login", "/onboarding", "/dashboard/:path*", "/admin/:path*"],
 };

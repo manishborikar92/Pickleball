@@ -27,7 +27,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │   ├── lib/                   # Database client (Prisma connection)
 │   │   ├── middleware/            # Rate limiting, auth, logging guards
 │   │   └── modules/               # Domain-driven backend modules
-│   │       ├── auth/              # Customer OTP & staff password logic
+│   │       ├── auth/              # Customer OTP & admin password logic
 │   │       ├── bookings/          # Selection, holds, waivers, and pricing
 │   │       ├── health/            # Liveness/Readiness endpoints
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
@@ -41,9 +41,9 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
         ├── app/                   # Next.js Page routes (grouped by domain)
         │   ├── (marketing)/       # Static/cached public pages (landing, about, terms, privacy, support)
         │   ├── (booking)/         # Dynamic booking flow (venue selection, checkout, confirmation)
-        │   ├── (auth)/            # Auth views (login, onboarding, staff-login) + co-located actions
+        │   ├── (auth)/            # Auth views (login, onboarding, admin login) + co-located actions
         │   ├── (dashboard)/       # Customer authenticated views (overview, bookings, wallet)
-        │   └── (admin)/           # Staff admin dashboards (overview, bookings, schedule, pricing, courts, users, settings)
+        │   └── (admin)/           # Admin dashboards (overview, bookings, schedule, pricing, courts, users, settings)
         ├── components/            # Reusable UI React components (features, layout, shared, seo)
         ├── lib/                   # Server utilities (apiClient, session, cookies, rbac, normalizers, bookingEngine)
         ├── config/                # Application configuration (venue, metadata, map)
@@ -79,7 +79,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 ### 3.1 Backend Dependencies (`server/package.json`)
 - **Prisma Client (`@prisma/client`)**: Chosen for type-safe query generation, migrations, and declarative database schema definitions.
 - **Joi (`joi`)**: Enforces validation gating on all controllers, preventing dirty inputs from entering database queries.
-- **Bcrypt (`bcrypt`)**: Staff passwords are hashed using standard bcrypt rounds to satisfy security standards.
+- **Bcrypt (`bcrypt`)**: Admin passwords are hashed using standard bcrypt rounds to satisfy security standards.
 - **Helmet (`helmet`)**: Configures HTTP headers (CSP, X-Frame-Options) to secure Express against web vulnerabilities.
 - **Cookie Parser (`cookie-parser`)**: Extracts HTTP-only session cookies in middleware before JWT verification.
 - **Supertest (`supertest`)**: Used in native Node tests to mock Express request handlers without binding to TCP ports.
@@ -98,7 +98,7 @@ This matrix establishes bidirectional mapping between product specifications and
 | :--- | :--- | :--- | :--- | :--- |
 | **Venues & Courts** | `docs/product/01-PROJECT-OVERVIEW.md` | `Venue`, `Court` | `server/src/modules/venues` | `web/src/components/features/admin` |
 | **Customer Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `User`, `OtpRequest` | `server/src/modules/auth` | `web/src/components/features/auth` |
-| **Staff Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `StaffCredential` | `server/src/modules/auth` | `web/src/app/(auth)/staff-login` |
+| **Admin Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `AdminCredential` | `server/src/modules/auth` | `web/src/app/(auth)/admin/login` |
 | **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/venues` | `web/src/components/features/booking` |
 | **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(booking)/venues/[slug]/book` |
 | **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(dashboard)/dashboard` |

@@ -12,14 +12,14 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 
 ### Built at Launch
 - Court booking with row-level slot locking and 10-minute hold
-- **Dual-surface authentication:** WhatsApp OTP (customers) via both modal (booking context) and dedicated `/login` `/onboarding` pages; email + password (staff) via `/admin/login` — both share the same JWT layer
+- **Dual-surface authentication:** WhatsApp OTP (customers) via both modal (booking context) and dedicated `/login` `/onboarding` pages; email + password (admins) via `/admin/login` — both share the same JWT layer
 - PhonePe UPI-only payment with full webhook handling and idempotency
 - Monetary wallet credit system (for force-majeure cancellations)
 - Dynamic pricing (base price + time/day modifiers + coupon)
 - Schedule management with daily exceptions
 - Walk-in and admin-block entry
 - Digital waiver and no-cancellation acknowledgment
-- Staff credential-based auth (email + password) with account provisioning, activation, and password reset flows
+- Admin credential-based auth (email + password) with account provisioning, activation, and password reset flows
 - Reviews (stars + text; no photo upload at launch)
 - Reward Engine schema (architecture-ready; not activated until user base is established)
 
@@ -47,7 +47,7 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | Styling | Tailwind CSS | Utility-first; dark theme with yellow-green (`#CBFF00`) accent |
 | Backend | Express.js (JavaScript) | REST API; permission-guarded routes via `requirePermission()` middleware resolving through the RBAC tables |
 | Database | PostgreSQL | ACID compliance, row-level locking, JSONB for flexible pricing rules |
-| Auth | Short-lived JWT access tokens + rotating opaque refresh tokens | Customers: WhatsApp OTP. Staff credential schema is in place for admin/manager/staff. Session revocation is backed by `auth_sessions` and `refresh_tokens`; role resolution always comes from `venue_user_roles` |
+| Auth | Short-lived JWT access tokens + rotating opaque refresh tokens | Customers: WhatsApp OTP. Admin credential schema is in place for super_admin/manager/staff. Session revocation is backed by `auth_sessions` and `refresh_tokens`; role resolution always comes from `venue_user_roles` |
 | OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP + booking confirmation at launch. T−24h/T−2h reminders and inbound support are deferred |
 | Payments | PhonePe Payment Gateway v2 (UPI only) | Web Standard Checkout — redirect/iFrame. Direct via `pg-sdk-node`. See `08-PAYMENT-INTEGRATION.md` |
 | File Storage | Cloudflare R2 | Court images. Review photo upload is deferred |

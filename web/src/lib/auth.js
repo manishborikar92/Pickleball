@@ -65,7 +65,7 @@ export function isTokenExpired(token) {
 
 /**
  * Resolves the effective role from a user's roles array.
- * Prefers the first non-customer role (staff/manager/admin), falls back to customer.
+ * Prefers the first non-customer role (super_admin/manager/staff), falls back to customer.
  */
 export function resolveRole(user, fallback = "customer") {
   const roles = Array.isArray(user?.roles) ? user.roles : [];

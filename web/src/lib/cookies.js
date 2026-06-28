@@ -27,7 +27,7 @@ export async function setSessionCookies({ accessToken, refreshToken, user, role 
   if (user) {
     cookieStore.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     if (role !== "customer") {
-      cookieStore.set(COOKIE_NAMES.STAFF_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+      cookieStore.set(COOKIE_NAMES.ADMIN_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     }
     cookieStore.set(COOKIE_NAMES.USER_ONBOARDED, String(Boolean(user.onboarding_complete)), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }

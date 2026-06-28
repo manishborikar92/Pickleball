@@ -13,7 +13,7 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.equal(response.body.openapi, '3.0.3');
   assert.ok(response.body.paths['/auth/otp/send']);
   assert.ok(response.body.paths['/auth/otp/verify']);
-  assert.ok(response.body.paths['/auth/staff/login']);
+  assert.ok(response.body.paths['/auth/admin/login']);
   assert.ok(response.body.paths['/auth/refresh']);
   assert.ok(response.body.paths['/auth/onboarding']);
   assert.ok(response.body.paths['/users/me']);
@@ -65,7 +65,7 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'GET /api/v1/ready',
     'POST /api/v1/auth/otp/send',
     'POST /api/v1/auth/otp/verify',
-    'POST /api/v1/auth/staff/login',
+    'POST /api/v1/auth/admin/login',
     'POST /api/v1/auth/refresh',
     'POST /api/v1/auth/logout',
     'POST /api/v1/auth/logout-all',

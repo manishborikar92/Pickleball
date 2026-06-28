@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/shared";
 import { BaseSidebar } from "./BaseSidebar";
-import { signOutStaffAction } from "@/app/(auth)/actions";
+import { signOutAdminAction } from "@/app/(auth)/actions";
 
 const ADMIN_LINKS = [
   { href: "/admin/overview", label: "Overview", exact: true },
@@ -22,7 +22,7 @@ export function AdminShell({ session, children }) {
         logoSrc="/baseline-logo.svg"
         navLinks={ADMIN_LINKS}
         session={session}
-        signOutAction={signOutStaffAction}
+        signOutAction={signOutAdminAction}
         sessionInfoRenderer={AdminSessionCard}
       />
       <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8 md:h-full md:overflow-hidden flex flex-col">{children}</main>

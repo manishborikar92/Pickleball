@@ -300,16 +300,16 @@ All protected customer routes check auth state client-side (via a `useRequireAut
 | `/bookings`, `/wallet`, `/rewards` | JWT + onboarding complete | `/login?callbackUrl=[current path]` |
 | `/review/[id]` | JWT + booking owner | `/login?callbackUrl=[current path]` |
 | `/admin/*` | JWT + non-customer role | `/admin/login` |
-| `/admin/login` | Unauthenticated (or non-admin JWT) | `/admin` if already authenticated as staff |
+| `/admin/login` | Unauthenticated (or non-admin JWT) | `/admin` if already authenticated as an admin |
 
 **Next.js middleware (`middleware.ts`) handles:**
 - No JWT present → redirect to `/login` (customer) or `/admin/login` (admin paths).
-- Staff JWT on customer-only routes → allowed (admins can browse the customer experience).
+- Admin JWT on customer-only routes → allowed (admins can browse the customer experience).
 
 **Page-level `useRequireAuth` hook handles:**
 - JWT present but onboarding incomplete → redirect to `/onboarding`.
 - JWT present but insufficient role → show `403` component (not a redirect).
-- `force_password_change` flag on staff → redirect to `/admin/change-password` regardless of target route.
+- `force_password_change` flag on an admin → redirect to `/admin/change-password` regardless of target route.
 
 ---
 
@@ -460,9 +460,9 @@ The booking page (`/book`) holds the user's court and slot selection entirely in
 - The 10-minute slot hold only starts after auth is complete and `POST /bookings/hold` is called.
 - If the user's JWT expires exactly as they click "Confirm & Pay", the modal opens (they re-authenticate in ~30 seconds), and the selection remains intact.
 
-### 2A.8 Staff Auth Architecture
+### 2A.8 Admin Auth Architecture
 
-Staff auth (`/admin/login`, activation, reset) uses an entirely separate `useStaffAuth` hook that calls the `/auth/staff/*` endpoints. It does not share state or components with `useAuth`. Staff-side logic does not bleed into the customer auth flow.
+Admin auth (`/admin/login`, activation, reset) uses an entirely separate `useAdminAuth` hook that calls the `/auth/admin/*` endpoints. It does not share state or components with `useAuth`. Admin-side logic does not bleed into the customer auth flow.
 
 ---
 
@@ -554,7 +554,7 @@ The admin panel is a separate authenticated surface at `/admin`. It uses credent
 - No self-registration link — accounts are admin-provisioned only.
 
 **Behaviour:**
-- On submit: calls `POST /auth/staff/login`.
+- On submit: calls `POST /auth/admin/login`.
 - `next_step: "admin_dashboard"` → redirect to `/admin`.
 - `next_step: "force_password_change"` → redirect to `/admin/change-password`.
 - Error states rendered inline below the form (not as page-level alerts):
@@ -567,7 +567,7 @@ The admin panel is a separate authenticated surface at `/admin`. It uses credent
 
 ### 6.2 Account Activation Page — `/admin/activate`
 
-**Purpose:** Shown when a staff member clicks the activation link in their provisioning email.
+**Purpose:** Shown when an admin user clicks the activation link in their provisioning email.
 
 **URL shape:** `/admin/activate?token=<raw-token>`
 
@@ -579,7 +579,7 @@ The admin panel is a separate authenticated surface at `/admin`. It uses credent
 - "Activate Account" button.
 
 **Behaviour:**
-- On submit: calls `POST /auth/staff/activate { token, password, password_confirm }`.
+- On submit: calls `POST /auth/admin/activate { token, password, password_confirm }`.
 - On success: JWT stored, redirect to `/admin`.
 - `INVALID_ACTIVATION_TOKEN` → "This activation link has expired or is invalid. Ask your administrator to resend the activation email."
 - `PASSWORD_TOO_WEAK` → Inline validation shown before submit.
@@ -595,7 +595,7 @@ The admin panel is a separate authenticated surface at `/admin`. It uses credent
 - Back to login link.
 
 **Behaviour:**
-- Calls `POST /auth/staff/reset-password/request { email }`.
+- Calls `POST /auth/admin/reset-password/request { email }`.
 - Always shows: "If that email is registered, a reset link has been sent." (prevents account enumeration regardless of result).
 
 ---
@@ -607,7 +607,7 @@ The admin panel is a separate authenticated surface at `/admin`. It uses credent
 **Layout:** Identical to the activation page — new password + confirm password inputs.
 
 **Behaviour:**
-- Calls `POST /auth/staff/reset-password/confirm { token, password, password_confirm }`.
+- Calls `POST /auth/admin/reset-password/confirm { token, password, password_confirm }`.
 - On success: JWT stored, redirect to `/admin`.
 - Expired token → friendly error with link to request a new reset.
 
@@ -623,14 +623,14 @@ Shown when `next_step: "force_password_change"` is returned after login. All oth
 - "Update Password" button.
 
 **Behaviour:**
-- Calls `POST /auth/staff/change-password`.
+- Calls `POST /auth/admin/change-password`.
 - On success: clears `force_password_change` flag, redirect to `/admin`.
 
 ---
 
 ## 7. Admin Dashboard — Operational Screens
 
-The admin dashboard is a separate authenticated web application (accessible via `/admin`). It is not part of the customer-facing Next.js pages. Access requires a valid staff JWT with the appropriate `venue_user_roles` assignment.
+The admin dashboard is a separate authenticated web application (accessible via `/admin`). It is not part of the customer-facing Next.js pages. Access requires a valid admin JWT with the appropriate `venue_user_roles` assignment.
 
 | Screen | Status | Key Functions |
 |---|---|---|
@@ -640,7 +640,7 @@ The admin dashboard is a separate authenticated web application (accessible via 
 | **Pricing Manager** | Launch | Create/edit/deactivate pricing rules; manage coupons |
 | **Courts** | Launch | Edit court details, status (active/maintenance/offline), cover images |
 | **Users** | Launch | Look up customer by phone; view booking history, wallet balance, reward instance history |
-| **Staff Management** | Launch | Provision new staff accounts, manage status (activate/suspend/unlock), resend activation, force password reset |
+| **Admin Account Management** | Launch | Provision new admin accounts, manage status (activate/suspend/unlock), resend activation, force password reset |
 | **Settings** | Launch | Venue-level settings (rollover time, advance window, tax rate) |
 | **Reward Engine** | **Deferred** | Create/edit/activate reward mechanisms; edit prize pool config; view instances — activate when reward engine is enabled |
 

@@ -13,7 +13,7 @@ export const metadata = getPageMetadata({
 export default function LoginPage() {
   return (
     <Suspense fallback={<Loader variant="spinner" className="py-20" />}>
-      <CustomerLoginForm showStaffLink={true} />
+      <CustomerLoginForm showAdminLink={true} />
     </Suspense>
   );
 }

@@ -12,7 +12,7 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
   
   const rand1 = Math.floor(10000000 + Math.random() * 90000000);
   const rand2 = Math.floor(10000000 + Math.random() * 90000000);
-  const staffPhone = `+919${rand1}`;
+  const adminPhone = `+919${rand1}`;
   const customerPhone = `+919${rand2}`;
 
   // 1. Create two test venues
@@ -71,11 +71,11 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
     },
   });
 
-  // 3. Create users: staff user and customer user
-  const staffUser = await prisma.user.create({
+  // 3. Create users: admin user and customer user
+  const adminUser = await prisma.user.create({
     data: {
       name: 'Venue A Manager',
-      phone: staffPhone,
+      phone: adminPhone,
       isPhoneVerified: true,
       onboardingCompletedAt: new Date(),
     },
@@ -97,10 +97,10 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
   let session;
 
   try {
-    // 4. Map staff user as a manager at Venue A (but NOT Venue B)
+    // 4. Map admin user as a manager at Venue A (but NOT Venue B)
     venueUserRole = await prisma.venueUserRole.create({
       data: {
-        userId: staffUser.id,
+        userId: adminUser.id,
         venueId: venueA.id,
         roleId: managerRole.id,
       },
@@ -145,17 +145,17 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
     // 6. Set up real App with secret override
     const secret = 'test-access-secret-with-at-least-32-characters';
     
-    // Create an active DB session for the staff user to pass DB session validation
+    // Create an active DB session for the admin user to pass DB session validation
     session = await prisma.authSession.create({
       data: {
-        userId: staffUser.id,
+        userId: adminUser.id,
         status: 'active',
         expiresAt: new Date(Date.now() + 1000 * 60 * 60),
       },
     });
 
     const token = jwt.sign(
-      { sub: staffUser.id, sid: session.id },
+      { sub: adminUser.id, sid: session.id },
       secret,
       { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
     );
@@ -167,7 +167,7 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
       },
     });
 
-    // 7. Attempt to refund Payment B (Venue B) using Venue A staff token
+    // 7. Attempt to refund Payment B (Venue B) using Venue A admin token
     const response = await request(app)
       .post(`/api/v1/payments/${paymentB.id}/refund`)
       .set('Authorization', `Bearer ${token}`)
@@ -192,7 +192,7 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
       await prisma.venueUserRole.delete({
         where: {
           userId_venueId: {
-            userId: staffUser.id,
+            userId: adminUser.id,
             venueId: venueA.id,
           },
         },
@@ -203,7 +203,7 @@ test('Multi-tenant isolation: user with permission in Venue A cannot refund paym
     }
     await prisma.user.deleteMany({
       where: {
-        id: { in: [staffUser.id, customerUser.id] },
+        id: { in: [adminUser.id, customerUser.id] },
       },
     }).catch(() => {});
     await prisma.venue.deleteMany({

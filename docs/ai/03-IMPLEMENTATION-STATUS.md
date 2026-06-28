@@ -17,7 +17,7 @@ We classify codebase features using the following lifecycle states:
 | Customer Auth (OTP) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
 | Thin Redirect Proxy | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
 | Customer Profiles | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
-| Staff Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
+| Admin Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
 | Scheduling & Hours | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/venues` |
 | Slot Locking Engine | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/bookings` |
 | Payment Abstraction | **Built** | `docs/adrs/ADR-004-booking-lifecycle-payments.md` | `server/src/modules/payments` |
@@ -39,9 +39,9 @@ We classify codebase features using the following lifecycle states:
 - [x] **Onboarding Redirects**: Forces redirect to `/onboarding` if profile properties are missing.
 - [x] **Token Rotation**: Silent authentication refreshes handled in `web/src/lib/apiClient.js` on 401 responses. Proxy is thin redirect-only.
 
-### 2.2 Staff Authentication & Management (Partial)
-- [x] **Email & Password Guards**: Restricts dashboard panels to staff.
-- [x] **Lockout Logic**: Temporarily blocks staff credentials after 10 consecutive invalid logins.
+### 2.2 Admin Authentication & Management (Partial)
+- [x] **Email & Password Guards**: Restricts dashboard panels to admins.
+- [x] **Lockout Logic**: Temporarily blocks admin credentials after 10 consecutive invalid logins.
 - [ ] **Provisioning Engine**: Invite-only registration flow. (*Planned*)
 - [ ] **Reset Flows**: Password reset token mailers. (*Planned*)
 

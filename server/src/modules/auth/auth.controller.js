@@ -67,9 +67,9 @@ export const createAuthController = ({ authService }) => ({
     res.json(ApiResponse.success(authPayload(result), 'OTP verified'));
   }),
 
-  loginStaff: asyncHandler(async (req, res) => {
+  loginAdmin: asyncHandler(async (req, res) => {
     const config = req.app.get('config');
-    const result = await authService.loginStaff({
+    const result = await authService.loginAdmin({
       email: req.validated.body.email,
       password: req.validated.body.password,
       ipAddress: req.ip,
@@ -77,7 +77,7 @@ export const createAuthController = ({ authService }) => ({
     });
 
     setRefreshCookie(res, config, result.refreshToken.raw);
-    res.json(ApiResponse.success(authPayload(result), 'Staff login successful'));
+    res.json(ApiResponse.success(authPayload(result), 'Admin login successful'));
   }),
 
   refresh: asyncHandler(async (req, res) => {

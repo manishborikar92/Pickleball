@@ -20,9 +20,9 @@ The Next.js 16 App Router frontend provides the user interface, booking dashboar
 ### Route Groups
 - `(marketing)/` — Static/cached public pages (landing, about, terms, privacy, support)
 - `(booking)/` — Dynamic booking flow (venue selection, checkout, confirmation, pending, failed)
-- `(auth)/` — Authentication pages (login, onboarding, staff-login)
+- `(auth)/` — Authentication pages (login, onboarding, admin login)
 - `(dashboard)/` — Customer authenticated area (overview, bookings, wallet)
-- `(admin)/` — Staff authenticated area (overview, bookings, schedule, pricing, courts, users, settings)
+- `(admin)/` — Admin authenticated area (overview, bookings, schedule, pricing, courts, users, settings)
 
 ### Auth Architecture
 - **Single check**: Server layout calls `getSession()` (memoized via React `cache()`)

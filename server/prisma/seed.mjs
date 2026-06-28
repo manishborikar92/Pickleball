@@ -164,7 +164,7 @@ async function seedAdmin(venue) {
   const phone = normalizeIndianPhone(rawPhone) || null;
 
   const role = await prisma.role.findUniqueOrThrow({ where: { name: 'super_admin' } });
-  const existingCredential = await prisma.staffCredential.findUnique({ where: { email } });
+  const existingCredential = await prisma.adminCredential.findUnique({ where: { email } });
   const user = existingCredential
     ? await prisma.user.update({
       where: { id: existingCredential.userId },
@@ -184,7 +184,7 @@ async function seedAdmin(venue) {
       },
     });
 
-  await prisma.staffCredential.upsert({
+  await prisma.adminCredential.upsert({
     where: { email },
     update: {
       passwordHash: await createPasswordHash(password),

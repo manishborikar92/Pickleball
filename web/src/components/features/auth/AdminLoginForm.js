@@ -2,21 +2,21 @@
 
 import { useSearchParams } from "next/navigation";
 import { Button, Card, FormField, Input } from "@/components/shared";
-import { signInStaffAction } from "@/app/(auth)/actions";
+import { signInAdminAction } from "@/app/(auth)/actions";
 import { Lock, Mail, Shield } from "lucide-react";
 
 /**
- * StaffLoginForm — Staff authentication only.
+ * AdminLoginForm — Admin (back-office) authentication only.
  *
  * Responsibilities:
- *  - Email/password credential submission to signInStaffAction
+ *  - Email/password credential submission to signInAdminAction
  *
  * Does NOT handle:
  *  - Customer authentication
  *  - Customer onboarding / name collection
  *  - Customer OTP validation
  */
-export function StaffLoginForm() {
+export function AdminLoginForm() {
   const searchParams = useSearchParams();
   const nextParam = searchParams.get("next");
   const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
@@ -27,13 +27,13 @@ export function StaffLoginForm() {
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Shield className="h-7 w-7" />
         </div>
-        <h1 className="text-3xl font-black">Staff Sign In</h1>
+        <h1 className="text-3xl font-black">Admin Sign In</h1>
         <p className="mt-2 text-sm text-muted">
           Access the Baseline Arena administrative portal.
         </p>
       </div>
 
-      <form action={signInStaffAction} className="grid gap-5">
+      <form action={signInAdminAction} className="grid gap-5">
         <input type="hidden" name="next" value={next} />
 
         <FormField label="Email" required>
@@ -59,7 +59,7 @@ export function StaffLoginForm() {
         </FormField>
 
         <Button type="submit" className="w-full justify-center py-4 text-base">
-          Sign In as Staff →
+          Sign In as Admin →
         </Button>
       </form>
     </Card>

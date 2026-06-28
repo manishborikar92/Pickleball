@@ -3,5 +3,5 @@ export { CustomerLoginForm } from "./CustomerLoginForm";
 export { CustomerOnboardingForm } from "./CustomerOnboardingForm";
 export { CustomerCheckoutAuthGate } from "./CustomerCheckoutAuthGate";
 
-// Staff-focused authentication components
-export { StaffLoginForm } from "./StaffLoginForm";
+// Admin-focused authentication components
+export { AdminLoginForm } from "./AdminLoginForm";

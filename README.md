@@ -33,7 +33,7 @@ This platform solves these friction points through:
 - **Core Framework**: Express.js (Node 20+)
 - **ORM**: Prisma Client mapping PostgreSQL tables
 - **Validation**: Joi schema validators guarding routing controllers
-- **Security**: Bcrypt (staff passwords), Helmet headers, cookie-parser, and Express Rate Limiters
+- **Security**: Bcrypt (admin passwords), Helmet headers, cookie-parser, and Express Rate Limiters
 
 ### 2.3 Database (`server/prisma/`)
 - **Engine**: PostgreSQL

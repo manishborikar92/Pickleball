@@ -139,15 +139,15 @@ Verifies the OTP, creates an auth session, sets the refresh-token cookie, and re
 
 ---
 
-## 3. Staff Auth Endpoints
+## 3. Admin Auth Endpoints
 
-These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) only. They use email + password credentials managed in the `staff_credentials` table. WhatsApp OTP is never involved.
+These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) only. They use email + password credentials managed in the `admin_credentials` table. WhatsApp OTP is never involved.
 
-Implementation status: `POST /auth/staff/login` is implemented and shares the same access/refresh/session lifecycle as customer OTP auth. Staff activation, reset-password, change-password, and admin provisioning are the target contract and require the email/provider and admin-management slice before exposure.
+Implementation status: `POST /auth/admin/login` is implemented and shares the same access/refresh/session lifecycle as customer OTP auth. Admin activation, reset-password, change-password, and admin provisioning are the target contract and require the email/provider and admin-management slice before exposure.
 
-### `POST /auth/staff/login`
+### `POST /auth/admin/login`
 
-*Public.* Authenticates a staff member with email and password.
+*Public.* Authenticates an admin user with email and password.
 
 **Body:**
 ```json
@@ -174,13 +174,13 @@ Implementation status: `POST /auth/staff/login` is implemented and shares the sa
 | `ACCOUNT_LOCKED` | 423 | Too many failed attempts; includes `locked_until` in response body |
 | `ACCOUNT_NOT_ACTIVATED` | 403 | Activation email not yet completed |
 
-**Security:** Failed attempts are tracked per `staff_credentials` row. After 10 failures the account is locked for 30 minutes. Rate limiting (5 attempts per IP per 15 minutes) is applied at the middleware layer.
+**Security:** Failed attempts are tracked per `admin_credentials` row. After 10 failures the account is locked for 30 minutes. Rate limiting (5 attempts per IP per 15 minutes) is applied at the middleware layer.
 
 ---
 
-### `POST /auth/staff/activate`
+### `POST /auth/admin/activate`
 
-*Public (activation token acts as credential).* Sets the initial password for a newly provisioned staff account.
+*Public (activation token acts as credential).* Sets the initial password for a newly provisioned admin account.
 
 **Body:**
 ```json
@@ -204,7 +204,7 @@ Implementation status: `POST /auth/staff/login` is implemented and shares the sa
 
 ---
 
-### `POST /auth/staff/reset-password/request`
+### `POST /auth/admin/reset-password/request`
 
 *Public.* Requests a password reset email. Always returns `200` regardless of whether the email is found (prevents account enumeration).
 
@@ -215,12 +215,12 @@ Implementation status: `POST /auth/staff/login` is implemented and shares the sa
 
 **Response `200`:**
 ```json
-{ "message": "If that email is associated with a staff account, a reset link has been sent." }
+{ "message": "If that email is associated with an admin account, a reset link has been sent." }
 ```
 
 ---
 
-### `POST /auth/staff/reset-password/confirm`
+### `POST /auth/admin/reset-password/confirm`
 
 *Public (reset token acts as credential).* Sets a new password using a valid reset token.
 
@@ -246,9 +246,9 @@ Implementation status: `POST /auth/staff/login` is implemented and shares the sa
 
 ---
 
-### `POST /auth/staff/change-password`
+### `POST /auth/admin/change-password`
 
-*Protected (JWT + staff role).* Allows a logged-in staff member to change their own password. Required when `next_step = "force_password_change"`.
+*Protected (JWT + admin session).* Allows a logged-in admin user to change their own password. Required when `next_step = "force_password_change"`.
 
 **Body:**
 ```json
@@ -970,22 +970,22 @@ All admin endpoints require a valid JWT. The `Permission` column specifies the e
 | `GET` | `/admin/users/:id/rewards` | `manage_bookings` | View a user's reward instance history |
 | `PATCH` | `/admin/users/:id/phone` | `manage_courts` | Update a customer's phone number (validates uniqueness) |
 
-### Staff Account Management
+### Admin Account Management
 
 All endpoints require `super_admin` role (checked via `requirePermission('manage_courts')`).
 
 | Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `GET` | `/admin/staff` | `manage_courts` | List all staff accounts with status |
-| `POST` | `/admin/staff` | `manage_courts` | Provision a new staff account (triggers activation email) |
-| `PATCH` | `/admin/staff/:id` | `manage_courts` | Update name, email, or venue role assignment |
-| `POST` | `/admin/staff/:id/suspend` | `manage_courts` | Suspend account (blocks future logins immediately) |
-| `POST` | `/admin/staff/:id/activate` | `manage_courts` | Re-activate a suspended account |
-| `POST` | `/admin/staff/:id/resend-activation` | `manage_courts` | Resend activation email with a new token |
-| `POST` | `/admin/staff/:id/force-password-reset` | `manage_courts` | Sets `force_password_change = true`; sends reset email |
-| `POST` | `/admin/staff/:id/unlock` | `manage_courts` | Unlock a locked account before the 30-minute window expires |
+| `GET` | `/admin/accounts` | `manage_courts` | List all admin accounts with status |
+| `POST` | `/admin/accounts` | `manage_courts` | Provision a new admin account (triggers activation email) |
+| `PATCH` | `/admin/accounts/:id` | `manage_courts` | Update name, email, or venue role assignment |
+| `POST` | `/admin/accounts/:id/suspend` | `manage_courts` | Suspend account (blocks future logins immediately) |
+| `POST` | `/admin/accounts/:id/activate` | `manage_courts` | Re-activate a suspended account |
+| `POST` | `/admin/accounts/:id/resend-activation` | `manage_courts` | Resend activation email with a new token |
+| `POST` | `/admin/accounts/:id/force-password-reset` | `manage_courts` | Sets `force_password_change = true`; sends reset email |
+| `POST` | `/admin/accounts/:id/unlock` | `manage_courts` | Unlock a locked account before the 30-minute window expires |
 
-**Provision staff body:**
+**Provision admin body:**
 ```json
 {
   "email": "manager@besanagpur.com",
@@ -995,7 +995,7 @@ All endpoints require `super_admin` role (checked via `requirePermission('manage
 }
 ```
 
-On success: creates `users` record (name pre-set), `staff_credentials` record (`status: pending_activation`), `venue_user_roles` record, sends activation email. Returns `201` with the created staff profile.
+On success: creates `users` record (name pre-set), `admin_credentials` record (`status: pending_activation`), `venue_user_roles` record, sends activation email. Returns `201` with the created admin profile.
 
 ### Reward Engine Management
 
@@ -1143,31 +1143,31 @@ All errors follow a consistent structure:
 | `SLOTS_UNAVAILABLE` | 409 | One or more slot units taken during multi-slot hold attempt; returns list of unavailable units |
 | `SLOTS_NOT_CONSECUTIVE` | 400 | Selected slot_start_times are not consecutive |
 | `HOLD_LIMIT_EXCEEDED` | 429 | Velocity check: 2 pending holds already active |
-| `INVALID_CREDENTIALS` | 401 | Staff login: email not found or password incorrect |
-| `ACCOUNT_SUSPENDED` | 403 | Staff account is suspended |
-| `ACCOUNT_LOCKED` | 423 | Staff account locked after too many failed attempts |
-| `ACCOUNT_NOT_ACTIVATED` | 403 | Staff activation email not yet completed |
-| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Staff must change password before accessing protected routes |
+| `INVALID_CREDENTIALS` | 401 | Admin login: email not found or password incorrect |
+| `ACCOUNT_SUSPENDED` | 403 | Admin account is suspended |
+| `ACCOUNT_LOCKED` | 423 | Admin account locked after too many failed attempts |
+| `ACCOUNT_NOT_ACTIVATED` | 403 | Admin activation email not yet completed |
+| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Admin must change password before accessing protected routes |
 | `INVALID_ACTIVATION_TOKEN` | 400 | Activation token is wrong or expired (72h window) |
 | `INVALID_RESET_TOKEN` | 400 | Password reset token is wrong or expired (1h window) |
 | `PASSWORD_TOO_WEAK` | 400 | Password does not meet minimum requirements |
 | `PASSWORD_MISMATCH` | 400 | `password` and `password_confirm` do not match |
-| `EMAIL_ALREADY_EXISTS` | 409 | Staff provision: email already in use |
+| `EMAIL_ALREADY_EXISTS` | 409 | Admin provision: email already in use |
 | `OTP_INVALID` | 400 | Wrong OTP entered |
 | `OTP_EXPIRED` | 410 | OTP TTL has passed |
 | `OTP_RATE_LIMITED` | 429 | Too many OTP requests |
 | `ONBOARDING_INCOMPLETE` | 403 | JWT is valid but `users.name` is NULL; user must complete `/auth/onboarding` before accessing this resource |
 | `INVALID_NAME` | 400 | Name failed validation (too short, empty, or too long) |
 | `INVALID_CREDENTIALS` | 401 | Email not found or password incorrect (intentionally vague to prevent account enumeration) |
-| `ACCOUNT_SUSPENDED` | 403 | Staff account suspended by an admin |
+| `ACCOUNT_SUSPENDED` | 403 | Admin account suspended by an admin |
 | `ACCOUNT_LOCKED` | 423 | Too many failed login attempts; `locked_until` included in response body |
-| `ACCOUNT_NOT_ACTIVATED` | 403 | Staff account activation email not yet completed |
-| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Staff must change password before accessing any admin route |
+| `ACCOUNT_NOT_ACTIVATED` | 403 | Admin account activation email not yet completed |
+| `FORCE_PASSWORD_CHANGE_REQUIRED` | 403 | Admin must change password before accessing any admin route |
 | `INVALID_ACTIVATION_TOKEN` | 400 | Activation token is wrong or has expired (72-hour window) |
 | `INVALID_RESET_TOKEN` | 400 | Password reset token is wrong or has expired (1-hour window) |
 | `PASSWORD_MISMATCH` | 400 | `password` and `password_confirm` fields do not match |
 | `PASSWORD_TOO_WEAK` | 400 | Password does not meet minimum requirements |
-| `EMAIL_ALREADY_EXISTS` | 409 | Email is already registered to another staff account |
+| `EMAIL_ALREADY_EXISTS` | 409 | Email is already registered to another admin account |
 | `COUPON_INVALID` | 400 | Code not found, inactive, or wrong venue |
 | `COUPON_LIMIT_REACHED` | 400 | Max uses exceeded globally or per phone |
 | `BOOKING_EXPIRED` | 410 | 10-minute hold expired before payment |

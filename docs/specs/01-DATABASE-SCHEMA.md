@@ -52,7 +52,7 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `phone` | VARCHAR(20) | UNIQUE | Primary customer identifier; includes country code. Nullable for staff-only users who authenticate by email. |
+| `phone` | VARCHAR(20) | UNIQUE | Primary customer identifier; includes country code. Nullable for admin-only users who authenticate by email. |
 | `name` | VARCHAR(255) | | `NULL` until the user completes onboarding. A non-null `name` is the authoritative signal that onboarding is complete. |
 | `is_phone_verified` | BOOLEAN | NOT NULL, default false | Set `true` on first successful OTP verification |
 | `onboarding_completed_at` | TIMESTAMPTZ | | Set once when `name` is first submitted via `/auth/onboarding`. `NULL` for users who have verified OTP but not yet submitted their name. |
@@ -126,14 +126,14 @@ Maps a user to a role within a specific venue. A user may hold different roles a
 
 ---
 
-### `staff_credentials`
+### `admin_credentials`
 
-Stores email + password credentials for non-customer users (`super_admin`, `manager`, `staff`). Customers never have rows in this table. Staff users never use OTP for login. The two auth systems share the `users` table as the identity root but are entirely separate in credential management.
+Stores email + password credentials for non-customer users (`super_admin`, `manager`, `staff`). Customers never have rows in this table. Admin users never use OTP for login. The two auth systems share the `users` table as the identity root but are entirely separate in credential management.
 
 | Column | Type | Constraints | Description |
 |---|---|---|---|
 | `id` | UUID | PK | |
-| `user_id` | UUID | FK → users.id, UNIQUE, NOT NULL | One credential record per staff user |
+| `user_id` | UUID | FK → users.id, UNIQUE, NOT NULL | One credential record per admin user |
 | `email` | VARCHAR(255) | UNIQUE, NOT NULL | Login identifier for the admin panel |
 | `password_hash` | TEXT | NOT NULL | bcrypt hash, cost factor 12. Never logged or stored in plain text. |
 | `status` | VARCHAR(30) | NOT NULL, default 'pending_activation' | Enum: `pending_activation`, `active`, `suspended`, `locked` |
@@ -143,7 +143,7 @@ Stores email + password credentials for non-customer users (`super_admin`, `mana
 | `password_reset_expires_at` | TIMESTAMPTZ | | Reset links expire after 1 hour |
 | `failed_login_attempts` | SMALLINT | NOT NULL, default 0 | Reset to 0 on successful login |
 | `locked_until` | TIMESTAMPTZ | | Set when failed attempts reach 10; locked for 30 minutes |
-| `force_password_change` | BOOLEAN | NOT NULL, default false | If true, staff must change password before any protected route is accessible |
+| `force_password_change` | BOOLEAN | NOT NULL, default false | If true, admin must change password before any protected route is accessible |
 | `last_login_at` | TIMESTAMPTZ | | |
 | `last_login_ip` | INET | | |
 | `password_changed_at` | TIMESTAMPTZ | | Updated on every successful password change |
@@ -599,11 +599,11 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 
 | Table | Index | Type | Purpose |
 |---|---|---|---|
-| `users` | (phone) | Unique | Primary lookup by phone number; nullable for staff-only accounts |
+| `users` | (phone) | Unique | Primary lookup by phone number; nullable for admin-only accounts |
 | `users` | (name) | B-tree | Name search and admin lookup |
-| `staff_credentials` | (email) | Unique | Staff login lookup |
-| `staff_credentials` | (user_id) | Unique | Reverse lookup from user to credentials |
-| `staff_credentials` | (status) WHERE status = 'pending_activation' | Partial | Find unactivated accounts |
+| `admin_credentials` | (email) | Unique | Admin login lookup |
+| `admin_credentials` | (user_id) | Unique | Reverse lookup from user to credentials |
+| `admin_credentials` | (status) WHERE status = 'pending_activation' | Partial | Find unactivated accounts |
 | `bookings` | (status, expires_at) | B-tree | Background expiry sweeper |
 | `bookings` | (user_id, status) | B-tree | User booking history and velocity check |
 | `booking_slots` | (court_id, slot_date, slot_start_time) WHERE active | Partial Unique | **Core double-booking prevention** |

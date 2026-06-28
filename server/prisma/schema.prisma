@@ -22,7 +22,7 @@ enum CourtStatus {
   offline
 }
 
-enum StaffStatus {
+enum AdminStatus {
   pending_activation
   active
   suspended
@@ -184,8 +184,8 @@ model User {
   deletedAt             DateTime?           @map("deleted_at") @db.Timestamptz(6)
   venueRoles            VenueUserRole[]     @relation("UserVenueRoles")
   assignedRoles         VenueUserRole[]     @relation("AssignedVenueRoles")
-  staffCredential       StaffCredential?
-  createdStaff          StaffCredential[]   @relation("StaffCreatedBy")
+  adminCredential       AdminCredential?
+  createdAdmins         AdminCredential[]   @relation("AdminCreatedBy")
   sessions              AuthSession[]
   refreshTokens         RefreshToken[]
   bookings              Booking[]
@@ -244,12 +244,12 @@ model VenueUserRole {
   @@map("venue_user_roles")
 }
 
-model StaffCredential {
+model AdminCredential {
   id                       String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId                   String      @unique @map("user_id") @db.Uuid
   email                    String      @unique @db.VarChar(255)
   passwordHash             String?     @map("password_hash")
-  status                   StaffStatus @default(pending_activation)
+  status                   AdminStatus @default(pending_activation)
   activationTokenHash      String?     @map("activation_token_hash")
   activationTokenExpiresAt DateTime?   @map("activation_token_expires_at") @db.Timestamptz(6)
   passwordResetTokenHash   String?     @map("password_reset_token_hash")
@@ -265,10 +265,10 @@ model StaffCredential {
   updatedAt                DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
   deletedAt                DateTime?   @map("deleted_at") @db.Timestamptz(6)
   user                     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  creator                  User?       @relation("StaffCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  creator                  User?       @relation("AdminCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
 
   @@index([status])
-  @@map("staff_credentials")
+  @@map("admin_credentials")
 }
 
 model OtpRequest {

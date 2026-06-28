@@ -9,7 +9,7 @@ export const verifyOtpSchema = Joi.object({
   otp: Joi.string().pattern(/^\d{6}$/).required(),
 });
 
-export const staffLoginSchema = Joi.object({
+export const adminLoginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
 });

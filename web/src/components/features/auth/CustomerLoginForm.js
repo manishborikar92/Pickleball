@@ -11,7 +11,7 @@ import { OtpForm } from "./steps/OtpForm";
 /**
  * CustomerLoginForm — Phone + OTP authentication using server actions directly.
  */
-export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = false }) {
+export function CustomerLoginForm({ onSuccess, showAdminLink = false, inline = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -86,15 +86,15 @@ export function CustomerLoginForm({ onSuccess, showStaffLink = false, inline = f
 
       {errorBanner}
 
-      {showStaffLink && (
+      {showAdminLink && (
         <div className="mt-4 border-t border-line/40 pt-4 text-center">
           <p className="text-xs text-muted">
-            Accessing the staff portal?{" "}
+            Accessing the admin portal?{" "}
             <Link
-              href="/staff-login"
+              href="/admin/login"
               className="font-bold text-accent hover:underline"
             >
-              Staff Sign-In →
+              Admin Sign-In →
             </Link>
           </p>
         </div>

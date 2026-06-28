@@ -296,10 +296,10 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`/auth/staff/login`]: {
+      [`/auth/admin/login`]: {
         post: {
           tags: ['Auth'],
-          summary: 'Login staff user and create session',
+          summary: 'Login admin user and create session',
           requestBody: {
             required: true,
             content: {
@@ -317,7 +317,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
           responses: {
             200: {
-              description: 'Staff session created successfully',
+              description: 'Admin session created successfully',
               content: {
                 'application/json': {
                   schema: {

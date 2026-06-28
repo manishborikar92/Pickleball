@@ -54,7 +54,7 @@ const serializeUser = ({ user, isNewUser = false }) => ({
   onboarding_complete: onboardingComplete(user),
 });
 
-const serializeStaffUser = ({ credential }) => ({
+const serializeAdminUser = ({ credential }) => ({
   id: credential.user.id,
   email: credential.email,
   name: credential.user.name,
@@ -213,14 +213,14 @@ export const createAuthService = ({
       };
     },
 
-    async loginStaff({
+    async loginAdmin({
       email,
       password,
       ipAddress = null,
       userAgent = null,
     }) {
       const normalizedEmail = String(email || '').trim().toLowerCase();
-      const credential = await repository.findStaffCredentialByEmail({
+      const credential = await repository.findAdminCredentialByEmail({
         email: normalizedEmail,
       });
 
@@ -244,7 +244,7 @@ export const createAuthService = ({
           });
         }
 
-        await repository.unlockStaffCredential(credential.id);
+        await repository.unlockAdminCredential(credential.id);
         credential.status = 'active';
         credential.failedLoginAttempts = 0;
         credential.lockedUntil = null;
@@ -253,7 +253,7 @@ export const createAuthService = ({
       const passwordValid = await verifyPasswordHash(password, credential.passwordHash);
       if (!passwordValid) {
         const nextFailedCount = (credential.failedLoginAttempts || 0) + 1;
-        await repository.recordStaffLoginFailure({
+        await repository.recordAdminLoginFailure({
           id: credential.id,
           lockedUntil: nextFailedCount >= DEFAULT_LOCKOUT_MAX_ATTEMPTS
             ? addSeconds(now, DEFAULT_LOCKOUT_DURATION_SECONDS)
@@ -262,7 +262,7 @@ export const createAuthService = ({
         throw new UnauthorizedError('Invalid credentials');
       }
 
-      await repository.recordStaffLoginSuccess({
+      await repository.recordAdminLoginSuccess({
         id: credential.id,
         ipAddress,
       });
@@ -284,7 +284,7 @@ export const createAuthService = ({
 
       return {
         ...tokenPair,
-        user: serializeStaffUser({ credential }),
+        user: serializeAdminUser({ credential }),
         next_step: credential.forcePasswordChange
           ? 'force_password_change'
           : 'admin_dashboard',

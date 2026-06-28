@@ -14,6 +14,14 @@ const nextConfig = {
     fetches: { fullUrl: process.env.NODE_ENV === 'development' },
   },
   async headers() {
+    // Auth pages get a stricter CSP. The admin login lives at /admin/login (two
+    // segments), so it needs its own source rule alongside the single-segment pages.
+    const authCsp = [
+      {
+        key: 'Content-Security-Policy',
+        value: "frame-ancestors 'none'; object-src 'none';",
+      },
+    ];
     return [
       {
         source: '/(.*)',
@@ -26,13 +34,12 @@ const nextConfig = {
         ],
       },
       {
-        source: '/(login|onboarding|staff-login)',
-        headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'none'; object-src 'none';",
-          },
-        ],
+        source: '/(login|onboarding)',
+        headers: authCsp,
+      },
+      {
+        source: '/admin/login',
+        headers: authCsp,
       },
     ];
   },

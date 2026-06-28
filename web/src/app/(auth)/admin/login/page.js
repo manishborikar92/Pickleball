@@ -1,19 +1,19 @@
 import { Suspense } from "react";
 import { getPageMetadata } from "@/config/metadata";
-import { StaffLoginForm } from "@/components/features/auth";
+import { AdminLoginForm } from "@/components/features/auth";
 import { Loader } from "@/components/shared";
 
 export const metadata = getPageMetadata({
-  title: "Staff Sign In",
+  title: "Admin Sign In",
   description: "Sign in to Baseline Arena administrative portal.",
-  path: "/staff-login",
+  path: "/admin/login",
   isPrivate: true,
 });
 
-export default function StaffLoginPage() {
+export default function AdminLoginPage() {
   return (
     <Suspense fallback={<Loader variant="spinner" className="py-20" />}>
-      <StaffLoginForm />
+      <AdminLoginForm />
     </Suspense>
   );
 }

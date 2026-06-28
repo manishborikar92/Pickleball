@@ -79,7 +79,7 @@ export function AuthFlow({
             <CustomerCheckoutAuthGate
               inline={true}
               onSuccess={onAuthSuccess}
-              showStaffLoginLink={false}
+              showAdminLoginLink={false}
               initialPhone={auth.phone}
               initialStep={auth.step}
             />

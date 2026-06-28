@@ -56,7 +56,7 @@ const buildRequest = ({ path, method, operation, apiPrefix = '' }) => {
   // Automatic extraction of JWT access token upon successful auth callback
   const isAuthCallback = 
     (path.endsWith('/auth/otp/verify') && method.toLowerCase() === 'post') ||
-    (path.endsWith('/auth/staff/login') && method.toLowerCase() === 'post') ||
+    (path.endsWith('/auth/admin/login') && method.toLowerCase() === 'post') ||
     (path.endsWith('/auth/refresh') && method.toLowerCase() === 'post');
 
   const testEvent = isAuthCallback ? [
