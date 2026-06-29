@@ -60,7 +60,7 @@ const BOOKING_COLUMNS = [
           </Button>
         ) : (
           <Button
-            href={`/booking/confirmed?bookingId=${row.id}`}
+            href={`/booking/${row.id}`}
             variant="secondary"
             className="py-1 px-3.5 text-xs min-h-[2rem] w-28"
           >
@@ -272,7 +272,7 @@ function MobileBookingCard(row) {
             </Button>
           ) : (
             <Button
-              href={`/booking/confirmed?bookingId=${row.id}`}
+              href={`/booking/${row.id}`}
               variant="secondary"
               className="py-1 px-3 text-xs min-h-[2rem] w-28"
             >

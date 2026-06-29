@@ -883,9 +883,9 @@ These endpoints support payment callbacks, status checks, and manager-initiated 
 
 **Behaviour:**
 1. Call PhonePe Order Status API with `orderId`.
-2. `COMPLETED` → confirm booking (idempotent) → redirect to `/booking/success?orderId=...`
-3. `FAILED` → rollback wallet credits → redirect to `/booking/failed?orderId=...`
-4. `PENDING` → redirect to `/booking/pending?orderId=...` (webhook will deliver terminal state)
+2. `COMPLETED` → confirm booking (idempotent) → redirect to `/booking/:bookingId`
+3. `FAILED` → rollback wallet credits → redirect to `/booking/:bookingId`
+4. `PENDING` → redirect to `/booking/:bookingId` (webhook will deliver terminal state)
 
 **Response:** `302 Redirect` — never returns a JSON body.
 

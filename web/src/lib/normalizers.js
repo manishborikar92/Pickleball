@@ -33,7 +33,7 @@ export function normalizeVenueResponse(venue = {}) {
     advanceBookingDays: venue.advance_booking_days ?? venue.advanceBookingDays ?? 7,
     rolloverTime: venue.rollover_time ?? venue.rolloverTime ?? "08:00",
     phone: venue.phone || "",
-    secondaryPhone: venue.secondary_phone || "",
+    secondaryPhone: venue.secondary_phone ?? venue.secondaryPhone ?? "",
     email: venue.email || "",
     // Backend coordinates (temporary schema gaps representation)
     latitude: venue.latitude !== undefined ? venue.latitude : null,
@@ -55,14 +55,14 @@ export function normalizeVenueResponse(venue = {}) {
 
 export function normalizeAvailabilityResponse(payload = {}) {
   return (payload.courts || []).map((court) => ({
-    courtId: court.court_id,
-    courtName: court.court_name,
+    courtId: court.court_id || court.courtId,
+    courtName: court.court_name || court.courtName,
     environment: court.environment,
     slots: (court.slots || []).map((slot) => ({
-      startTime: slot.start_time,
-      endTime: slot.end_time,
+      startTime: slot.start_time || slot.startTime,
+      endTime: slot.end_time || slot.endTime,
       status: slot.status,
-      price: Number(slot.unit_price || 0),
+      price: Number(slot.unit_price || slot.unitPrice || 0),
     })),
   }));
 }
@@ -108,24 +108,24 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
 
   // Trust backend API contract for unique, sorted court_names.
   // Fallback to slots extraction without sorting if court_names is missing.
-  const rawCourts = booking.court_names || 
+  const rawCourts = booking.court_names || booking.courtNames ||
     [...new Set((booking.slots || []).map((s) => s.court?.name || s.courtName).filter(Boolean))];
   const courtNames = rawCourts.length > 0 ? rawCourts : [booking.court?.name || "Court"];
+
+  const startTime = booking.slot_start_time || booking.session_start_time || booking.sessionStartTime || booking.startTime;
+  const endTime = booking.slot_end_time || booking.session_end_time || booking.sessionEndTime || booking.endTime;
+  const time = booking.time || (startTime && endTime ? `${startTime} - ${endTime}` : "");
 
   const base = {
     id: booking.id,
     status: booking.status,
     courtNames,
-    venueName: booking.venue?.name || "Venue",
-    venueSlug: booking.venue?.slug || "",
-    date: booking.slot_date,
-    time: booking.slot_start_time && booking.slot_end_time 
-      ? `${booking.slot_start_time} - ${booking.slot_end_time}` 
-      : booking.session_start_time && booking.session_end_time
-        ? `${booking.session_start_time} - ${booking.session_end_time}`
-        : "",
-    amount: Number(booking.total_amount || 0),
-    hasReview: Boolean(booking.has_review),
+    venueName: booking.venue?.name || booking.venueName || "Venue",
+    venueSlug: booking.venue?.slug || booking.venueSlug || "",
+    date: booking.slot_date || booking.slotDate || booking.date,
+    time,
+    amount: Number(booking.total_amount ?? booking.totalAmount ?? booking.amount ?? 0),
+    hasReview: Boolean(booking.has_review ?? booking.hasReview),
   };
 
   if (!isDetail) {
@@ -134,17 +134,19 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
 
   return {
     ...base,
-    slotDate: booking.slot_date,
-    sessionStartTime: booking.session_start_time,
-    sessionEndTime: booking.session_end_time,
-    sessionDurationMins: Number(booking.session_duration_mins || 0),
-    courtCount: Number(booking.court_count || 0),
-    slotUnitCount: Number(booking.slot_unit_count || 0),
-    totalAmount: Number(booking.total_amount || 0),
-    creditsApplied: Number(booking.credits_applied || 0),
-    expiresAt: booking.expires_at,
-    waiverAccepted: Boolean(booking.waiver_accepted),
-    waiverAcceptedAt: booking.waiver_accepted_at,
+    slotDate: booking.slot_date || booking.slotDate || booking.date,
+    sessionStartTime: booking.session_start_time || booking.sessionStartTime || startTime,
+    sessionEndTime: booking.session_end_time || booking.sessionEndTime || endTime,
+    sessionDurationMins: Number(booking.session_duration_mins ?? booking.sessionDurationMins ?? 0),
+    courtCount: Number(booking.court_count ?? booking.courtCount ?? 0),
+    slotUnitCount: Number(booking.slot_unit_count ?? booking.slotUnitCount ?? 0),
+    totalAmount: Number(booking.total_amount ?? booking.totalAmount ?? 0),
+    taxAmount: Number(booking.tax_amount ?? booking.taxAmount ?? 0),
+    discountAmount: Number(booking.discount_amount ?? booking.discountAmount ?? 0),
+    creditsApplied: Number(booking.credits_applied ?? booking.creditsApplied ?? 0),
+    expiresAt: booking.expires_at || booking.expiresAt,
+    waiverAccepted: Boolean(booking.waiver_accepted ?? booking.waiverAccepted),
+    waiverAcceptedAt: booking.waiver_accepted_at || booking.waiverAcceptedAt,
     venue: booking.venue ? normalizeVenueResponse(booking.venue) : null,
     slots: (booking.slots || []).map((slot) => ({
       id: slot.id,
@@ -152,19 +154,19 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
         id: slot.court.id,
         name: slot.court.name,
       } : null,
-      slotDate: slot.slot_date,
-      startTime: slot.slot_start_time,
-      endTime: slot.slot_end_time,
+      slotDate: slot.slot_date || slot.slotDate,
+      startTime: slot.slot_start_time || slot.startTime || slot.slotStartTime,
+      endTime: slot.slot_end_time || slot.endTime || slot.slotEndTime,
       status: slot.status,
-      unitPrice: Number(slot.unit_price || 0),
+      unitPrice: Number(slot.unit_price ?? slot.unitPrice ?? 0),
     })),
     payments: (booking.payments || []).map((payment) => ({
       id: payment.id,
       gateway: payment.gateway,
-      merchantOrderId: payment.merchant_order_id,
+      merchantOrderId: payment.merchant_order_id || payment.merchantOrderId,
       amount: Number(payment.amount || 0),
       status: payment.status,
-      createdAt: payment.created_at,
+      createdAt: payment.created_at || payment.createdAt,
     })),
   };
 }

@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/shared";
-import { Card } from "@/components/shared";
 import { formatCurrency } from "@/lib/bookingEngine";
-import { CheckCircle2, X, Lock, CalendarDays, Clock } from "lucide-react";
+import { X, Lock, CalendarDays, Clock } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 import { useOverlay } from "@/hooks/useOverlay";
 
@@ -29,7 +28,6 @@ export function AuthFlow({
   setWaiver,
   checkoutError = "",
   checkoutLoading = false,
-  confirmedBookingId = "",
   onAuthSuccess,
   confirmPayment,
   onClose,
@@ -96,7 +94,6 @@ export function AuthFlow({
               onConfirm={confirmPayment}
             />
           )}
-          {auth.step === "success" && <SuccessStep bookingId={confirmedBookingId} />}
         </div>
       </div>
     </div>
@@ -247,23 +244,6 @@ function WaiverStep({
   );
 }
 
-function SuccessStep({ bookingId }) {
-  return (
-    <div className="space-y-5 py-6 text-center">
-      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-accent text-black">
-        <CheckCircle2 className="h-10 w-10" />
-      </div>
-      <h2 className="text-3xl font-black sm:text-4xl">You are booked!</h2>
-      <p className="text-sm leading-relaxed text-muted sm:text-base">
-        A WhatsApp confirmation and receipt will be sent after the payment
-        webhook confirms the transaction.
-      </p>
-      <Button href={`/booking/confirmed${bookingId ? `?bookingId=${bookingId}` : ""}`} className="mt-2 w-full py-4 text-base">
-        View Confirmation
-      </Button>
-    </div>
-  );
-}
 
 /* ── Helpers ──────────────────────────────────────── */
 

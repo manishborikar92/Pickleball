@@ -5,3 +5,7 @@ export { DatePicker } from "./DatePicker";
 export { OrderSummary } from "./OrderSummary";
 export { SlotGrid } from "./SlotGrid";
 export { VenueHero } from "./VenueHero";
+export { BookingDetailView } from "./BookingDetailView";
+export { BookingFailedView } from "./BookingFailedView";
+export { BookingPendingView } from "./BookingPendingView";
+export { BookingErrorView } from "./BookingErrorView";

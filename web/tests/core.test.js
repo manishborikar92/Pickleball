@@ -17,6 +17,7 @@ import {
 import {
   buildDateWindow,
   getPaymentReceiptDetails,
+  getLatestPayment,
 } from "../src/lib/bookingEngine.js";
 import {
   buildBookingSelectionPayload,
@@ -151,6 +152,21 @@ test("coupon validation is format-only before server preview applies it", () => 
     value: "FIRST50",
   });
   assert.equal(validateCoupon("bad coupon").ok, false);
+});
+
+test("getLatestPayment returns the most recent payment by createdAt", () => {
+  assert.equal(getLatestPayment(null), null);
+  assert.equal(getLatestPayment({ payments: [] }), null);
+
+  const booking = {
+    payments: [
+      { id: "p1", status: "failed", merchantOrderId: "PP-1", createdAt: "2026-06-29T10:00:00.000Z" },
+      { id: "p2", status: "initiated", merchantOrderId: "PP-2", createdAt: "2026-06-29T10:05:00.000Z" },
+    ],
+  };
+  // Latest by createdAt wins regardless of array order.
+  assert.equal(getLatestPayment(booking).id, "p2");
+  assert.equal(getLatestPayment({ payments: [...booking.payments].reverse() }).id, "p2");
 });
 
 test("getPaymentReceiptDetails correctly handles wallet-only checkouts", () => {
@@ -330,5 +346,97 @@ test("normalizeBookingDetailResponse falls back to extracting court names from s
 
   const normalized = normalizeBookingDetailResponse(rawDetailBooking);
   assert.deepEqual(normalized.courtNames, ["Court 2", "Court 1"]);
+});
+
+test("resolveBookingResult resolves statuses and handles session validation", async () => {
+  const { resolveBookingResult } = await import("../src/lib/bookingResolver.js");
+
+  // 1. Unauthorized if session is empty
+  const res1 = await resolveBookingResult("booking-123", null);
+  assert.equal(res1.status, "unauthorized");
+
+
+  // 2. Success state when status is confirmed
+  const mockBooking = {
+    id: "booking-123",
+    status: "confirmed",
+    totalAmount: 500,
+    slotDate: "2026-06-29",
+    sessionStartTime: "08:00",
+    sessionEndTime: "09:00",
+    venue: { id: "venue-besa", name: "Besa, Nagpur", slug: "besa-nagpur" },
+    slots: [],
+    payments: [],
+  };
+  const mockGetBooking = async () => mockBooking;
+
+  const res3 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetBooking });
+  assert.equal(res3.status, "success");
+  assert.equal(res3.booking.id, "booking-123");
+  assert.equal(res3.receipt.upiAmount, 500);
+
+  // 4. Pending state when status is pending_payment and not expired
+  const mockPendingBooking = {
+    ...mockBooking,
+    status: "pending_payment",
+    expiresAt: new Date(Date.now() + 600000).toISOString(), // 10 minutes in future
+  };
+  const mockGetPending = async () => mockPendingBooking;
+  const res4 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetPending });
+  assert.equal(res4.status, "pending");
+
+  // 5. Expired state when status is pending_payment and expired
+  const mockExpiredBooking = {
+    ...mockBooking,
+    status: "pending_payment",
+    expiresAt: new Date(Date.now() - 10000).toISOString(), // expired 10s ago
+  };
+  const mockGetExpired = async () => mockExpiredBooking;
+  const res5 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetExpired });
+  assert.equal(res5.status, "expired");
+
+  // 6. Cancelled state
+  const mockCancelledBooking = {
+    ...mockBooking,
+    status: "cancelled",
+  };
+  const mockGetCancelled = async () => mockCancelledBooking;
+  const res6 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetCancelled });
+  assert.equal(res6.status, "cancelled");
+
+  // 7. Handles API failure mapping
+  const mockGetFail = async () => {
+    throw new Error("Booking not found");
+  };
+  const res7 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetFail });
+  assert.equal(res7.status, "error");
+  assert.equal(res7.errorType, "notFound");
+
+  // 8. Failed state: pending_payment booking whose latest payment failed (hold not expired)
+  const mockFailedPaymentBooking = {
+    ...mockBooking,
+    status: "pending_payment",
+    expiresAt: new Date(Date.now() + 600000).toISOString(),
+    payments: [
+      { id: "pay-1", status: "failed", createdAt: "2026-06-29T10:00:00.000Z" },
+    ],
+  };
+  const mockGetFailedPayment = async () => mockFailedPaymentBooking;
+  const res8 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetFailedPayment });
+  assert.equal(res8.status, "failed");
+
+  // 9. An older failed payment superseded by a newer initiated one → still pending
+  const mockRetriedBooking = {
+    ...mockBooking,
+    status: "pending_payment",
+    expiresAt: new Date(Date.now() + 600000).toISOString(),
+    payments: [
+      { id: "pay-1", status: "failed", createdAt: "2026-06-29T10:00:00.000Z" },
+      { id: "pay-2", status: "initiated", createdAt: "2026-06-29T10:05:00.000Z" },
+    ],
+  };
+  const mockGetRetried = async () => mockRetriedBooking;
+  const res9 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetRetried });
+  assert.equal(res9.status, "pending");
 });
 

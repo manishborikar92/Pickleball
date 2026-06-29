@@ -745,7 +745,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
             { name: 'orderId', in: 'query', required: true, schema: { type: 'string', example: 'PP-booking123' } },
           ],
           responses: {
-            302: { description: 'Redirects to confirmed, failed, or pending page on frontend' },
+            302: { description: 'Redirects to /booking/:bookingId page on frontend' },
           },
         },
       },

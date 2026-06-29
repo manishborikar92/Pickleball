@@ -68,7 +68,6 @@ export function BookingClient({
   const [quoteLoading, setQuoteLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [confirmedBookingId, setConfirmedBookingId] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -303,10 +302,9 @@ export function BookingClient({
       }
       const payment = paymentRes.data;
 
-      // Wallet-only payment — no gateway needed.
+      // Wallet-only payment — no gateway needed. Redirect directly to unified status page.
       if (payment.type === "wallet_only") {
-        setConfirmedBookingId(hold.booking_id);
-        setAuth((current) => ({ ...current, step: "success" }));
+        window.location.assign(`/booking/${hold.booking_id}`);
         return;
       }
 
@@ -402,7 +400,6 @@ export function BookingClient({
           setWaiver={setWaiver}
           checkoutError={checkoutError}
           checkoutLoading={checkoutLoading}
-          confirmedBookingId={confirmedBookingId}
           onAuthSuccess={handleAuthSuccess}
           confirmPayment={handleConfirmPayment}
           onClose={() => setAuth(INITIAL_AUTH)}

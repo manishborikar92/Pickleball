@@ -20,7 +20,7 @@ export const createRedirectController = ({ bookingsService, paymentProvider, con
 
     if (!orderId) {
       logger.warn('[PhonePe Redirect] Missing orderId query parameter');
-      return res.redirect(`${frontendBaseUrl}/booking/failed?error=missing_order_id`);
+      return res.redirect(`${frontendBaseUrl}/booking/error?type=missing_order_id`);
     }
 
     logger.info('[PhonePe Redirect] Processing redirect', {
@@ -42,7 +42,7 @@ export const createRedirectController = ({ bookingsService, paymentProvider, con
 
       if (state === 'COMPLETED') {
         // Process completion (idempotent — may already be processed by webhook).
-        await bookingsService.handleProviderPaymentEvent({
+        const result = await bookingsService.handleProviderPaymentEvent({
           merchantOrderId: orderId,
           state: 'COMPLETED',
           payload: {
@@ -51,11 +51,11 @@ export const createRedirectController = ({ bookingsService, paymentProvider, con
             source: 'redirect',
           },
         });
-        return res.redirect(`${frontendBaseUrl}/booking/confirmed?orderId=${orderId}`);
+        return res.redirect(`${frontendBaseUrl}/booking/${result.booking_id}`);
       }
 
       if (state === 'FAILED') {
-        await bookingsService.handleProviderPaymentEvent({
+        const result = await bookingsService.handleProviderPaymentEvent({
           merchantOrderId: orderId,
           state: 'FAILED',
           payload: {
@@ -64,11 +64,15 @@ export const createRedirectController = ({ bookingsService, paymentProvider, con
             source: 'redirect',
           },
         });
-        return res.redirect(`${frontendBaseUrl}/booking/failed?orderId=${orderId}`);
+        return res.redirect(`${frontendBaseUrl}/booking/${result.booking_id}`);
       }
 
-      // PENDING, CREATED, or any other state — show pending page.
-      return res.redirect(`${frontendBaseUrl}/booking/pending?orderId=${orderId}`);
+      // PENDING, CREATED, or any other state — show pending status on the unified details page.
+      const bookingId = await bookingsService.getBookingIdByOrderId(orderId);
+      if (bookingId) {
+        return res.redirect(`${frontendBaseUrl}/booking/${bookingId}`);
+      }
+      return res.redirect(`${frontendBaseUrl}/booking/error?type=notFound`);
     } catch (error) {
       logger.error('[PhonePe Redirect] Error processing redirect', {
         operation: 'phonepe:redirect:error',
@@ -76,8 +80,16 @@ export const createRedirectController = ({ bookingsService, paymentProvider, con
         error,
       });
 
-      // Redirect to pending page on error — webhook will eventually process.
-      return res.redirect(`${frontendBaseUrl}/booking/pending?orderId=${orderId}`);
+      try {
+        const bookingId = await bookingsService.getBookingIdByOrderId(orderId);
+        if (bookingId) {
+          return res.redirect(`${frontendBaseUrl}/booking/${bookingId}`);
+        }
+      } catch (err) {
+        logger.error('[PhonePe Redirect] Failed to retrieve bookingId for error redirect', { err });
+      }
+
+      return res.redirect(`${frontendBaseUrl}/booking/error?type=api_failure`);
     }
   };
 

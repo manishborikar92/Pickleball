@@ -40,7 +40,7 @@ Next.js Frontend                Express.js Backend              PhonePe PG
       │                                  │── GET /checkout/v2/order ►│
       │                                  │◄── { state: COMPLETED } ──│
       │                                  │  [Confirm booking]        │
-      │◄── Redirect to /booking/success ─│                           │
+      │◄── Redirect to /booking/[id] ────│                           │
       │                                  │◄── Webhook (S2S) ─────────│
       │                                  │  [Idempotent confirm]     │
 ```
@@ -289,14 +289,15 @@ router.get('/redirect', async (req, res) => {
 
   if (status === 'COMPLETED') {
     // Confirm booking (idempotent)
-    await confirmBooking(orderId);
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/success?orderId=${orderId}`);
+    const { booking_id } = await confirmBooking(orderId);
+    return res.redirect(`${FRONTEND_BASE_URL}/booking/${booking_id}`);
   } else if (status === 'FAILED') {
-    await handlePaymentFailure(orderId);
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/failed?orderId=${orderId}`);
+    const { booking_id } = await handlePaymentFailure(orderId);
+    return res.redirect(`${FRONTEND_BASE_URL}/booking/${booking_id}`);
   } else {
-    // PENDING — payment still processing; show pending page, webhook will follow
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/pending?orderId=${orderId}`);
+    // PENDING — payment still processing; show unified pending status page
+    const bookingId = await getBookingIdByOrderId(orderId);
+    return res.redirect(`${FRONTEND_BASE_URL}/booking/${bookingId}`);
   }
 });
 ```
@@ -700,6 +701,8 @@ When `state === 'FAILED'` is received (via redirect handler or webhook):
 2. Update `payments.status = 'failed'`.
 3. **Do NOT expire the booking hold** automatically — give the user a chance to retry with the same booking.
 4. Frontend shows failure UI with a "Try Again" button.
+
+> Because the booking record stays in `pending_payment` after a failure, `booking.status` alone cannot distinguish a failed attempt from an in-flight one. The unified `/booking/[bookingId]` page resolves the view from the **payment ledger**: if the most recent payment is `failed` (and the hold has not expired) it renders the failure UI; otherwise it polls as pending. "Try Again" re-initiates payment on the same booking (see §9.2).
 
 ### 9.2 Retry Logic
 

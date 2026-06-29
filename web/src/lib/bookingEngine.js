@@ -87,6 +87,22 @@ export function getPaymentReceiptDetails(booking) {
   };
 }
 
+/**
+ * Returns the most recent payment on a normalized booking (by createdAt), or null.
+ * A booking can hold several attempts (e.g. failed → retried); the latest one is
+ * authoritative for both status classification and order-id display.
+ *
+ * @param {Object} booking - Normalized booking with a `payments` array.
+ * @returns {Object|null}
+ */
+export function getLatestPayment(booking) {
+  const payments = booking?.payments || [];
+  if (payments.length === 0) return null;
+  return payments
+    .slice()
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+}
+
 export function getTodayDateString(timeZone = "Asia/Kolkata") {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone,

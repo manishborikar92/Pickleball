@@ -43,6 +43,8 @@ const serializeBooking = (booking) => ({
   court_count: booking.courtCount,
   slot_unit_count: booking.slotUnitCount,
   total_amount: Number(booking.totalAmount || 0),
+  tax_amount: Number(booking.taxAmount || 0),
+  discount_amount: Number(booking.discountAmount || 0),
   credits_applied: Number(booking.creditsApplied || 0),
   expires_at: booking.expiresAt,
   waiver_accepted: booking.waiverAccepted,
@@ -505,6 +507,11 @@ export const createBookingsService = ({
       }
 
       return serializeBooking(booking);
+    },
+
+    async getBookingIdByOrderId(merchantOrderId) {
+      const payment = await repository.getPaymentWithBooking({ merchantOrderId });
+      return payment?.booking?.id || null;
     },
 
     async getBookingForReconciliation({ bookingId }) {

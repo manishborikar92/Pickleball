@@ -16,7 +16,7 @@ const makeRes = () => {
   return res;
 };
 
-test('redirect controller redirects to failed page when orderId is missing', async () => {
+test('redirect controller redirects to error page when orderId is missing', async () => {
   const controller = createRedirectController({
     bookingsService: {},
     paymentProvider: {},
@@ -28,15 +28,15 @@ test('redirect controller redirects to failed page when orderId is missing', asy
 
   await controller.handleRedirect(req, res);
 
-  assert.ok(res.redirectUrl.includes('/booking/failed'));
-  assert.ok(res.redirectUrl.includes('missing_order_id'));
+  assert.ok(res.redirectUrl.includes('/booking/error'));
+  assert.ok(res.redirectUrl.includes('type=missing_order_id'));
 });
 
-test('redirect controller redirects to confirmed page on COMPLETED status', async () => {
+test('redirect controller redirects to booking page on COMPLETED status', async () => {
   const controller = createRedirectController({
     bookingsService: {
       async handleProviderPaymentEvent() {
-        return {};
+        return { booking_id: 'booking-completed-123' };
       },
     },
     paymentProvider: {
@@ -52,15 +52,14 @@ test('redirect controller redirects to confirmed page on COMPLETED status', asyn
 
   await controller.handleRedirect(req, res);
 
-  assert.ok(res.redirectUrl.includes('/booking/confirmed'));
-  assert.ok(res.redirectUrl.includes('orderId=PP-test-1'));
+  assert.ok(res.redirectUrl.includes('/booking/booking-completed-123'));
 });
 
-test('redirect controller redirects to failed page on FAILED status', async () => {
+test('redirect controller redirects to booking page on FAILED status', async () => {
   const controller = createRedirectController({
     bookingsService: {
       async handleProviderPaymentEvent() {
-        return {};
+        return { booking_id: 'booking-failed-123' };
       },
     },
     paymentProvider: {
@@ -76,12 +75,16 @@ test('redirect controller redirects to failed page on FAILED status', async () =
 
   await controller.handleRedirect(req, res);
 
-  assert.ok(res.redirectUrl.includes('/booking/failed'));
+  assert.ok(res.redirectUrl.includes('/booking/booking-failed-123'));
 });
 
-test('redirect controller redirects to pending page on PENDING status', async () => {
+test('redirect controller redirects to booking page on PENDING status', async () => {
   const controller = createRedirectController({
-    bookingsService: {},
+    bookingsService: {
+      async getBookingIdByOrderId() {
+        return 'booking-pending-123';
+      },
+    },
     paymentProvider: {
       async getPaymentStatus() {
         return 'PENDING';
@@ -95,12 +98,16 @@ test('redirect controller redirects to pending page on PENDING status', async ()
 
   await controller.handleRedirect(req, res);
 
-  assert.ok(res.redirectUrl.includes('/booking/pending'));
+  assert.ok(res.redirectUrl.includes('/booking/booking-pending-123'));
 });
 
-test('redirect controller redirects to pending page on provider error', async () => {
+test('redirect controller redirects to booking page on provider error', async () => {
   const controller = createRedirectController({
-    bookingsService: {},
+    bookingsService: {
+      async getBookingIdByOrderId() {
+        return 'booking-error-123';
+      },
+    },
     paymentProvider: {
       async getPaymentStatus() {
         throw new Error('PhonePe API timeout');
@@ -114,5 +121,6 @@ test('redirect controller redirects to pending page on provider error', async ()
 
   await controller.handleRedirect(req, res);
 
-  assert.ok(res.redirectUrl.includes('/booking/pending'));
+  assert.ok(res.redirectUrl.includes('/booking/booking-error-123'));
 });
+

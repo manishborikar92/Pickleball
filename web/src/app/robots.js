@@ -8,7 +8,7 @@ export default function robots() {
         "/admin",
         "/login",
         "/review",
-        "/booking/confirmed",
+        "/booking",
       ],
     },
     sitemap: "https://baselinearena.in/sitemap.xml",
