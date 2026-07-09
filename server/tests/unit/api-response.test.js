@@ -3,13 +3,13 @@ import test from 'node:test';
 
 import { ApiResponse } from '../../src/utils/api-response.js';
 
-test('ApiResponse.success removes undefined values and normalizes ids', () => {
+test('ApiResponse.success removes undefined values and preserves id keys as-is', () => {
   const response = ApiResponse.success({
-    _id: 'abc123',
+    id: 'abc123',
     keep: 'value',
     drop: undefined,
     nested: {
-      _id: 'nested-id',
+      id: 'nested-id',
     },
   });
 

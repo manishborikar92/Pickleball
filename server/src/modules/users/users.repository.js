@@ -37,6 +37,7 @@ const serializeBookingSummary = (booking) => {
     venue: booking.venue ? {
       id: booking.venue.id,
       name: booking.venue.name,
+      slug: booking.venue.slug,
     } : null,
     slot_date: toDateOnly(booking.slotDate),
     slot_start_time: formatTime(booking.sessionStartTime),
@@ -118,7 +119,7 @@ export const createUsersRepository = ({ prisma } = {}) => {
           take: limit,
           include: {
             venue: {
-              select: { id: true, name: true },
+              select: { id: true, name: true, slug: true },
             },
             slots: {
               orderBy: [

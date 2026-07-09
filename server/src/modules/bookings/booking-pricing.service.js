@@ -67,7 +67,7 @@ export const createBookingPricingService = ({ taxRate } = {}) => {
     }) {
       const base = getAmount(court.basePrice?.amount ?? court.base_price?.amount ?? court.price);
       const activeRules = pricingRules
-        .filter((rule) => rule?.isActive !== false && (!rule.courtId || rule.courtId === court.id || rule.court_id === court.id))
+        .filter((rule) => rule?.isActive !== false && (!rule.courtId || rule.courtId === court.id))
         .sort((a, b) => Number(b.priority || 0) - Number(a.priority || 0));
 
       const adjusted = activeRules.reduce((amount, pricingRule) => {

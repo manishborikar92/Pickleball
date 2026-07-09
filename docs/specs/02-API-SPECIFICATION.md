@@ -449,7 +449,7 @@ The frontend uses this response on app load to decide whether to show the name c
       {
         "id": "<uuid>",
         "court_names": ["Court 1", "Court 2"],
-        "venue": { "id": "<uuid>", "name": "Besa, Nagpur" },
+        "venue": { "id": "<uuid>", "name": "Besa, Nagpur", "slug": "besa-nagpur" },
         "slot_date": "2025-05-17",
         "slot_start_time": "09:00",
         "slot_end_time": "10:00",
@@ -739,6 +739,7 @@ The frontend uses this response on app load to decide whether to show the name c
   "message": "Success",
   "data": {
     "id": "<uuid>",
+    "user_id": "<uuid>",
     "status": "pending_payment",
     "court_names": ["Court 1", "Court 2"],
     "venue": {

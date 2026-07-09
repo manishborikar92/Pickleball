@@ -34,10 +34,9 @@ export const serialize = (value, seen = new WeakSet()) => {
   for (const [key, nestedValue] of Object.entries(value)) {
     if (shouldDropKey(key)) continue;
 
-    const outputKey = key === '_id' ? 'id' : key;
     const serialized = serialize(nestedValue, seen);
     if (serialized !== undefined) {
-      output[outputKey] = serialized;
+      output[key] = serialized;
     }
   }
 
