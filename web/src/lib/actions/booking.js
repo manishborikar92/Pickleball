@@ -15,6 +15,7 @@ import { cookies } from "next/headers";
 import { apiRequest } from "@/lib/dal/httpClient";
 import { getAvailability } from "@/lib/dal/availability";
 import { getBooking } from "@/lib/dal/bookings";
+import { getWallet } from "@/lib/dal/wallet";
 import { verifySession } from "@/lib/dal/session";
 import { runCheckout } from "@/lib/services/checkout";
 import {
@@ -63,6 +64,26 @@ export async function getBookingStatusAction(bookingId) {
     return ok({ status: booking.status, payments: booking.payments || [] });
   } catch (error) {
     return fail(error);
+  }
+}
+
+/**
+ * The signed-in user's wallet balance, for the checkout summary's wallet-credit
+ * preview. Client-callable so the book page can refresh the balance after an
+ * in-modal sign-in (the server-rendered balance is 0 for anonymous page loads).
+ * Returns 0 when unauthenticated rather than erroring — the summary just omits
+ * the wallet line.
+ *
+ * @returns {Promise<{ ok: true, data: { balance: number } } | { ok: false, error: object }>}
+ */
+export async function getWalletBalanceAction() {
+  try {
+    const session = await verifySession();
+    if (!session?.user) return ok({ balance: 0 });
+    const wallet = await getWallet();
+    return ok({ balance: wallet.balance });
+  } catch (error) {
+    return fail(error, { message: "Could not load wallet balance." });
   }
 }
 

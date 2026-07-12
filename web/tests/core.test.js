@@ -18,6 +18,8 @@ import {
 import {
   buildDateWindow,
   getPaymentReceiptDetails,
+  getCheckoutBreakdown,
+  summarizeCourtSlots,
   getLatestPayment,
 } from "../src/lib/bookingEngine.js";
 import {
@@ -564,4 +566,48 @@ test("runCheckout throws when the hold cannot be created (HI-13)", async () => {
     ),
     /Could not create booking hold/,
   );
+});
+
+test("getCheckoutBreakdown with no wallet leaves the full total payable via UPI", () => {
+  const b = getCheckoutBreakdown({ subtotal: 500, discountAmount: 0, taxAmount: 0, totalAmount: 500 }, 0);
+  assert.equal(b.walletApplied, 0);
+  assert.equal(b.amountPayable, 500);
+  assert.equal(b.hasAdjustments, false);
+  assert.equal(b.isWalletOnly, false);
+});
+
+test("getCheckoutBreakdown applies a partial wallet credit against the total (UPI + wallet)", () => {
+  const b = getCheckoutBreakdown({ subtotal: 500, discountAmount: 50, taxAmount: 0, totalAmount: 450 }, 200);
+  assert.equal(b.discountAmount, 50);
+  assert.equal(b.walletApplied, 200);
+  assert.equal(b.amountPayable, 250);
+  assert.equal(b.hasAdjustments, true);
+  assert.equal(b.isWalletOnly, false);
+});
+
+test("getCheckoutBreakdown caps wallet at the order total and reports wallet-only (no UPI due)", () => {
+  const b = getCheckoutBreakdown({ subtotal: 300, totalAmount: 300 }, 1000);
+  assert.equal(b.walletApplied, 300);   // capped at total, never credits the surplus
+  assert.equal(b.amountPayable, 0);
+  assert.equal(b.isWalletOnly, true);
+});
+
+test("summarizeCourtSlots derives the session window, duration, and summed price", () => {
+  const s = summarizeCourtSlots([
+    { startTime: "09:00", endTime: "10:00", price: 250 },
+    { startTime: "10:00", endTime: "11:00", price: "250" }, // string price coerced
+  ]);
+  assert.equal(s.startTime, "09:00");
+  assert.equal(s.endTime, "11:00");
+  assert.equal(s.slotCount, 2);
+  assert.equal(s.durationMins, 120);
+  assert.equal(s.courtTotal, 500);
+});
+
+test("summarizeCourtSlots is safe for an empty selection", () => {
+  const s = summarizeCourtSlots([]);
+  assert.equal(s.slotCount, 0);
+  assert.equal(s.durationMins, 0);
+  assert.equal(s.courtTotal, 0);
+  assert.equal(s.startTime, undefined);
 });

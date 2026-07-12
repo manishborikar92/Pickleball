@@ -10,7 +10,7 @@ import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
 import { useBookingSelection } from "@/hooks/useBookingSelection";
-import { checkoutBookingAction } from "@/lib/actions/booking";
+import { checkoutBookingAction, getWalletBalanceAction } from "@/lib/actions/booking";
 
 const INITIAL_AUTH = {
   step: "closed",
@@ -35,6 +35,7 @@ export function BookingClient({
   availability,
   initialDate,
   session: activeSession,
+  walletBalance: initialWalletBalance = 0,
 }) {
   const selection = useBookingSelection({
     venue,
@@ -44,6 +45,7 @@ export function BookingClient({
   });
 
   const [auth, setAuth] = useState(INITIAL_AUTH);
+  const [walletBalance, setWalletBalance] = useState(initialWalletBalance);
   const [waiver, setWaiver] = useState({ time: false, policy: false });
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -79,6 +81,12 @@ export function BookingClient({
       phone: userData.phone,
       error: "",
     }));
+    // The user just signed in inside the modal; the server-rendered balance was
+    // for an anonymous page load. Refresh it so the confirm step shows the real
+    // wallet/UPI split before they pay.
+    getWalletBalanceAction()
+      .then((res) => { if (res.ok) setWalletBalance(res.data.balance); })
+      .catch(() => {});
   }, []);
 
   async function handleConfirmPayment() {
@@ -174,6 +182,7 @@ export function BookingClient({
             selectedDate={selection.selectedDate}
             hasSelection={selection.hasSelection}
             quote={selection.quote}
+            walletBalance={walletBalance}
             couponCode={selection.couponCode}
             couponMessage={selection.couponMessage}
             quoteError={selection.quoteError || checkoutError}
@@ -191,6 +200,7 @@ export function BookingClient({
           selectedDate={selection.selectedDate}
           selectedCourtsData={selection.selectedCourtsData}
           quote={selection.quote}
+          walletBalance={walletBalance}
           waiver={waiver}
           setWaiver={setWaiver}
           checkoutError={checkoutError}

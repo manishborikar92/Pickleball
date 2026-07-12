@@ -47,6 +47,25 @@ export function getSlotRange(slots, startTime, endTime) {
   return slots.slice(startIdx, endIdx + 1);
 }
 
+/**
+ * Derives the display summary for one court's contiguous slot selection: the
+ * session window, slot count, duration, and summed price. Shared by the booking
+ * summary panel and the checkout confirm card so the two stay in lock-step.
+ *
+ * @param {Array<{startTime?: string, endTime?: string, price?: number|string}>} [slots=[]]
+ * @returns {{startTime: string|undefined, endTime: string|undefined, slotCount: number, durationMins: number, courtTotal: number}}
+ */
+export function summarizeCourtSlots(slots = []) {
+  const slotCount = slots.length;
+  return {
+    startTime: slots[0]?.startTime,
+    endTime: slots[slotCount - 1]?.endTime,
+    slotCount,
+    durationMins: slotCount * 60, // one-hour slots
+    courtTotal: slots.reduce((sum, slot) => sum + Number(slot.price || 0), 0),
+  };
+}
+
 export function getPaymentReceiptDetails(booking) {
   const totalAmount = Number(booking.total_amount || booking.totalAmount || 0);
   const creditsApplied = Number(booking.credits_applied || booking.creditsApplied || 0);
@@ -90,6 +109,54 @@ export function getPaymentReceiptDetails(booking) {
     taxAmount,
     isMixed: false,
     isWalletOnly: false,
+  };
+}
+
+/**
+ * Pre-checkout payment breakdown for the booking summary.
+ *
+ * Wallet credits are applied server-side at payment initiation (the backend
+ * consumes credits up to the order total); this mirrors that `min(balance, total)`
+ * split so the summary can show what the user actually pays via UPI versus what
+ * comes off their wallet — before the transaction runs. Purely presentational; the
+ * authoritative split is recorded on the booking (see `getPaymentReceiptDetails`).
+ *
+ * `walletBalance` is 0 for anonymous users (unknown until sign-in), so the wallet
+ * line simply does not appear until a balance is known.
+ *
+ * @param {object} [quote={}]              - Server price quote for the selection.
+ * @param {number} [quote.subtotal=0]       - Court fees before discount/tax.
+ * @param {number} [quote.discountAmount=0] - Promo-code discount.
+ * @param {number} [quote.taxAmount=0]      - Tax, when charged.
+ * @param {number} [quote.totalAmount=0]    - Order total (after discount + tax).
+ * @param {number} [walletBalance=0]        - Available wallet credits (0 when anonymous).
+ * @returns {{subtotal:number,discountAmount:number,taxAmount:number,totalAmount:number,walletApplied:number,amountPayable:number,hasAdjustments:boolean,isWalletOnly:boolean}}
+ */
+export function getCheckoutBreakdown(quote = {}, walletBalance = 0) {
+  const {
+    subtotal = 0,
+    discountAmount = 0,
+    taxAmount = 0,
+    totalAmount = 0,
+  } = quote ?? {};
+
+  const total = Number(totalAmount || 0);
+  const discount = Number(discountAmount || 0);
+  const tax = Number(taxAmount || 0);
+  // Clamp the balance so bad data can't credit more than the order total or push
+  // the UPI amount negative (same guard as getPaymentReceiptDetails, LO-2).
+  const walletApplied = Math.min(Math.max(0, Number(walletBalance || 0)), total);
+  const amountPayable = Math.max(0, total - walletApplied);
+
+  return {
+    subtotal: Number(subtotal || 0),
+    discountAmount: discount,
+    taxAmount: tax,
+    totalAmount: total,
+    walletApplied,
+    amountPayable,
+    hasAdjustments: discount > 0 || tax > 0 || walletApplied > 0,
+    isWalletOnly: walletApplied > 0 && amountPayable === 0,
   };
 }
 

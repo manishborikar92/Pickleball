@@ -198,7 +198,7 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     setAppliedCouponCode(parsed.data);
     setServerQuote(EMPTY_QUOTE);
     setQuoteRequestError("");
-    setCouponMessage("Checking promo with server pricing.");
+    setCouponMessage("Applying promo code...");
   }, [couponCode]);
 
   const selectDate = useCallback((date) => {

@@ -3,6 +3,7 @@ import Script from "next/script";
 import { BookingClient } from "@/components/features/booking";
 import { getVenue } from "@/lib/dal/venues";
 import { getAvailability } from "@/lib/dal/availability";
+import { getWallet } from "@/lib/dal/wallet";
 import { verifySession } from "@/lib/dal/session";
 import { JsonLd } from "@/components/seo";
 import { getPageMetadata } from "@/config/metadata.config";
@@ -27,10 +28,15 @@ export default async function BookPage({ params }) {
   const { slug } = await params;
   const [venue, session] = await Promise.all([getVenue(slug), verifySession()]);
   const initialDate = getTodayDateString(venue.timezone);
-  const availability = await getAvailability({
-    venueId: venue.id,
-    date: initialDate,
-  });
+  const [availability, wallet] = await Promise.all([
+    getAvailability({ venueId: venue.id, date: initialDate }),
+    // Wallet credits are applied at checkout; fetch the balance for signed-in
+    // customers so the summary can show the UPI-vs-wallet split up front. Anonymous
+    // users (or a failed read) simply get no wallet line. verifySession() is
+    // request-cached, so getWallet() reuses the same /users/me round-trip.
+    session?.user ? getWallet().catch(() => null) : Promise.resolve(null),
+  ]);
+  const walletBalance = wallet?.balance ?? 0;
 
   const locationSchema = {
     "@context": "https://schema.org",
@@ -90,6 +96,7 @@ export default async function BookPage({ params }) {
         availability={availability}
         initialDate={initialDate}
         session={session}
+        walletBalance={walletBalance}
       />
       <Script src={phonePeSrc} strategy="lazyOnload" />
     </>

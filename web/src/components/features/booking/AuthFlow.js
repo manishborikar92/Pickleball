@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/shared";
-import { formatCurrency } from "@/lib/bookingEngine";
-import { X, Lock, CalendarDays, Clock } from "lucide-react";
+import { formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
+import { X, Lock, CalendarDays, Clock, Wallet, Tag } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 import { useOverlay } from "@/hooks/useOverlay";
 
@@ -13,6 +13,7 @@ import { useOverlay } from "@/hooks/useOverlay";
  * @param {string}   props.selectedDate       - ISO date string of the selected booking date
  * @param {Array}    props.selectedCourtsData - Active court + slot selections with pricing
  * @param {Object}   props.quote              - Calculated price quote from booking engine
+ * @param {number}   props.walletBalance      - Signed-in user's wallet credits (0 when anonymous)
  * @param {Object}   props.waiver             - Current waiver checkbox checked states
  * @param {Function} props.setWaiver          - Waiver state setter
  * @param {Function} props.onAuthSuccess      - Callback when authentication completes
@@ -24,6 +25,7 @@ export function AuthFlow({
   selectedDate,
   selectedCourtsData,
   quote,
+  walletBalance = 0,
   waiver,
   setWaiver,
   checkoutError = "",
@@ -72,7 +74,7 @@ export function AuthFlow({
         </div>
 
         {/* Scrollable content */}
-        <div className="overflow-y-auto p-5 pb-safe pt-12 sm:p-6 sm:pt-14">
+        <div className="overflow-y-auto hide-scrollbar p-5 pb-safe pt-12 sm:p-6 sm:pt-14">
           {["phone", "otp", "name"].includes(auth.step) && (
             <CustomerCheckoutAuthGate
               inline={true}
@@ -87,6 +89,7 @@ export function AuthFlow({
               selectedDate={selectedDate}
               selectedCourtsData={selectedCourtsData}
               quote={quote}
+              walletBalance={walletBalance}
               waiver={waiver}
               setWaiver={setWaiver}
               checkoutError={checkoutError}
@@ -118,6 +121,7 @@ function WaiverStep({
   selectedDate,
   selectedCourtsData,
   quote,
+  walletBalance = 0,
   waiver,
   setWaiver,
   checkoutError,
@@ -126,6 +130,7 @@ function WaiverStep({
 }) {
   const allChecked = waiver?.time && waiver?.policy;
   const courts = selectedCourtsData ?? [];
+  const breakdown = getCheckoutBreakdown(quote, walletBalance);
 
   return (
     <div className="space-y-5">
@@ -150,14 +155,8 @@ function WaiverStep({
         {/* Per-court rows */}
         <div className="divide-y divide-line/20">
           {courts.map(({ courtId, courtName, slots }) => {
-            const startTime = slots[0]?.startTime;
-            const endTime = slots[slots.length - 1]?.endTime;
-            const slotCount = slots.length;
-            const durationMins = slotCount * 60;
-            const courtTotal = slots.reduce(
-              (sum, s) => sum + Number(s.price || 0),
-              0,
-            );
+            const { startTime, endTime, durationMins, courtTotal } =
+              summarizeCourtSlots(slots);
 
             return (
               <div
@@ -179,20 +178,44 @@ function WaiverStep({
           })}
         </div>
 
-        {/* Discount row — only when applied */}
-        {(quote?.discountAmount ?? 0) > 0 && (
+        {/* Promo discount — only when applied */}
+        {breakdown.discountAmount > 0 && (
           <div className="flex items-center justify-between gap-4 border-t border-line/30 bg-accent/5 px-4 py-3 text-sm font-semibold text-accent">
-            <span>Discount applied</span>
-            <span>−{formatCurrency(quote.discountAmount)}</span>
+            <span className="flex items-center gap-1.5">
+              <Tag className="h-4 w-4" />
+              Promo discount
+            </span>
+            <span>−{formatCurrency(breakdown.discountAmount)}</span>
           </div>
         )}
 
-        {/* Total due */}
-        <div className="flex items-center justify-between gap-4 border-t border-line/40 bg-surface/50 px-4 py-3.5">
-          <span className="text-sm font-semibold text-muted">Total due</span>
-          <strong className="text-2xl font-black text-accent">
-            {formatCurrency(quote?.totalAmount ?? 0)}
-          </strong>
+        {/* Wallet credits — only when the signed-in user has credits to apply */}
+        {breakdown.walletApplied > 0 && (
+          <div className="flex items-center justify-between gap-4 border-t border-line/30 bg-accent/5 px-4 py-3 text-sm font-semibold text-accent">
+            <span className="flex items-center gap-1.5">
+              <Wallet className="h-4 w-4" />
+              Wallet credits
+            </span>
+            <span>−{formatCurrency(breakdown.walletApplied)}</span>
+          </div>
+        )}
+
+        {/* Amount payable via UPI (order total shown above it when wallet applies) */}
+        <div className="border-t border-line/40 bg-surface/50 px-4 py-3.5">
+          {breakdown.walletApplied > 0 && (
+            <div className="mb-1.5 flex items-center justify-between gap-4 text-xs text-muted">
+              <span>Order total</span>
+              <span>{formatCurrency(breakdown.totalAmount)}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-semibold text-muted">
+              To pay
+            </span>
+            <strong className="text-2xl font-black text-accent">
+              {formatCurrency(breakdown.amountPayable)}
+            </strong>
+          </div>
         </div>
       </div>
 
@@ -226,7 +249,11 @@ function WaiverStep({
         onClick={onConfirm}
         className="w-full py-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {checkoutLoading ? "Confirming..." : `Pay ${formatCurrency(quote?.totalAmount ?? 0)}`}
+        {checkoutLoading
+          ? "Confirming..."
+          : breakdown.amountPayable > 0
+            ? `Pay ${formatCurrency(breakdown.amountPayable)}`
+            : "Confirm booking"}
       </Button>
 
       {checkoutError && (

@@ -1,7 +1,6 @@
-import { Button } from "@/components/shared";
-import { Card } from "@/components/shared";
-import { formatCurrency } from "@/lib/bookingEngine";
-import { Tag, Lock, ShieldCheck, CalendarDays } from "lucide-react";
+import { Button, Card } from "@/components/shared";
+import { formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
+import { Tag, Lock, ShieldCheck, CalendarDays, Wallet } from "lucide-react";
 
 /**
  * Sticky booking summary panel displayed in the right column of the booking page.
@@ -13,6 +12,7 @@ import { Tag, Lock, ShieldCheck, CalendarDays } from "lucide-react";
  * @param {string}   props.selectedDate        - ISO date string of the selected booking date
  * @param {boolean}  props.hasSelection        - Whether any valid court+slot pair is selected
  * @param {Object}   props.quote               - Calculated price breakdown from booking engine
+ * @param {number}   props.walletBalance       - Signed-in user's wallet credits (0 when anonymous)
  * @param {string}   props.couponCode          - Current promo code input value
  * @param {string}   props.couponMessage       - Feedback message after applying a promo code
  * @param {Function} props.onCouponCodeChange  - Handler for promo code input changes
@@ -24,6 +24,7 @@ export function OrderSummary({
   selectedDate,
   hasSelection,
   quote,
+  walletBalance = 0,
   couponCode,
   couponMessage,
   quoteError = "",
@@ -32,6 +33,8 @@ export function OrderSummary({
   onApplyCoupon,
   onCheckout,
 }) {
+  const breakdown = getCheckoutBreakdown(quote, walletBalance);
+
   return (
     <Card className="flex flex-col overflow-hidden p-0 shadow-xl">
       {/* Panel header */}
@@ -47,7 +50,6 @@ export function OrderSummary({
           <BookingItems
             selectedCourtsData={selectedCourtsData}
             selectedDate={selectedDate}
-            quote={quote}
           />
         )}
 
@@ -65,8 +67,8 @@ export function OrderSummary({
           </p>
         )}
 
-        {/* Grand total */}
-        <TotalRow totalAmount={quote.totalAmount} />
+        {/* Itemized total: subtotal → promo → tax → wallet → amount payable */}
+        <PaymentSummary breakdown={breakdown} />
 
         {/* CTA + trust signals */}
         <div className="flex flex-col gap-3">
@@ -107,19 +109,13 @@ function EmptyState() {
   );
 }
 
-function BookingItems({ selectedCourtsData, selectedDate, quote }) {
+function BookingItems({ selectedCourtsData, selectedDate }) {
   return (
     <div className="space-y-2">
       {/* Per-court booking cards */}
       {selectedCourtsData.map(({ courtId, courtName, slots }) => {
-        const startTime = slots[0]?.startTime;
-        const endTime = slots[slots.length - 1]?.endTime;
-        const slotCount = slots.length;
-        const durationMins = slotCount * 60;
-        const courtTotal = slots.reduce(
-          (sum, s) => sum + Number(s.price || 0),
-          0,
-        );
+        const { startTime, endTime, slotCount, durationMins, courtTotal } =
+          summarizeCourtSlots(slots);
 
         return (
           <div
@@ -143,23 +139,6 @@ function BookingItems({ selectedCourtsData, selectedDate, quote }) {
           </div>
         );
       })}
-
-      {/* Discount — only when a coupon is applied */}
-      {quote.discountAmount > 0 && (
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-accent/10 px-4 py-2.5 text-sm font-semibold text-accent">
-          <span>Discount applied</span>
-          <span>−{formatCurrency(quote.discountAmount)}</span>
-        </div>
-      )}
-
-      {/* Tax — only when tax is charged */}
-      {quote.taxAmount > 0 && (
-        <div className="flex items-center justify-between gap-4 rounded-xl bg-surface/30 px-4 py-2.5 text-sm font-semibold text-muted/80">
-          <span>Tax</span>
-          <span>{formatCurrency(quote.taxAmount)}</span>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -196,13 +175,92 @@ function CouponInput({ couponCode, couponMessage, onChange, onApply }) {
   );
 }
 
-function TotalRow({ totalAmount }) {
+/**
+ * Itemized payment breakdown: shows the running total (subtotal → promo → tax →
+ * order total → wallet) and, as the hero figure, the amount actually payable via
+ * UPI. Adjustment lines only render when there is something to adjust, so a plain
+ * cash booking still shows a single clean total.
+ */
+function PaymentSummary({ breakdown }) {
+  const {
+    subtotal,
+    discountAmount,
+    taxAmount,
+    totalAmount,
+    walletApplied,
+    amountPayable,
+    hasAdjustments,
+    isWalletOnly,
+  } = breakdown;
+
+  const payableSubtext = isWalletOnly
+    ? "Fully paid from wallet credits"
+    : amountPayable > 0
+      ? "Payable via UPI"
+      : "";
+
   return (
-    <div className="flex items-center justify-between border-t border-line/40 pt-5">
-      <span className="text-base font-bold text-muted">Total</span>
-      <strong className="text-3xl font-black text-accent sm:text-4xl">
-        {formatCurrency(totalAmount)}
-      </strong>
+    <div className="border-t border-line/40 pt-5">
+      {hasAdjustments && (
+        <dl className="mb-4 space-y-2.5">
+          <SummaryLine label="Subtotal" value={formatCurrency(subtotal)} />
+          {discountAmount > 0 && (
+            <SummaryLine
+              label={
+                <span className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  Promo discount
+                </span>
+              }
+              value={`−${formatCurrency(discountAmount)}`}
+              accent
+            />
+          )}
+          {taxAmount > 0 && <SummaryLine label="Tax" value={formatCurrency(taxAmount)} />}
+          {walletApplied > 0 && (
+            <>
+              <SummaryLine
+                label="Order total"
+                value={formatCurrency(totalAmount)}
+                className="border-t border-line/30 pt-2.5 font-semibold text-foreground"
+              />
+              <SummaryLine
+                label={
+                  <span className="flex items-center gap-1.5">
+                    <Wallet className="h-3.5 w-3.5" />
+                    Wallet credits
+                  </span>
+                }
+                value={`−${formatCurrency(walletApplied)}`}
+                accent
+              />
+            </>
+          )}
+        </dl>
+      )}
+
+      <div className="flex items-end justify-between border-t border-line/40 pt-4">
+        <div>
+          <span className="text-base font-bold text-muted">To pay</span>
+          {payableSubtext && (
+            <p className="mt-0.5 text-xs font-medium text-muted/70">{payableSubtext}</p>
+          )}
+        </div>
+        <strong className="text-3xl font-black text-accent sm:text-4xl">
+          {formatCurrency(amountPayable)}
+        </strong>
+      </div>
+    </div>
+  );
+}
+
+function SummaryLine({ label, value, accent = false, className = "" }) {
+  return (
+    <div className={`flex items-center justify-between gap-4 text-sm ${className}`}>
+      <dt className={accent ? "font-semibold text-accent" : "text-muted"}>{label}</dt>
+      <dd className={accent ? "font-semibold text-accent" : "font-medium text-foreground"}>
+        {value}
+      </dd>
     </div>
   );
 }
