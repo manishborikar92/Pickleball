@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { ArrowLeft, UserCircle } from "lucide-react";
+import { ArrowLeft, UserCircle, Check } from "lucide-react";
 
 import { Button, Card } from "@/components/shared";
 import { reviewSchema } from "@/lib/schemas";
@@ -40,13 +40,19 @@ export function ReviewForm({ bookingId }) {
       <main className="min-h-screen bg-background pb-8 md:pb-12">
         <ReviewHeader />
         <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center gap-6 px-4 py-16 sm:px-6 md:px-8">
-          <Card className="w-full max-w-md p-8 text-center">
-            <div className="mb-4 text-6xl">✅</div>
-            <h2 className="text-2xl font-black">Thank you!</h2>
-            <p className="mt-2 text-muted">Your review has been submitted successfully.</p>
-            <div className="mt-6 flex flex-col gap-3">
-              <Button href="/dashboard/bookings">View My Bookings</Button>
-              <Button href="/" variant="secondary">Back to Home</Button>
+          <Card className="w-full max-w-lg p-8 text-center border-t-4 border-t-accent">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-accent/10 text-accent ring-8 ring-accent/5">
+              <Check className="h-10 w-10" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Thank You!</h1>
+            <p className="mb-6 text-sm text-muted">Your review has been submitted successfully.</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-center w-full">
+              <Button href="/dashboard/bookings" variant="primary" className="w-full sm:w-auto justify-center">
+                View My Bookings
+              </Button>
+              <Button href="/" variant="secondary" className="w-full sm:w-auto justify-center">
+                Back to Home
+              </Button>
             </div>
           </Card>
         </div>
