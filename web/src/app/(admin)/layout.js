@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { AdminShell } from "@/components/layout";
-import { requireRouteAccess } from "@/lib/session";
+import { requireUser } from "@/lib/dal/session";
 
 export const metadata = {
   robots: {
@@ -11,7 +11,10 @@ export const metadata = {
 
 export default async function AdminLayout({ children }) {
   await connection();
-  const session = await requireRouteAccess("/admin");
+  // The layout establishes authentication + the session for the shell. Fine-
+  // grained per-route permission checks live in each page (requireRouteAccess),
+  // because layouts do not re-render on client-side sibling navigation (CR-1).
+  const session = await requireUser("/admin");
   return (
     <AdminShell session={session}>{children}</AdminShell>
   );

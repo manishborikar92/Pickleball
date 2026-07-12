@@ -27,7 +27,11 @@ export async function setSessionCookies({ accessToken, refreshToken, user, role 
   if (user) {
     cookieStore.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     if (role !== "customer") {
-      cookieStore.set(COOKIE_NAMES.ADMIN_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+      // Privileged marker — sameSite "strict" (admin flows are same-site). LO-12.
+      cookieStore.set(COOKIE_NAMES.ADMIN_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
+    } else {
+      // Clear any stale admin marker when a now-customer session is written (LO-13).
+      cookieStore.delete({ name: COOKIE_NAMES.ADMIN_ROLE, path: "/" });
     }
     cookieStore.set(COOKIE_NAMES.USER_ONBOARDED, String(Boolean(user.onboarding_complete)), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }

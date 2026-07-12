@@ -6,12 +6,12 @@ import { HowItWorksSection } from "@/components/features/landing";
 import { LocationSection } from "@/components/features/landing";
 import { ReviewsSection } from "@/components/features/landing";
 import { JsonLd } from "@/components/seo";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 
 export const metadata = getPageMetadata({
   title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
   description:
-    "Book premium indoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
+    "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
   path: "/",
 });
 
@@ -42,7 +42,7 @@ const locationSchema = {
     "https://baselinearena.in/court-2.png",
     "https://baselinearena.in/court-3.png",
   ],
-  "priceRange": "INR",
+  "priceRange": "₹₹",
   "telephone": "+91-99704-09410",
   "email": "hello@baselinearena.in",
   "address": {

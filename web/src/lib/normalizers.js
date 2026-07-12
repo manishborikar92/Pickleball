@@ -30,10 +30,10 @@ export function normalizeVenueResponse(venue = {}) {
     city: venue.city || "",
     timezone: venue.timezone || "Asia/Kolkata",
     currency: venue.currency || "INR",
-    advanceBookingDays: venue.advance_booking_days ?? venue.advanceBookingDays ?? 7,
-    rolloverTime: venue.rollover_time ?? venue.rolloverTime ?? "08:00",
+    advanceBookingDays: venue.advance_booking_days ?? 7,
+    rolloverTime: venue.rollover_time ?? "08:00",
     phone: venue.phone || "",
-    secondaryPhone: venue.secondary_phone ?? venue.secondaryPhone ?? "",
+    secondaryPhone: venue.secondary_phone ?? "",
     email: venue.email || "",
     // Backend coordinates (temporary schema gaps representation)
     latitude: venue.latitude !== undefined ? venue.latitude : null,
@@ -42,11 +42,11 @@ export function normalizeVenueResponse(venue = {}) {
       id: court.id,
       name: court.name,
       environment: court.environment,
-      surfaceType: court.surface_type ?? court.surfaceType ?? "",
+      surfaceType: court.surface_type ?? "",
       description: court.description || "",
-      coverImageUrl: court.cover_image_url ?? court.coverImageUrl ?? "",
+      coverImageUrl: court.cover_image_url ?? "",
       status: court.status,
-      displayOrder: court.display_order ?? court.displayOrder ?? 0,
+      displayOrder: court.display_order ?? 0,
     })),
   };
 
@@ -55,30 +55,31 @@ export function normalizeVenueResponse(venue = {}) {
 
 export function normalizeAvailabilityResponse(payload = {}) {
   return (payload.courts || []).map((court) => ({
-    courtId: court.court_id || court.courtId,
-    courtName: court.court_name || court.courtName,
+    courtId: court.court_id,
+    courtName: court.court_name,
     environment: court.environment,
     slots: (court.slots || []).map((slot) => ({
-      startTime: slot.start_time || slot.startTime,
-      endTime: slot.end_time || slot.endTime,
+      startTime: slot.start_time,
+      endTime: slot.end_time,
       status: slot.status,
-      price: Number(slot.unit_price || slot.unitPrice || 0),
+      // `??` not `||` so a genuinely free slot priced 0 isn't treated as missing (LO-1).
+      price: Number(slot.unit_price ?? 0),
     })),
   }));
 }
 
 export function normalizePricePreviewResponse(payload = {}) {
-  const breakdown = payload.price_breakdown || payload.priceQuote || {};
+  const breakdown = payload.price_breakdown || {};
   const grouped = new Map();
 
   for (const unit of breakdown.units || []) {
-    const key = unit.court_id || unit.courtId || unit.court_name || unit.courtName;
+    const key = unit.court_id || unit.court_name;
     const current = grouped.get(key) || {
-      label: unit.court_name || unit.courtName || key,
+      label: unit.court_name || key,
       amount: 0,
       slotCount: 0,
     };
-    current.amount += Number(unit.unit_price || unit.unitPrice || 0);
+    current.amount += Number(unit.unit_price ?? 0);
     current.slotCount += 1;
     grouped.set(key, current);
   }
@@ -86,15 +87,15 @@ export function normalizePricePreviewResponse(payload = {}) {
   return {
     subtotal: Number(breakdown.subtotal || 0),
     courtFee: Number(breakdown.subtotal || 0),
-    discountAmount: Number(breakdown.coupon_discount || breakdown.discountAmount || 0),
-    taxAmount: Number(breakdown.tax || breakdown.taxAmount || 0),
-    totalAmount: Number(breakdown.total || breakdown.totalAmount || 0),
+    discountAmount: Number(breakdown.coupon_discount || 0),
+    taxAmount: Number(breakdown.tax || 0),
+    totalAmount: Number(breakdown.total || 0),
     units: (breakdown.units || []).map((unit) => ({
-      courtId: unit.court_id || unit.courtId,
-      courtName: unit.court_name || unit.courtName,
-      slotStartTime: unit.slot_start_time || unit.slotStartTime,
-      slotEndTime: unit.slot_end_time || unit.slotEndTime,
-      unitPrice: Number(unit.unit_price || unit.unitPrice || 0),
+      courtId: unit.court_id,
+      courtName: unit.court_name,
+      slotStartTime: unit.slot_start_time,
+      slotEndTime: unit.slot_end_time,
+      unitPrice: Number(unit.unit_price ?? 0),
     })),
     breakdown: [...grouped.values()].map((item) => ({
       ...item,
@@ -108,24 +109,27 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
 
   // Trust backend API contract for unique, sorted court_names.
   // Fallback to slots extraction without sorting if court_names is missing.
-  const rawCourts = booking.court_names || booking.courtNames ||
-    [...new Set((booking.slots || []).map((s) => s.court?.name || s.courtName).filter(Boolean))];
+  const rawCourts = booking.court_names ||
+    [...new Set((booking.slots || []).map((s) => s.court?.name).filter(Boolean))];
   const courtNames = rawCourts.length > 0 ? rawCourts : [booking.court?.name || "Court"];
 
-  const startTime = booking.slot_start_time || booking.session_start_time || booking.sessionStartTime || booking.startTime;
-  const endTime = booking.slot_end_time || booking.session_end_time || booking.sessionEndTime || booking.endTime;
-  const time = booking.time || (startTime && endTime ? `${startTime} - ${endTime}` : "");
+  // The list endpoint returns `slot_start_time`/`slot_end_time`; the detail
+  // endpoint returns `session_start_time`/`session_end_time`. Read both shapes.
+  const startTime = booking.slot_start_time || booking.session_start_time;
+  const endTime = booking.slot_end_time || booking.session_end_time;
+  const time = startTime && endTime ? `${startTime} - ${endTime}` : "";
 
   const base = {
     id: booking.id,
+    userId: booking.user_id,
     status: booking.status,
     courtNames,
-    venueName: booking.venue?.name || booking.venueName || "Venue",
-    venueSlug: booking.venue?.slug || booking.venueSlug || "",
-    date: booking.slot_date || booking.slotDate || booking.date,
+    venueName: booking.venue?.name || "Venue",
+    venueSlug: booking.venue?.slug || "",
+    date: booking.slot_date,
     time,
-    amount: Number(booking.total_amount ?? booking.totalAmount ?? booking.amount ?? 0),
-    hasReview: Boolean(booking.has_review ?? booking.hasReview),
+    amount: Number(booking.total_amount ?? 0),
+    hasReview: Boolean(booking.has_review),
   };
 
   if (!isDetail) {
@@ -134,19 +138,19 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
 
   return {
     ...base,
-    slotDate: booking.slot_date || booking.slotDate || booking.date,
-    sessionStartTime: booking.session_start_time || booking.sessionStartTime || startTime,
-    sessionEndTime: booking.session_end_time || booking.sessionEndTime || endTime,
-    sessionDurationMins: Number(booking.session_duration_mins ?? booking.sessionDurationMins ?? 0),
-    courtCount: Number(booking.court_count ?? booking.courtCount ?? 0),
-    slotUnitCount: Number(booking.slot_unit_count ?? booking.slotUnitCount ?? 0),
-    totalAmount: Number(booking.total_amount ?? booking.totalAmount ?? 0),
-    taxAmount: Number(booking.tax_amount ?? booking.taxAmount ?? 0),
-    discountAmount: Number(booking.discount_amount ?? booking.discountAmount ?? 0),
-    creditsApplied: Number(booking.credits_applied ?? booking.creditsApplied ?? 0),
-    expiresAt: booking.expires_at || booking.expiresAt,
-    waiverAccepted: Boolean(booking.waiver_accepted ?? booking.waiverAccepted),
-    waiverAcceptedAt: booking.waiver_accepted_at || booking.waiverAcceptedAt,
+    slotDate: booking.slot_date,
+    sessionStartTime: booking.session_start_time || startTime,
+    sessionEndTime: booking.session_end_time || endTime,
+    sessionDurationMins: Number(booking.session_duration_mins ?? 0),
+    courtCount: Number(booking.court_count ?? 0),
+    slotUnitCount: Number(booking.slot_unit_count ?? 0),
+    totalAmount: Number(booking.total_amount ?? 0),
+    taxAmount: Number(booking.tax_amount ?? 0),
+    discountAmount: Number(booking.discount_amount ?? 0),
+    creditsApplied: Number(booking.credits_applied ?? 0),
+    expiresAt: booking.expires_at,
+    waiverAccepted: Boolean(booking.waiver_accepted),
+    waiverAcceptedAt: booking.waiver_accepted_at,
     venue: booking.venue ? normalizeVenueResponse(booking.venue) : null,
     slots: (booking.slots || []).map((slot) => ({
       id: slot.id,
@@ -154,19 +158,19 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
         id: slot.court.id,
         name: slot.court.name,
       } : null,
-      slotDate: slot.slot_date || slot.slotDate,
-      startTime: slot.slot_start_time || slot.startTime || slot.slotStartTime,
-      endTime: slot.slot_end_time || slot.endTime || slot.slotEndTime,
+      slotDate: slot.slot_date,
+      startTime: slot.slot_start_time,
+      endTime: slot.slot_end_time,
       status: slot.status,
-      unitPrice: Number(slot.unit_price ?? slot.unitPrice ?? 0),
+      unitPrice: Number(slot.unit_price ?? 0),
     })),
     payments: (booking.payments || []).map((payment) => ({
       id: payment.id,
       gateway: payment.gateway,
-      merchantOrderId: payment.merchant_order_id || payment.merchantOrderId,
+      merchantOrderId: payment.merchant_order_id,
       amount: Number(payment.amount || 0),
       status: payment.status,
-      createdAt: payment.created_at || payment.createdAt,
+      createdAt: payment.created_at,
     })),
   };
 }
@@ -179,6 +183,43 @@ export function normalizeUserBookingsResponse(payload = {}) {
 export function normalizeBookingDetailResponse(booking = {}) {
   const data = booking?.data || booking;
   return normalizeBooking(data, { isDetail: true });
+}
+
+/**
+ * Normalizes a booking-hold response (`POST /bookings/hold`) into camelCase (ME-2).
+ * @param {object} payload
+ */
+export function normalizeHoldResponse(payload = {}) {
+  return {
+    bookingId: payload.booking_id,
+    status: payload.status,
+    expiresAt: payload.expires_at,
+    courtCount: Number(payload.court_count ?? 0),
+    slotUnitCount: Number(payload.slot_unit_count ?? 0),
+    sessionStartTime: payload.session_start_time,
+    sessionEndTime: payload.session_end_time,
+    sessionDurationMins: Number(payload.session_duration_mins ?? 0),
+  };
+}
+
+/**
+ * Normalizes an initiate-payment response into a stable, discriminated camelCase
+ * shape (ME-2 / HI-13). The backend `type` becomes `kind`:
+ *   - "wallet_only" | "already_confirmed" → the booking is (or will be) confirmed
+ *   - a gateway name (e.g. "phonepe")     → a redirect/iframe checkout is required
+ * @param {object} payload
+ */
+export function normalizePaymentInitiationResponse(payload = {}) {
+  const type = payload.type;
+  const isConfirmed = type === "wallet_only" || type === "already_confirmed";
+  return {
+    kind: isConfirmed ? "confirmed" : "redirect",
+    gatewayType: type,
+    bookingId: payload.booking_id,
+    merchantOrderId: payload.merchant_order_id ?? "",
+    redirectUrl: payload.redirect_url ?? "",
+    expiresAt: payload.expires_at,
+  };
 }
 
 export function normalizeWalletResponse(payload = {}) {

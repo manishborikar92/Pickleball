@@ -9,12 +9,27 @@ import { REFRESH_BUFFER_SECONDS } from "@/config/auth.config";
 
 /**
  * Constructs cookie options for secure HttpOnly cookies.
+ *
+ * `secure` is enabled whenever the app is served over HTTPS. We treat any
+ * non-development environment as HTTPS (so staging/preview deploys also get
+ * `Secure`, closing HI-1), and allow an explicit `COOKIE_SECURE` override.
+ *
+ * `sameSite` defaults to "lax" — required so cookies survive the top-level GET
+ * navigations the app depends on (post-login redirects, the cross-site PhonePe
+ * payment return). Privileged markers may opt into "strict".
+ *
+ * @param {number} maxAge - Cookie lifetime in seconds.
+ * @param {{ sameSite?: "lax" | "strict" | "none" }} [options]
  */
-export function secureCookieOptions(maxAge) {
+export function secureCookieOptions(maxAge, { sameSite = "lax" } = {}) {
+  const secure = process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : process.env.NODE_ENV !== "development";
+
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    secure,
+    sameSite,
     path: "/",
     maxAge,
   };

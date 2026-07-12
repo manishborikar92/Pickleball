@@ -1,8 +1,11 @@
 "use client";
 
+import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Button, Card, FormField, Input } from "@/components/shared";
-import { signInAdminAction } from "@/app/(auth)/actions";
+import { useFormStatus } from "react-dom";
+import { Button, Card, FormField, Input, FormAlert } from "@/components/shared";
+import { signInAdminAction } from "@/lib/actions/auth";
+import { safeNext } from "@/lib/safeNext";
 import { Lock, Mail, Shield } from "lucide-react";
 
 /**
@@ -18,8 +21,8 @@ import { Lock, Mail, Shield } from "lucide-react";
  */
 export function AdminLoginForm() {
   const searchParams = useSearchParams();
-  const nextParam = searchParams.get("next");
-  const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
+  const next = safeNext(searchParams.get("next"), "/admin/overview");
+  const [state, formAction] = useActionState(signInAdminAction, { success: false, error: "" });
 
   return (
     <Card className="p-8">
@@ -33,7 +36,7 @@ export function AdminLoginForm() {
         </p>
       </div>
 
-      <form action={signInAdminAction} className="grid gap-5">
+      <form action={formAction} className="grid gap-5">
         <input type="hidden" name="next" value={next} />
 
         <FormField label="Email" required>
@@ -58,10 +61,19 @@ export function AdminLoginForm() {
           />
         </FormField>
 
-        <Button type="submit" className="w-full justify-center py-4 text-base">
-          Sign In as Admin →
-        </Button>
+        <FormAlert type="error" message={state?.error} />
+
+        <SubmitButton />
       </form>
     </Card>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending} className="w-full justify-center py-4 text-base">
+      {pending ? "Signing in…" : "Sign In as Admin →"}
+    </Button>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
-import { completeOnboardingAction } from "@/app/(auth)/actions";
+import { completeOnboardingAction } from "@/lib/actions/auth";
 import { NameForm } from "./steps/NameForm";
 
 /**

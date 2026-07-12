@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 import { AppSidebar } from "@/components/layout";
-import { requireRouteAccess } from "@/lib/session";
+import { requireRouteAccess } from "@/lib/dal/session";
 
 export const metadata = {
   robots: {
@@ -11,6 +11,8 @@ export const metadata = {
 
 export default async function CustomerLayout({ children }) {
   await connection();
+  // Every dashboard route shares one permission (view_own_bookings), so the
+  // route check is safe to run here; the DAL reads re-verify per request.
   const session = await requireRouteAccess("/dashboard");
 
   return (

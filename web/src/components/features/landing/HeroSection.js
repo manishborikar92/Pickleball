@@ -1,8 +1,21 @@
+import Image from "next/image";
 import { Badge, Button } from "@/components/shared";
 
 export function HeroSection() {
   return (
-    <section className="court-hero flex min-h-[calc(100svh-4rem)] items-end px-4 pb-12 pt-24 sm:px-6 sm:pb-16 lg:px-8">
+    <section className="relative isolate flex min-h-[calc(100svh-4rem)] items-end px-4 pb-12 pt-24 sm:px-6 sm:pb-16 lg:px-8">
+      {/* LCP image — optimized (AVIF/WebP) and eagerly prioritized (HI-5). */}
+      <Image
+        src="/court-1.png"
+        alt=""
+        fill
+        priority
+        sizes="100vw"
+        className="-z-20 object-cover object-center"
+      />
+      {/* Gradient overlays that previously lived on the `.court-hero` background. */}
+      <div className="court-hero-overlay absolute inset-0 -z-10" aria-hidden="true" />
+
       <div className="mx-auto w-full max-w-7xl">
         <div className="max-w-2xl">
           <Badge tone="neutral" className="mb-5 inline-flex items-center gap-2.5 shadow-sm sm:mb-6">

@@ -7,7 +7,7 @@ import { MAP_CONFIG } from '@/config/map.config';
 import { VenueMarker } from './VenueMarker';
 import { MapControls } from './MapControls';
 import { Button } from '@/components/shared';
-import { getMapDirectionsUrl } from '@/lib/navigation';
+import { getMapDirectionsUrl } from '@/lib/mapLinks';
 
 /**
  * MapCore Component
@@ -32,7 +32,15 @@ export default function MapCore({
     bearing: 0,
     pitch: 0
   });
-  const isMobile = window.innerWidth < 640;
+  // Reactive viewport check — read in an effect (not at render time) and keep it
+  // in sync on resize (LO-10).
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 640);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   // Handle viewport changes
   const onMove = useCallback(({ viewState }) => {

@@ -1,11 +1,11 @@
 import { ReviewForm } from "@/components/features/review";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 
 export async function generateMetadata({ params }) {
   const { bookingId } = await params;
   return getPageMetadata({
-    title: `Rate Your Experience - ${bookingId}`,
-    description: `Rate your pickleball court booking experience at Baseline Arena Nagpur for booking ${bookingId}.`,
+    title: "Rate Your Experience",
+    description: "Rate your pickleball court booking experience at Baseline Arena, Nagpur.",
     path: `/review/${bookingId}`,
     isPrivate: true,
   });

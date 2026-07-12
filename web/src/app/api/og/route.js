@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import { connection } from "next/server";
 import { ImageResponse } from "next/og";
 
@@ -8,7 +7,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const title = searchParams.get("title") || "Baseline Arena";
     const desc = searchParams.get("desc") || "Book premium outdoor pickleball courts in Besa, Nagpur.";
-    const logoUrl = `${new URL(request.url).origin}/baseline-full-logo.svg`;
 
     return new ImageResponse(
       (
@@ -28,16 +26,21 @@ export async function GET(request) {
             fontFamily: "sans-serif",
           }}
         >
-          {/* Top Row: Full Logo */}
+          {/* Top Row: Text brand mark. Rendered as text (not an SVG image) —
+              Satori's SVG support is unreliable, so the wordmark is drawn with
+              the accent color to guarantee it appears in production OG cards (ME-11). */}
           <div style={{ display: "flex", alignItems: "center" }}>
-            <img
-              src={logoUrl}
-              alt="Baseline Arena Logo"
+            <div
               style={{
-                height: "60px",
-                width: "220px",
+                fontSize: "34px",
+                fontWeight: "900",
+                letterSpacing: "-0.02em",
+                color: "#CBFF00",
+                textTransform: "uppercase",
               }}
-            />
+            >
+              Baseline Arena
+            </div>
           </div>
 
           {/* Center Content: Title and Description */}

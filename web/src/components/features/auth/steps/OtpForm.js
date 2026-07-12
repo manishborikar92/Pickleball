@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/shared";
-import { Input, FormAlert } from "@/components/shared";
-import { validateOtp } from "@/lib/validation";
+import { Button, Input, FormField } from "@/components/shared";
+import { otpSchema } from "@/lib/schemas";
 
 /**
  * OtpForm - Step 2: Verification of the 6-digit OTP code.
+ * Validation uses the shared `otpSchema` (reused server-side by the verify action).
  */
 export function OtpForm({
   phone,
@@ -23,17 +23,17 @@ export function OtpForm({
     setError("");
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
-    const validationResult = validateOtp(otp);
-    if (!validationResult.ok) {
-      setError(validationResult.message);
+    const parsed = otpSchema.safeParse(otp);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || "Enter the 6-digit verification code.");
       return;
     }
 
-    onSubmit(validationResult.value);
+    onSubmit(parsed.data);
   }
 
   function handleResendCode() {
@@ -45,7 +45,7 @@ export function OtpForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="text-center">
         <h2 className="text-2xl font-black sm:text-3xl">{title}</h2>
         <p className="mt-2 text-sm text-muted font-medium">
@@ -53,17 +53,19 @@ export function OtpForm({
         </p>
       </div>
 
-      <Input
-        value={otp}
-        onChange={handleChange}
-        placeholder="123456"
-        inputMode="numeric"
-        maxLength={6}
-        autoFocus
-        disabled={loading}
-        error={!!error}
-        className="py-4 text-center text-3xl md:text-3xl font-black tracking-[0.35em] rounded-xl"
-      />
+      <FormField error={error}>
+        <Input
+          value={otp}
+          onChange={handleChange}
+          placeholder="123456"
+          inputMode="numeric"
+          maxLength={6}
+          autoFocus
+          disabled={loading}
+          error={!!error}
+          className="py-4 text-center text-3xl md:text-3xl font-black tracking-[0.35em] rounded-xl"
+        />
+      </FormField>
 
       <button
         type="button"
@@ -73,8 +75,6 @@ export function OtpForm({
       >
         Resend Code
       </button>
-
-      <FormAlert type="error" message={error} />
 
       <Button
         className="w-full py-4 text-base justify-center"

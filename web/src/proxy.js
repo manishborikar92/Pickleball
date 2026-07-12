@@ -7,6 +7,7 @@ import {
   isTokenExpired,
   resolveRole,
 } from "@/lib/auth";
+import { safeNext } from "@/lib/safeNext";
 
 // ── Cookie helpers (NextResponse context) ──
 
@@ -21,7 +22,8 @@ function setTokenCookies(response, { accessToken, refreshToken, role, adminRole,
     response.cookies.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   }
   if (adminRole) {
-    response.cookies.set(COOKIE_NAMES.ADMIN_ROLE, adminRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+    // Privileged marker — sameSite "strict" (admin flows are same-site). LO-12.
+    response.cookies.set(COOKIE_NAMES.ADMIN_ROLE, adminRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
   }
   if (onboarded !== undefined) {
     response.cookies.set(COOKIE_NAMES.USER_ONBOARDED, String(onboarded), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
@@ -163,12 +165,14 @@ export async function proxy(request) {
     return NextResponse.redirect(loginUrl);
   }
   if (pathname === "/admin/login" && hasToken && hasAdminRole) {
-    const nextParam = request.nextUrl.searchParams.get("next") || "/admin/overview";
-    const safeNext = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/admin/overview";
-    return redirectWithCookies(new URL(safeNext, request.url));
+    const target = safeNext(request.nextUrl.searchParams.get("next"), "/admin/overview");
+    return redirectWithCookies(new URL(target, request.url));
   }
 
   // ── Pass through with updated cookies ──
+  // CSP/HSTS/security headers are applied globally in next.config.mjs (a single
+  // static, SRI-backed policy — see src/lib/csp.js). The proxy stays focused on
+  // optimistic auth: cookie-presence redirects and proactive token refresh.
 
   if (tokensRefreshed && newTokens) {
     // Forward the refreshed cookies to the Server Component render context.
@@ -189,7 +193,7 @@ export async function proxy(request) {
     return response;
   }
 
-  // Refresh failed — clear stale cookies from browser
+  // Refresh failed — clear stale cookies from the browser.
   if (!hasToken && (request.cookies.has(COOKIE_NAMES.ACCESS_TOKEN) || request.cookies.has(COOKIE_NAMES.REFRESH_TOKEN))) {
     const response = NextResponse.next();
     clearAllAuthCookies(response);
@@ -200,5 +204,13 @@ export async function proxy(request) {
 }
 
 export const config = {
-  matcher: ["/login", "/onboarding", "/dashboard/:path*", "/admin/:path*", "/booking/:path*"],
+  matcher: [
+    "/login",
+    "/onboarding",
+    "/dashboard/:path*",
+    "/admin/:path*",
+    "/booking/:path*",
+    "/venues/:path*",
+    "/review/:path*",
+  ],
 };

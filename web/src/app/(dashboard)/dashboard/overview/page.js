@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { DashboardOverview } from "@/components/features/dashboard";
-import { getUserBookings, getWallet } from "@/lib/api";
-import { SectionHeader } from "@/components/shared";
+import { getUserBookings } from "@/lib/dal/bookings";
+import { getWallet } from "@/lib/dal/wallet";
 
 export const metadata = {
   title: "Dashboard",

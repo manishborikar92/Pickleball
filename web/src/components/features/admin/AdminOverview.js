@@ -3,10 +3,13 @@ import { AdminTable } from "./AdminTable";
 import { formatCurrency } from "@/lib/bookingEngine";
 
 export function AdminOverview({ overview }) {
+  // Metrics with no backend source yet come through as null — render "—" rather
+  // than fabricating a number or printing "null" (ME-3).
+  const isMissing = (value) => value === null || value === undefined;
   const metrics = [
-    { label: "Revenue Today", value: formatCurrency(overview.stats.revenueToday) },
-    { label: "Utilization", value: overview.stats.utilization },
-    { label: "Pending Holds", value: String(overview.stats.pendingBookings) },
+    { label: "Revenue Today", value: isMissing(overview.stats.revenueToday) ? "—" : formatCurrency(overview.stats.revenueToday) },
+    { label: "Utilization", value: isMissing(overview.stats.utilization) ? "—" : overview.stats.utilization },
+    { label: "Pending Holds", value: isMissing(overview.stats.pendingBookings) ? "—" : String(overview.stats.pendingBookings) },
     { label: "Active Courts", value: String(overview.stats.activeCourts) },
   ];
 

@@ -1,55 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { ArrowLeft, UserCircle } from "lucide-react";
 
 import { Button, Card } from "@/components/shared";
-import { validateReview } from "@/lib/validation";
-import { submitReview } from "@/app/(booking)/review/actions";
+import { reviewSchema } from "@/lib/schemas";
+import { submitReview } from "@/lib/actions/review";
 
 /* ── Main Component ──────────────────────────────── */
 
 export function ReviewForm({ bookingId }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
-  const [photoName, setPhotoName] = useState("");
-  const [error, setError] = useState("");
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError("");
-
-    const validation = validateReview({ rating, comment, photoName });
-    if (!validation.ok) {
-      setError(validation.message);
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const result = await submitReview(bookingId, {
-        rating: validation.value.rating,
-        comment: validation.value.comment || undefined,
+  // React 19 form action (HI-11): the client wrapper validates with the shared
+  // schema for instant feedback, then defers to the server action which
+  // re-validates authoritatively. `pending` is read via useFormStatus below.
+  const [state, formAction] = useActionState(
+    async (_prev, formData) => {
+      const parsed = reviewSchema.safeParse({
+        rating: Number(formData.get("rating")),
+        comment: formData.get("comment"),
       });
-
-      if (!result.success) {
-        throw new Error(result.error);
+      if (!parsed.success) {
+        return { ok: false, error: { message: parsed.error.issues[0]?.message || "Please complete the review." } };
       }
+      return submitReview(bookingId, {
+        rating: parsed.data.rating,
+        comment: parsed.data.comment || undefined,
+      });
+    },
+    { ok: false, error: null },
+  );
 
-      setIsSuccess(true);
-    } catch (err) {
-      setError(err.message || "Something went wrong. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  if (isSuccess) {
+  if (state.ok) {
     return (
       <main className="min-h-screen bg-background pb-8 md:pb-12">
         <ReviewHeader />
@@ -59,12 +45,8 @@ export function ReviewForm({ bookingId }) {
             <h2 className="text-2xl font-black">Thank you!</h2>
             <p className="mt-2 text-muted">Your review has been submitted successfully.</p>
             <div className="mt-6 flex flex-col gap-3">
-              <Button asChild>
-                <Link href="/dashboard/bookings">View My Bookings</Link>
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/">Back to Home</Link>
-              </Button>
+              <Button href="/dashboard/bookings">View My Bookings</Button>
+              <Button href="/" variant="secondary">Back to Home</Button>
             </div>
           </Card>
         </div>
@@ -78,35 +60,38 @@ export function ReviewForm({ bookingId }) {
       <CourtBanner />
 
       <form
-        onSubmit={handleSubmit}
+        action={formAction}
         className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 sm:gap-8 sm:px-6 md:px-8 md:py-10"
         noValidate
       >
-        <StarRatingCard
-          rating={rating}
-          onRate={(value) => {
-            setRating(value);
-            if (error) setError(""); // Clear error upon user action
-          }}
-        />
+        {/* The star widget is not a native control — mirror its value into a
+            hidden field so it is included in the submitted FormData. */}
+        <input type="hidden" name="rating" value={rating} />
+
+        <StarRatingCard rating={rating} onRate={setRating} />
 
         <CommentField value={comment} onChange={setComment} />
 
-        <PhotoUpload photoName={photoName} onPhotoSelect={setPhotoName} />
-
-        {error && <FormError message={error} />}
+        {state.error && <FormError message={state.error.message} />}
 
         <div className="pt-2 sm:pt-4">
-          <Button
-            type="submit"
-            className="w-full text-lg transition-transform active:scale-[0.98]"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? "Submitting..." : "Submit Review"}
-          </Button>
+          <SubmitButton />
         </div>
       </form>
     </main>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button
+      type="submit"
+      className="w-full text-lg transition-transform active:scale-[0.98]"
+      disabled={pending}
+    >
+      {pending ? "Submitting..." : "Submit Review"}
+    </Button>
   );
 }
 
@@ -216,6 +201,7 @@ function CommentField({ value, onChange }) {
       <div className="relative">
         <textarea
           id="comment"
+          name="comment"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={5}
@@ -226,44 +212,6 @@ function CommentField({ value, onChange }) {
           Optional
         </span>
       </div>
-    </div>
-  );
-}
-
-function PhotoUpload({ photoName, onPhotoSelect }) {
-  return (
-    <div className="flex flex-col gap-2 sm:gap-3">
-      <span className="text-base font-bold sm:text-lg" id="photo-upload-label">
-        Add a photo
-      </span>
-      <label 
-        htmlFor="photo-upload"
-        className="group relative flex min-h-[8rem] cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-line bg-surface/70 p-6 text-center text-muted transition-all hover:border-accent hover:bg-surface focus-within:border-accent focus-within:ring-2 focus-within:ring-accent focus-within:ring-offset-2 focus-within:ring-offset-background sm:min-h-[10rem]"
-      >
-        <input
-          id="photo-upload"
-          type="file"
-          accept="image/jpeg, image/png, image/heic"
-          className="sr-only"
-          aria-labelledby="photo-upload-label"
-          onChange={(e) => onPhotoSelect(e.target.files?.[0]?.name ?? "")}
-        />
-        
-        <span className="flex flex-col items-center gap-2">
-          <span className="text-2xl sm:text-3xl" aria-hidden="true">
-            {photoName ? "📸" : "📷"}
-          </span>
-          <span className="max-w-[200px] truncate text-sm font-black text-foreground sm:max-w-xs sm:text-base">
-            {photoName ? photoName : "Tap to upload a court selfie"}
-          </span>
-        </span>
-
-        {!photoName && (
-          <span className="mt-2 block text-xs text-muted/80 sm:text-sm">
-            JPG, PNG, or HEIC up to 10MB
-          </span>
-        )}
-      </label>
     </div>
   );
 }

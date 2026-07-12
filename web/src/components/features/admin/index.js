@@ -8,3 +8,4 @@ export { UsersManager } from "./UsersManager";
 export { AdminTable } from "./AdminTable";
 export { ManagerSurface } from "./ManagerSurface";
 export { SimpleRows } from "./SimpleRows";
+export { AdminSkeleton } from "./AdminSkeleton";

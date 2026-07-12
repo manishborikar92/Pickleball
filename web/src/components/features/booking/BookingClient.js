@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Card } from "@/components/shared";
 import { AuthFlow } from "./AuthFlow";
@@ -9,16 +9,8 @@ import { DatePicker } from "./DatePicker";
 import { OrderSummary } from "./OrderSummary";
 import { SlotGrid } from "./SlotGrid";
 import { VenueHero } from "./VenueHero";
-import { buildDateWindow, getSlotRange } from "@/lib/bookingEngine";
-import { validateCoupon } from "@/lib/validation";
-import {
-  acceptBookingWaiverAction,
-  createBookingHoldAction,
-  getVenueAvailabilityAction,
-  initiateBookingPaymentAction,
-  previewBookingPriceAction,
-} from "@/app/(booking)/venues/[slug]/book/actions";
-import { buildBookingSelectionPayload } from "@/lib/normalizers";
+import { useBookingSelection } from "@/hooks/useBookingSelection";
+import { checkoutBookingAction } from "@/lib/actions/booking";
 
 const INITIAL_AUTH = {
   step: "closed",
@@ -28,16 +20,15 @@ const INITIAL_AUTH = {
   error: "",
 };
 
-const EMPTY_QUOTE = {
-  subtotal: 0,
-  courtFee: 0,
-  discountAmount: 0,
-  taxAmount: 0,
-  totalAmount: 0,
-  units: [],
-  breakdown: [],
-};
-
+/**
+ * BookingClient — thin orchestrator for the checkout wizard.
+ *
+ * Selection / availability / coupon / pricing state lives in `useBookingSelection`
+ * (HI-12). This component owns only the checkout + auth-step orchestration: it
+ * opens the auth/waiver modal, and on confirmation delegates the whole
+ * hold→waiver→pay transaction to the server via `checkoutBookingAction` (HI-13),
+ * then navigates based on the discriminated result.
+ */
 export function BookingClient({
   venue,
   courts,
@@ -45,215 +36,36 @@ export function BookingClient({
   initialDate,
   session: activeSession,
 }) {
+  const selection = useBookingSelection({
+    venue,
+    courts,
+    initialAvailability: availability,
+    initialDate,
+  });
 
-  const dates = useMemo(
-    () => buildDateWindow({
-      startDate: initialDate,
-      advanceBookingDays: venue.advanceBookingDays,
-    }),
-    [initialDate, venue.advanceBookingDays],
-  );
-
-  const [selectedDate, setSelectedDate] = useState(dates[0]?.iso ?? initialDate);
-  const [availabilityData, setAvailabilityData] = useState(availability || []);
-  const [availabilityError, setAvailabilityError] = useState("");
-  const [courtSelections, setCourtSelections] = useState(new Map());
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
-  const [couponMessage, setCouponMessage] = useState("");
   const [auth, setAuth] = useState(INITIAL_AUTH);
   const [waiver, setWaiver] = useState({ time: false, policy: false });
-  const [serverQuote, setServerQuote] = useState(EMPTY_QUOTE);
-  const [quoteRequestError, setQuoteRequestError] = useState("");
-  const [quoteLoading, setQuoteLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutLoading, setCheckoutLoading] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-
-    getVenueAvailabilityAction(venue.id, selectedDate)
-      .then((res) => {
-        if (!active) return;
-        if (res.success) {
-          setAvailabilityData(res.data);
-          setAvailabilityError("");
-        } else {
-          setAvailabilityData([]);
-          setAvailabilityError(res.error || "Could not load availability.");
-        }
-      })
-      .catch((error) => {
-        if (!active) return;
-        setAvailabilityData([]);
-        setAvailabilityError(error.message || "Could not load availability.");
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [selectedDate, venue.id]);
-
-  const selectedCourtsData = useMemo(() => {
-    const result = [];
-
-    for (const court of courts) {
-      const selection = courtSelections.get(court.id);
-      if (!selection) continue;
-
-      const courtAvailability = availabilityData.find((item) => item.courtId === court.id);
-      if (!courtAvailability) continue;
-
-      const slotsRange = getSlotRange(courtAvailability.slots, selection.startTime, selection.endTime);
-      if (slotsRange.length === 0) continue;
-
-      result.push({
-        courtId: court.id,
-        courtName: court.name,
-        slots: slotsRange,
-      });
-    }
-
-    return result;
-  }, [availabilityData, courtSelections, courts]);
-
-  const selectionPayload = useMemo(
-    () => buildBookingSelectionPayload({
-      venueId: venue.id,
-      selectedDate,
-      selectedCourtsData,
-      couponCode: appliedCouponCode,
-    }),
-    [appliedCouponCode, selectedCourtsData, selectedDate, venue.id],
-  );
-
-  const hasSelection = selectedCourtsData.length > 0;
-  const quote = hasSelection && selectionPayload.ok ? serverQuote : EMPTY_QUOTE;
-  const quoteError = !hasSelection
-    ? ""
-    : (!selectionPayload.ok ? selectionPayload.message : quoteRequestError);
-  const canCheckout = hasSelection && selectionPayload.ok && !quoteError && !quoteLoading;
-
-  useEffect(() => {
-    let active = true;
-
-    if (!hasSelection) {
-      return () => {
-        active = false;
-      };
-    }
-
-    if (!selectionPayload.ok) {
-      return () => {
-        active = false;
-      };
-    }
-
-    previewBookingPriceAction(selectionPayload.value)
-      .then((res) => {
-        if (!active) return;
-        if (res.success) {
-          setServerQuote(res.data);
-          setQuoteRequestError("");
-          if (appliedCouponCode) setCouponMessage(`${appliedCouponCode} applied.`);
-        } else {
-          setServerQuote(EMPTY_QUOTE);
-          setQuoteRequestError(res.error || "Could not calculate price.");
-          if (appliedCouponCode) {
-            setCouponMessage(res.error || "Promo code could not be applied.");
-          }
-        }
-      })
-      .catch((error) => {
-        if (!active) return;
-        setServerQuote(EMPTY_QUOTE);
-        setQuoteRequestError(error.message || "Could not calculate price.");
-        if (appliedCouponCode) {
-          setCouponMessage(error.message || "Promo code could not be applied.");
-        }
-      })
-      .finally(() => {
-        if (active) setQuoteLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [appliedCouponCode, hasSelection, selectionPayload]);
-
-  const handleSlotSelect = useCallback((courtId, slotOrAction) => {
-    setServerQuote(EMPTY_QUOTE);
-    setQuoteRequestError("");
-    setCourtSelections((prev) => {
-      const next = new Map(prev);
-
-      if (slotOrAction === null) {
-        next.delete(courtId);
-        return next;
-      }
-
-      if (slotOrAction.startSlot && slotOrAction.endSlot) {
-        next.set(courtId, {
-          startTime: slotOrAction.startSlot.startTime,
-          endTime: slotOrAction.endSlot.endTime,
-        });
-      } else {
-        next.set(courtId, {
-          startTime: slotOrAction.startTime,
-          endTime: slotOrAction.endTime,
-        });
-      }
-
-      return next;
-    });
-  }, []);
-
-  function handleApplyCoupon() {
-    const validation = validateCoupon(couponCode);
-    if (!validation.ok) {
-      setAppliedCouponCode("");
-      setCouponMessage(validation.message);
-      return;
-    }
-
-    setAppliedCouponCode(validation.value);
-    setServerQuote(EMPTY_QUOTE);
-    setQuoteRequestError("");
-    setCouponMessage("Checking promo with server pricing.");
-  }
-
   const handleDateSelect = useCallback((date) => {
-    setSelectedDate(date);
-    setAvailabilityError("");
-    setCourtSelections(new Map());
-    setServerQuote(EMPTY_QUOTE);
-    setQuoteRequestError("");
+    selection.selectDate(date);
     setCheckoutError("");
-  }, []);
+  }, [selection]);
 
   function handleStartCheckout() {
     setCheckoutError("");
-    if (!canCheckout || !selectionPayload.ok) {
-      setCheckoutError(selectionPayload.message || quoteError || "Complete a valid selection first.");
+    if (!selection.canCheckout || !selection.selectionPayload.ok) {
+      setCheckoutError(
+        selection.selectionPayload.message || selection.quoteError || "Complete a valid selection first.",
+      );
       return;
     }
 
     if (activeSession?.user && activeSession.user.name) {
-      setAuth({
-        step: "waiver",
-        name: activeSession.user.name,
-        phone: activeSession.user.phone,
-        otp: "",
-        error: "",
-      });
+      setAuth({ step: "waiver", name: activeSession.user.name, phone: activeSession.user.phone, otp: "", error: "" });
     } else if (activeSession?.user && !activeSession.user.name) {
-      setAuth({
-        step: "name",
-        name: "",
-        phone: activeSession.user.phone,
-        otp: "",
-        error: "",
-      });
+      setAuth({ step: "name", name: "", phone: activeSession.user.phone, otp: "", error: "" });
     } else {
       setAuth({ ...INITIAL_AUTH, step: "phone" });
     }
@@ -271,8 +83,8 @@ export function BookingClient({
 
   async function handleConfirmPayment() {
     if (!waiver.time || !waiver.policy) return;
-    if (!selectionPayload.ok) {
-      setCheckoutError(selectionPayload.message);
+    if (!selection.selectionPayload.ok) {
+      setCheckoutError(selection.selectionPayload.message);
       return;
     }
 
@@ -280,39 +92,23 @@ export function BookingClient({
     setCheckoutError("");
 
     try {
-      const holdRes = await createBookingHoldAction(selectionPayload.value);
-      if (!holdRes.success) {
-        setCheckoutError(holdRes.error || "Could not create booking hold.");
-        return;
-      }
-      const hold = holdRes.data;
-
-      const waiverRes = await acceptBookingWaiverAction(hold.booking_id);
-      if (!waiverRes.success) {
-        setCheckoutError(waiverRes.error || "Could not accept booking waiver.");
-        return;
-      }
-
-      const paymentRes = await initiateBookingPaymentAction(hold.booking_id, {
+      // The whole hold → waiver → initiate-payment transaction runs on the server
+      // (checkoutBookingAction); the client only reacts to the result (HI-13).
+      const result = await checkoutBookingAction(selection.selectionPayload.value, {
         useWalletCredits: true,
       });
-      if (!paymentRes.success) {
-        setCheckoutError(paymentRes.error || "Could not initiate payment.");
-        return;
-      }
-      const payment = paymentRes.data;
 
-      // Wallet-only payment — no gateway needed. Redirect directly to unified status page.
-      if (payment.type === "wallet_only") {
-        window.location.assign(`/booking/${hold.booking_id}`);
+      // Wallet-only / already-confirmed — go straight to the unified status page.
+      if (result.kind === "confirmed") {
+        window.location.assign(`/booking/${result.bookingId}`);
         return;
       }
 
-      // PhonePe payment — use iFrame checkout or fallback to redirect.
-      if (payment.redirect_url) {
+      // Gateway payment — PhonePe iFrame checkout, or a full-page redirect fallback.
+      if (result.kind === "redirect" && result.redirectUrl) {
         if (typeof window.PhonePeCheckout?.transact === "function") {
           window.PhonePeCheckout.transact({
-            tokenUrl: payment.redirect_url,
+            tokenUrl: result.redirectUrl,
             type: "IFRAME",
             callback: (response) => {
               if (response === "USER_CANCEL") {
@@ -321,7 +117,7 @@ export function BookingClient({
               } else {
                 // CONCLUDED — redirect to backend for verification.
                 window.location.assign(
-                  `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/api/v1/payments/redirect?orderId=${payment.merchant_order_id}`,
+                  `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/api/v1/payments/redirect?orderId=${result.merchantOrderId}`,
                 );
               }
             },
@@ -330,11 +126,11 @@ export function BookingClient({
         }
 
         // Fallback: PhonePe JS bundle not loaded — full-page redirect.
-        window.location.assign(payment.redirect_url);
+        window.location.assign(result.redirectUrl);
         return;
       }
 
-      setCheckoutError("Payment could not be initiated. Please try again.");
+      setCheckoutError(result.message || "Payment could not be initiated. Please try again.");
     } catch (error) {
       setCheckoutError(error.message || "Could not complete booking.");
     } finally {
@@ -352,39 +148,38 @@ export function BookingClient({
 
           <Card className="p-4 sm:p-6">
             <DatePicker
-              dates={dates}
-              selectedDate={selectedDate}
+              dates={selection.dates}
+              selectedDate={selection.selectedDate}
               onSelect={handleDateSelect}
             />
 
-            {availabilityError && (
+            {selection.availabilityError && (
               <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
-                {availabilityError}
+                {selection.availabilityError}
               </div>
             )}
 
             <SlotGrid
-              availability={availabilityData}
+              availability={selection.availabilityData}
               courts={courts}
-              courtSelections={courtSelections}
-              onSlotSelect={handleSlotSelect}
+              courtSelections={selection.courtSelections}
+              onSlotSelect={selection.selectSlot}
             />
           </Card>
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
           <OrderSummary
-            selectedCourtsData={selectedCourtsData}
-            selectedDate={selectedDate}
-            hasSelection={hasSelection}
-            quote={quote}
-            couponCode={couponCode}
-            couponMessage={couponMessage}
-            quoteLoading={quoteLoading}
-            quoteError={quoteError || checkoutError}
-            canCheckout={canCheckout}
-            onCouponCodeChange={setCouponCode}
-            onApplyCoupon={handleApplyCoupon}
+            selectedCourtsData={selection.selectedCourtsData}
+            selectedDate={selection.selectedDate}
+            hasSelection={selection.hasSelection}
+            quote={selection.quote}
+            couponCode={selection.couponCode}
+            couponMessage={selection.couponMessage}
+            quoteError={selection.quoteError || checkoutError}
+            canCheckout={selection.canCheckout}
+            onCouponCodeChange={selection.setCouponCode}
+            onApplyCoupon={selection.applyCoupon}
             onCheckout={handleStartCheckout}
           />
         </aside>
@@ -393,9 +188,9 @@ export function BookingClient({
       {auth.step !== "closed" && (
         <AuthFlow
           auth={auth}
-          selectedDate={selectedDate}
-          selectedCourtsData={selectedCourtsData}
-          quote={quote}
+          selectedDate={selection.selectedDate}
+          selectedCourtsData={selection.selectedCourtsData}
+          quote={selection.quote}
           waiver={waiver}
           setWaiver={setWaiver}
           checkoutError={checkoutError}

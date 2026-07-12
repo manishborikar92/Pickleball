@@ -26,7 +26,6 @@ export function OrderSummary({
   quote,
   couponCode,
   couponMessage,
-  quoteLoading = false,
   quoteError = "",
   canCheckout = hasSelection,
   onCouponCodeChange,
@@ -77,7 +76,7 @@ export function OrderSummary({
             disabled={!canCheckout}
             className="w-full py-4 text-base font-bold shadow-md disabled:opacity-50"
           >
-            {quoteLoading ? "Checking price..." : "Proceed to Pay"}
+            Proceed to Pay
           </Button>
           <div className="flex items-center justify-center gap-4 text-xs text-muted">
             <span className="flex items-center gap-1">

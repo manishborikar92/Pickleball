@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button, Card } from "@/components/shared";
 import { XCircle, RefreshCw, ArrowRight, Loader2 } from "lucide-react";
-import { initiateBookingPaymentAction } from "@/app/(booking)/venues/[slug]/book/actions";
+import { retryPaymentAction } from "@/lib/actions/booking";
 import { getLatestPayment } from "@/lib/bookingEngine";
 
 /**
@@ -31,28 +31,21 @@ export function BookingFailedView({ booking }) {
     setRetrying(true);
     setError("");
     try {
-      const res = await initiateBookingPaymentAction(bookingId, { useWalletCredits: true });
-      if (!res.success) {
-        setError(res.error || "Could not restart the payment. Please try again.");
-        setRetrying(false);
-        return;
-      }
-
-      const payment = res.data;
+      const res = await retryPaymentAction(bookingId, { useWalletCredits: true });
 
       // Credits now cover the full amount — booking confirmed, no gateway needed.
-      if (payment.type === "wallet_only") {
+      if (res.kind === "confirmed") {
         window.location.assign(`/booking/${bookingId}`);
         return;
       }
 
       // Gateway payment — full-page redirect to the provider checkout.
-      if (payment.redirect_url) {
-        window.location.assign(payment.redirect_url);
+      if (res.kind === "redirect" && res.redirectUrl) {
+        window.location.assign(res.redirectUrl);
         return;
       }
 
-      setError("Payment could not be initiated. Please try again.");
+      setError(res.message || "Could not restart the payment. Please try again.");
       setRetrying(false);
     } catch (err) {
       setError(err.message || "Could not restart the payment. Please try again.");

@@ -32,22 +32,21 @@ Our QA gating requires all tests to pass prior to merging.
   ```
 
 ### 2.2 Frontend Tests (`web/tests/`)
-- **Framework**: Node.js native test runner.
-- **Pass Metrics**: All 16 frontend test cases are passing successfully.
-  - Passes: 16
-  - Failures: 0
+- **Framework**: Node.js native test runner for pure logic (RBAC, Zod schemas, normalizers, booking
+  engine, the checkout service, and the booking-status resolver).
+- **Pass Metrics**: All native `node:test` cases pass (Failures: 0).
 - **Execution Command**:
   ```bash
   cd web/
   npm run test
   ```
 
-### 2.3 Frontend Builds (`web/`)
-- Next.js static compilation checks pass with zero warnings.
+### 2.3 Frontend Quality Gates (`web/`)
+- Lint (incl. the `@/app/*` module-boundary rule — ADR-W009) and the Next.js build both pass.
 - **Execution Command**:
   ```bash
   cd web/
-  npm run build
+  npm run lint && npm run test && npm run build
   ```
 
 ---

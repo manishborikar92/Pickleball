@@ -56,14 +56,20 @@ select {
   outline-color: var(--accent);
 }
 
+/* Ensure dropdown options are readable in dark mode */
+select option {
+  background-color: #1f2315;
+  color: #f7f7ef;
+}
+
 /* ── 4. Layout & Hero Decorators ─────────────────────── */
-.court-hero {
+/* Gradient overlay for the hero. The hero image itself is rendered with
+   next/image (fill + priority) for an optimized LCP (HI-5); this only paints
+   the darkening + accent-tint gradients on top of it. */
+.court-hero-overlay {
   background:
     linear-gradient(180deg, rgba(13, 15, 4, 0.08), rgba(13, 15, 4, 0.95)),
-    linear-gradient(90deg, rgba(202, 255, 0, 0.08), transparent 34%),
-    url("/court-1.png");
-  background-position: center center;
-  background-size: cover;
+    linear-gradient(90deg, rgba(202, 255, 0, 0.08), transparent 34%);
 }
 
 .glass-panel {

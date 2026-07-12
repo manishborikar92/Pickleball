@@ -7,8 +7,7 @@ import {
   sendCustomerOtpAction,
   verifyCustomerOtpAction,
   completeOnboardingAction,
-  getSessionAction,
-} from "@/app/(auth)/actions";
+} from "@/lib/actions/auth";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 import { NameForm } from "./steps/NameForm";
@@ -35,7 +34,7 @@ export function CustomerCheckoutAuthGate({
     setError("");
     try {
       const res = await sendCustomerOtpAction(verifiedPhone);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
       setPhone(verifiedPhone);
       setStep("otp");
     } catch (err) {
@@ -51,11 +50,12 @@ export function CustomerCheckoutAuthGate({
 
     try {
       const res = await verifyCustomerOtpAction(phone, otpCode);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
 
+      // The verify response already carries the user + next_step, so there is no
+      // need for a second /users/me round-trip via getSessionAction (ME-17).
       const nextStep = res.data?.next_step;
-      const session = await getSessionAction();
-      const existingName = session?.user?.name || "";
+      const existingName = res.data?.user?.name || "";
 
       if (nextStep !== "complete_onboarding" && existingName) {
         if (onSuccess) {
@@ -81,7 +81,7 @@ export function CustomerCheckoutAuthGate({
 
     try {
       const res = await completeOnboardingAction(fullName);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
       if (onSuccess) {
         onSuccess({ name: fullName, phone, isNew: true });
       }

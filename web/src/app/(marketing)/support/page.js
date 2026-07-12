@@ -1,6 +1,6 @@
 import { SupportClient } from "@/components/features/support";
 import { JsonLd } from "@/components/seo";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 
 export const metadata = getPageMetadata({
   title: "Help & Support",

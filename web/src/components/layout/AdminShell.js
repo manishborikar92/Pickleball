@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/shared";
 import { BaseSidebar } from "./BaseSidebar";
-import { signOutAdminAction } from "@/app/(auth)/actions";
+import { signOutAdminAction } from "@/lib/actions/auth";
 
 const ADMIN_LINKS = [
   { href: "/admin/overview", label: "Overview", exact: true },

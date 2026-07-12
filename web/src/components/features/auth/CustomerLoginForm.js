@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
-import { sendCustomerOtpAction, verifyCustomerOtpAction } from "@/app/(auth)/actions";
+import { sendCustomerOtpAction, verifyCustomerOtpAction } from "@/lib/actions/auth";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 
@@ -25,7 +25,7 @@ export function CustomerLoginForm({ onSuccess, showAdminLink = false, inline = f
     setError("");
     try {
       const res = await sendCustomerOtpAction(verifiedPhone);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
       setPhone(verifiedPhone);
       setStep("otp");
     } catch (err) {
@@ -41,7 +41,7 @@ export function CustomerLoginForm({ onSuccess, showAdminLink = false, inline = f
 
     try {
       const res = await verifyCustomerOtpAction(phone, otpCode);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
 
       const nextStep = res.data?.next_step;
 

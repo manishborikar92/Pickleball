@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 import { CustomerLoginForm } from "@/components/features/auth";
 import { Loader } from "@/components/shared";
 

@@ -7,13 +7,14 @@ import {
   canAccessRoute,
   routeAccess,
 } from "../src/lib/rbac.js";
+import { safeNext } from "../src/lib/safeNext.js";
 import {
-  validateName,
-  validatePhone,
-  validateOtp,
-  validateReview,
-  validateCoupon,
-} from "../src/lib/validation.js";
+  nameSchema,
+  phoneSchema,
+  otpSchema,
+  reviewSchema,
+  couponSchema,
+} from "../src/lib/schemas/index.js";
 import {
   buildDateWindow,
   getPaymentReceiptDetails,
@@ -25,7 +26,10 @@ import {
   normalizePricePreviewResponse,
   normalizeBooking,
   normalizeBookingDetailResponse,
+  normalizeHoldResponse,
+  normalizePaymentInitiationResponse,
 } from "../src/lib/normalizers.js";
+import { runCheckout } from "../src/lib/services/checkout.js";
 
 test("role permissions are permission-key based and expandable", () => {
   assert.equal(hasPermission("manager", "edit_pricing"), true);
@@ -41,17 +45,38 @@ test("route access uses centralized permissions rather than hardcoded roles", ()
   assert.equal(routeAccess["/admin/pricing"].permission, "edit_pricing");
 });
 
-test("booking validation normalizes customer auth inputs", () => {
-  assert.deepEqual(validateName(" Asha  Mehta "), {
-    ok: true,
-    value: "Asha Mehta",
-  });
-  assert.deepEqual(validatePhone("98765 43210"), {
-    ok: true,
-    value: "+919876543210",
-  });
-  assert.equal(validateOtp("12345").ok, false);
-  assert.equal(validateOtp("123456").ok, true);
+test("canAccessRoute fails closed for unmapped protected paths (CR-1)", () => {
+  // Unmapped admin/dashboard sub-routes must DENY, never silently allow.
+  assert.equal(canAccessRoute("/admin/settings", "staff"), false);
+  assert.equal(canAccessRoute("/admin/unknown", "super_admin"), false);
+  assert.equal(canAccessRoute("/admin/unknown", "manager"), false);
+  assert.equal(canAccessRoute("/dashboard/secret", "customer"), false);
+  // A staff user is denied the fine-grained admin surfaces (the CR-1 regression).
+  assert.equal(canAccessRoute("/admin/settings", "manager"), false);
+  assert.equal(canAccessRoute("/admin/settings", "super_admin"), true);
+  // Public (non-protected) routes remain open.
+  assert.equal(canAccessRoute("/about", "customer"), true);
+  assert.equal(canAccessRoute("/venues/besa-nagpur/book", null), true);
+});
+
+test("safeNext rejects open-redirect payloads (HI-8)", () => {
+  assert.equal(safeNext("/dashboard/overview"), "/dashboard/overview");
+  assert.equal(safeNext("//evil.com", "/admin/overview"), "/admin/overview");
+  assert.equal(safeNext("/\\evil.com", "/admin/overview"), "/admin/overview");
+  assert.equal(safeNext("https://evil.com", "/admin/overview"), "/admin/overview");
+  assert.equal(safeNext("", "/fallback"), "/fallback");
+  assert.equal(safeNext(null, "/fallback"), "/fallback");
+  assert.equal(safeNext(undefined), "/");
+});
+
+test("shared schemas normalize customer auth inputs (ADR-W003)", () => {
+  // Same normalized outputs the former validation.js produced — one source now.
+  assert.equal(nameSchema.parse(" Asha  Mehta "), "Asha Mehta");
+  assert.equal(phoneSchema.parse("98765 43210"), "+919876543210");
+  assert.equal(phoneSchema.parse("919876543210"), "+919876543210");
+  assert.equal(otpSchema.safeParse("12345").success, false);
+  assert.equal(otpSchema.safeParse("123456").success, true);
+  assert.equal(nameSchema.safeParse("A").success, false);
 });
 
 test("date window respects configured advance booking days", () => {
@@ -138,20 +163,20 @@ test("booking selection payload requires courts to share one slot range", () => 
   assert.equal(mismatch.ok, false);
 });
 
-test("review validation requires a rating but keeps text and photo optional", () => {
-  assert.equal(validateReview({ rating: 0 }).ok, false);
-  assert.deepEqual(validateReview({ rating: 5, comment: " Great court " }), {
-    ok: true,
-    value: { rating: 5, comment: "Great court", photoName: "" },
+test("reviewSchema requires a rating but keeps the comment optional", () => {
+  assert.equal(reviewSchema.safeParse({ rating: 0 }).success, false);
+  assert.deepEqual(reviewSchema.parse({ rating: 5, comment: " Great court " }), {
+    rating: 5,
+    comment: "Great court",
   });
+  // Coerces string ratings from form data and defaults an absent comment to "".
+  assert.deepEqual(reviewSchema.parse({ rating: "4" }), { rating: 4, comment: "" });
 });
 
-test("coupon validation is format-only before server preview applies it", () => {
-  assert.deepEqual(validateCoupon(" first50 "), {
-    ok: true,
-    value: "FIRST50",
-  });
-  assert.equal(validateCoupon("bad coupon").ok, false);
+test("couponSchema is format-only before server preview applies it", () => {
+  assert.equal(couponSchema.parse(" first50 "), "FIRST50");
+  assert.equal(couponSchema.safeParse("bad coupon").success, false);
+  assert.equal(couponSchema.safeParse("").success, false);
 });
 
 test("getLatestPayment returns the most recent payment by createdAt", () => {
@@ -302,11 +327,14 @@ test("normalizeBooking aggregates multiple courts for summary list payloads usin
     slot_start_time: "09:00",
     slot_end_time: "10:00",
     court_names: ["Court 1", "Court 2"],
-    venue: { id: "venue-1", name: "Venue A" },
+    venue: { id: "venue-1", name: "Venue A", slug: "venue-a" },
   };
 
   const normalized = normalizeBooking(rawSummaryBooking, { isDetail: false });
   assert.deepEqual(normalized.courtNames, ["Court 1", "Court 2"]);
+  // Summary rows surface the venue slug so the dashboard "Book Again" CTA can
+  // link to /venues/{slug}/book.
+  assert.equal(normalized.venueSlug, "venue-a");
 });
 
 test("normalizeBookingDetailResponse trusts court_names if present in detailed response", () => {
@@ -349,7 +377,7 @@ test("normalizeBookingDetailResponse falls back to extracting court names from s
 });
 
 test("resolveBookingResult resolves statuses and handles session validation", async () => {
-  const { resolveBookingResult } = await import("../src/lib/bookingResolver.js");
+  const { resolveBookingResult } = await import("../src/lib/services/bookingStatus.js");
 
   // 1. Unauthorized if session is empty
   const res1 = await resolveBookingResult("booking-123", null);
@@ -370,7 +398,7 @@ test("resolveBookingResult resolves statuses and handles session validation", as
   };
   const mockGetBooking = async () => mockBooking;
 
-  const res3 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetBooking });
+  const res3 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetBooking });
   assert.equal(res3.status, "success");
   assert.equal(res3.booking.id, "booking-123");
   assert.equal(res3.receipt.upiAmount, 500);
@@ -382,7 +410,7 @@ test("resolveBookingResult resolves statuses and handles session validation", as
     expiresAt: new Date(Date.now() + 600000).toISOString(), // 10 minutes in future
   };
   const mockGetPending = async () => mockPendingBooking;
-  const res4 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetPending });
+  const res4 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetPending });
   assert.equal(res4.status, "pending");
 
   // 5. Expired state when status is pending_payment and expired
@@ -392,7 +420,7 @@ test("resolveBookingResult resolves statuses and handles session validation", as
     expiresAt: new Date(Date.now() - 10000).toISOString(), // expired 10s ago
   };
   const mockGetExpired = async () => mockExpiredBooking;
-  const res5 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetExpired });
+  const res5 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetExpired });
   assert.equal(res5.status, "expired");
 
   // 6. Cancelled state
@@ -401,14 +429,14 @@ test("resolveBookingResult resolves statuses and handles session validation", as
     status: "cancelled",
   };
   const mockGetCancelled = async () => mockCancelledBooking;
-  const res6 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetCancelled });
+  const res6 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetCancelled });
   assert.equal(res6.status, "cancelled");
 
   // 7. Handles API failure mapping
   const mockGetFail = async () => {
     throw new Error("Booking not found");
   };
-  const res7 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetFail });
+  const res7 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetFail });
   assert.equal(res7.status, "error");
   assert.equal(res7.errorType, "notFound");
 
@@ -422,7 +450,7 @@ test("resolveBookingResult resolves statuses and handles session validation", as
     ],
   };
   const mockGetFailedPayment = async () => mockFailedPaymentBooking;
-  const res8 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetFailedPayment });
+  const res8 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetFailedPayment });
   assert.equal(res8.status, "failed");
 
   // 9. An older failed payment superseded by a newer initiated one → still pending
@@ -436,7 +464,104 @@ test("resolveBookingResult resolves statuses and handles session validation", as
     ],
   };
   const mockGetRetried = async () => mockRetriedBooking;
-  const res9 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBookingById: mockGetRetried });
+  const res9 = await resolveBookingResult("booking-123", { user: { id: "u-1" } }, { getBooking: mockGetRetried });
   assert.equal(res9.status, "pending");
 });
 
+test("resolveBookingResult branches on typed error.code, not message strings (ME-1)", async () => {
+  const { resolveBookingResult } = await import("../src/lib/services/bookingStatus.js");
+  const session = { user: { id: "u-1" } };
+
+  // A forbidden ApiError (opaque message) must still map to "forbidden" via code.
+  const forbidden = async () => { const e = new Error("Nope"); e.code = "forbidden"; throw e; };
+  const rf = await resolveBookingResult("b", session, { getBooking: forbidden });
+  assert.equal(rf.status, "forbidden");
+
+  // A not_found code maps to the notFound error type regardless of message text.
+  const missing = async () => { const e = new Error("gone"); e.code = "not_found"; throw e; };
+  const rn = await resolveBookingResult("b", session, { getBooking: missing });
+  assert.equal(rn.status, "error");
+  assert.equal(rn.errorType, "notFound");
+
+  // An unauthorized code maps to forbidden (the page shows a sign-in prompt).
+  const unauth = async () => { const e = new Error("x"); e.code = "unauthorized"; throw e; };
+  const ru = await resolveBookingResult("b", session, { getBooking: unauth });
+  assert.equal(ru.status, "forbidden");
+});
+
+
+test("normalizeHoldResponse maps snake_case hold fields to camelCase (ME-2)", () => {
+  const hold = normalizeHoldResponse({
+    booking_id: "bk-1",
+    status: "pending_payment",
+    expires_at: "2026-06-29T10:10:00.000Z",
+    court_count: 2,
+    slot_unit_count: 4,
+    session_start_time: "09:00",
+    session_end_time: "11:00",
+    session_duration_mins: 120,
+  });
+  assert.equal(hold.bookingId, "bk-1");
+  assert.equal(hold.expiresAt, "2026-06-29T10:10:00.000Z");
+  assert.equal(hold.courtCount, 2);
+  assert.equal(hold.sessionDurationMins, 120);
+});
+
+test("normalizePaymentInitiationResponse discriminates confirmed vs redirect (ME-2/HI-13)", () => {
+  assert.equal(normalizePaymentInitiationResponse({ type: "wallet_only", booking_id: "b" }).kind, "confirmed");
+  assert.equal(normalizePaymentInitiationResponse({ type: "already_confirmed", booking_id: "b" }).kind, "confirmed");
+
+  const redirect = normalizePaymentInitiationResponse({
+    type: "phonepe",
+    booking_id: "b",
+    merchant_order_id: "PP-9",
+    redirect_url: "https://mercury.phonepe.com/pay/xyz",
+  });
+  assert.equal(redirect.kind, "redirect");
+  assert.equal(redirect.merchantOrderId, "PP-9");
+  assert.equal(redirect.redirectUrl, "https://mercury.phonepe.com/pay/xyz");
+});
+
+test("runCheckout returns a confirmed result for a wallet-only payment (HI-13)", async () => {
+  const calls = [];
+  const result = await runCheckout(
+    {
+      createHold: async (sel) => { calls.push(["hold", sel]); return { bookingId: "bk-1" }; },
+      acceptWaiver: async (id) => { calls.push(["waiver", id]); },
+      initiatePayment: async (id, opts) => { calls.push(["pay", id, opts]); return { kind: "confirmed" }; },
+    },
+    { selection: { venue_id: "v" }, useWalletCredits: true },
+  );
+  assert.deepEqual(result, { kind: "confirmed", bookingId: "bk-1" });
+  // Enforces the ordered sequence hold → waiver → pay.
+  assert.deepEqual(calls.map((c) => c[0]), ["hold", "waiver", "pay"]);
+});
+
+test("runCheckout returns a redirect result for a gateway payment (HI-13)", async () => {
+  const result = await runCheckout(
+    {
+      createHold: async () => ({ bookingId: "bk-2" }),
+      acceptWaiver: async () => {},
+      initiatePayment: async () => ({ kind: "redirect", redirectUrl: "https://pay", merchantOrderId: "PP-2" }),
+    },
+    { selection: {} },
+  );
+  assert.equal(result.kind, "redirect");
+  assert.equal(result.bookingId, "bk-2");
+  assert.equal(result.redirectUrl, "https://pay");
+  assert.equal(result.merchantOrderId, "PP-2");
+});
+
+test("runCheckout throws when the hold cannot be created (HI-13)", async () => {
+  await assert.rejects(
+    () => runCheckout(
+      {
+        createHold: async () => ({ bookingId: null }),
+        acceptWaiver: async () => {},
+        initiatePayment: async () => ({ kind: "confirmed" }),
+      },
+      { selection: {} },
+    ),
+    /Could not create booking hold/,
+  );
+});

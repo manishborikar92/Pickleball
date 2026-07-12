@@ -165,22 +165,24 @@ Prettier + prettier-plugin-tailwindcss; Husky + lint-staged; `checkJs` + CI `tsc
 
 ---
 
-### ADR-W006: Add CSP (SRI for public, nonce for dynamic) + HSTS + full headers
+### ADR-W006: Add CSP (single static, SRI-backed) + HSTS + full headers
 
-**Status:** Proposed
+**Status:** Accepted (implemented)
 
 **Context:** No CSP on the app; no HSTS; `secure` gated on `NODE_ENV`; deprecated `X-XSS-Protection`.
 
-**Decision:** SRI/hash-based CSP (`experimental.sri`) on public cacheable pages (preserves SSG/PPR); nonce-based CSP generated in `proxy.js` on dynamic authenticated surfaces. Add HSTS and the full header set; drop `X-XSS-Protection`; `sameSite:"strict"` for admin/refresh cookies; `safeNext()` redirect guard.
+**Decision:** A **single static, SRI-backed CSP** applied uniformly to every route via `next.config.mjs` `headers()`, plus `experimental.sri: { algorithm: 'sha256' }` so every emitted script carries an `integrity` hash. Add HSTS (`max-age=63072000; includeSubDomains; preload`) and the full header set; drop `X-XSS-Protection`; `sameSite:"strict"` for admin/refresh markers; `secure` derived from HTTPS (not `NODE_ENV`); `safeNext()` redirect guard. The CSP is centralized in a framework-free `lib/csp.js` builder.
+
+**Deviation from the original "nonce-for-dynamic" proposal (documented):** The original ADR proposed nonce-based CSP on the "already-dynamic" authenticated surfaces. That assumed those routes were fully dynamic. Under ADR-W004 the app runs `cacheComponents: true`, so **every** route is Partial-Prerendered or static — there are no fully-dynamic routes. The official Next.js CSP guide is explicit that **nonce-based CSP requires dynamic rendering and is incompatible with PPR** ("static shell scripts won't have access to the nonce"). Injecting a per-request nonce from `proxy.js` would break the prebuilt PPR shells at runtime. The same guide names SRI as the mechanism that *preserves* SSG/PPR while enforcing a strict policy. We therefore adopt SRI uniformly and keep the proxy focused on optimistic auth/refresh (ADR-W002). `script-src` retains `'unsafe-inline'` for Next's inline RSC-bootstrap scripts (whose per-stream hashes can't be enumerated at config time); the residual risk is bounded by SRI integrity on all external scripts and a strict `connect-src` allowlist that blocks exfiltration.
 
 **Alternatives considered:**
 | Alternative | Trade-off |
 |---|---|
-| Nonce CSP everywhere | Forces dynamic render; kills SSG/PPR on public pages |
+| Nonce CSP on authenticated routes | Incompatible with PPR (this app is PPR-everywhere); breaks prebuilt shells at runtime |
 | No CSP (status quo) | No XSS backstop for a payments app |
-| SRI public + nonce dynamic (**chosen**) | Strict policy without sacrificing public-page caching |
+| Single static SRI-backed CSP (**chosen**) | Strict policy that preserves SSG/PPR and CDN caching; `'unsafe-inline'` on script-src is the accepted residual, mitigated by SRI + `connect-src` |
 
-**Consequences:** Closes CR-5, HI-1, HI-8, LO-11, LO-12; adds CSP-maintenance discipline (allowlists for PhonePe, MapTiler, the API).
+**Consequences:** Closes CR-5, HI-1, HI-8, LO-11, LO-12; adds CSP-maintenance discipline (allowlists for PhonePe, MapTiler, the API); one policy to maintain instead of two.
 
 **Priority:** High (CR-5 is Critical).
 

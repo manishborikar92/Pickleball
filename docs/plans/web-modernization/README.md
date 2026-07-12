@@ -1,9 +1,11 @@
 # Web Application Modernization & Architecture Redesign Plan
 
 **Target:** `web/` — Next.js 16.2.6 (App Router) + React 19.2.4, JavaScript, Tailwind CSS 4
-**Date:** 2026-06-29
-**Status:** Proposed (no code changes performed — this is a planning artifact)
+**Date:** 2026-06-29 (implemented 2026-07-07)
+**Status:** Implemented — the core modernization landed in `web/`: the critical hot-fixes (Phase 0), security headers/CSP/HSTS (Phase 1), the Data Access Layer + authorization boundary (Phase 2), caching/streaming/performance (Phase 3), Zod schemas + React 19 forms (Phase 4), and the SEO/error-UX polish (Phase 5). The ESLint module-boundary rule (ADR-W009) is in place. The broader **developer-tooling and automated-testing scaffolding (Phases 6–7)** — Prettier/Husky/lint-staged, a `tsc` type-check gate, Playwright/Vitest suites, and CI — is intentionally **deferred**; this document set remains the authoritative record for adopting it later.
 **Scope:** Full engineering audit, technology evaluation, and phased modernization plan for the `web/` frontend only. The `server/` backend is out of scope except where the frontend's contract with it is relevant.
+
+> **Implementation note (ADR-W006):** The security phase adopted a single static, SRI-backed CSP applied uniformly, rather than the originally-proposed nonce-CSP on dynamic surfaces. Under `cacheComponents` every route is PPR/static, and nonce-CSP is incompatible with PPR (per the official Next.js CSP guide). SRI — which the plan already names as the SSG/PPR-preserving mechanism — is used everywhere. See ADR-W006 for the full rationale.
 
 ---
 

@@ -21,13 +21,17 @@ export function buildDateWindow({ startDate, advanceBookingDays }) {
     const date = new Date(start);
     date.setUTCDate(start.getUTCDate() + index);
     const iso = date.toISOString().slice(0, 10);
-    const [weekday, day, month] = dateFormatter.format(date).split(" ");
+
+    // Read named parts rather than splitting the formatted string positionally,
+    // which is locale/format fragile (LO-3).
+    const parts = dateFormatter.formatToParts(date);
+    const partValue = (type) => parts.find((part) => part.type === type)?.value || "";
 
     return {
       iso,
-      weekday: weekday.replace(",", "").toUpperCase(),
-      day,
-      month: month.toUpperCase(),
+      weekday: partValue("weekday").replace(",", "").toUpperCase(),
+      day: partValue("day"),
+      month: partValue("month").toUpperCase(),
     };
   });
 }
@@ -47,7 +51,9 @@ export function getPaymentReceiptDetails(booking) {
   const totalAmount = Number(booking.total_amount || booking.totalAmount || 0);
   const creditsApplied = Number(booking.credits_applied || booking.creditsApplied || 0);
   const taxAmount = Number(booking.tax_amount || booking.taxAmount || 0);
-  const upiAmount = totalAmount - creditsApplied;
+  // Clamp so bad data (credits > total) can't produce a negative UPI amount that
+  // would misclassify a wallet-only checkout as "mixed" (LO-2).
+  const upiAmount = Math.max(0, totalAmount - creditsApplied);
 
   if (creditsApplied > 0) {
     if (upiAmount === 0) {

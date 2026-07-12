@@ -1,10 +1,24 @@
-import { Geist } from "next/font/google";
+import { Geist, Montserrat } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
+
+// Brand display font. Loaded once here (ME-10) and exposed as a CSS variable
+// instead of being pulled into the Header component.
+const montserrat = Montserrat({
+  variable: "--font-montserrat",
+  subsets: ["latin"],
+  weight: "800",
+  display: "swap",
+});
+
+// Query-encoded OG image URL (spaces/commas must be percent-encoded — LO-7).
+const OG_IMAGE = `/api/og?title=${encodeURIComponent("Baseline Arena")}&desc=${encodeURIComponent(
+  "Book premium outdoor pickleball courts in Besa, Nagpur.",
+)}`;
 
 export const metadata = {
   metadataBase: new URL("https://baselinearena.in"),
@@ -38,7 +52,7 @@ export const metadata = {
     siteName: "Baseline Arena",
     images: [
       {
-        url: "/api/og?title=Baseline Arena&desc=Book premium outdoor pickleball courts in Besa, Nagpur.",
+        url: OG_IMAGE,
         width: 1200,
         height: 630,
         alt: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
@@ -50,18 +64,23 @@ export const metadata = {
     title: "Baseline Arena | Pickleball Booking in Besa, Nagpur",
     description:
       "Book premium outdoor pickleball courts in Besa, Nagpur with secure checkout, WhatsApp verification, ratings, and instant booking confirmation.",
-    images: ["/api/og?title=Baseline Arena&desc=Book premium outdoor pickleball courts in Besa, Nagpur."],
+    images: [OG_IMAGE],
   },
   appleWebApp: {
     title: "Baseline Arena",
   },
 };
 
+export const viewport = {
+  themeColor: "#0d0f04",
+  colorScheme: "dark",
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${montserrat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

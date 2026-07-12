@@ -1,5 +1,5 @@
 import { InfoPageLayout } from "@/components/layout";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 
 export const metadata = getPageMetadata({
   title: "Terms & Conditions & Liability Waiver",

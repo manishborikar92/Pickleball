@@ -7,8 +7,8 @@ The Next.js 16 App Router frontend provides the user interface, booking dashboar
 ## 1. Responsibilities
 
 - **User Journeys**: Renders booking timelines, consecutive slot grids, onboarding wizards, and dashboards.
-- **Thin Proxy Routing**: The Next.js custom `proxy.js` performs lightweight cookie-presence checks and redirects — no data fetching or token refresh.
-- **Server-Side Auth**: Authentication is verified once in server layouts via `getSession()`, passed as props to components.
+- **Optimistic Proxy Routing**: The Next.js custom `proxy.js` performs optimistic cookie-presence checks, coarse redirects, and **proactive token refresh** at the network edge (it refreshes an expired access token before the Server Component render runs).
+- **Server-Side Auth**: Authentication is verified in server layouts/pages via `getSession()`, passed as props to components.
 - **Cache Components & PPR**: Uses Next.js 16 Cache Components (`"use cache"`) for static content and Partial Prerendering for dynamic pages.
 - **Access Control (RBAC)**: Enforces page routing permissions via server-side `requireRouteAccess()` and proxy cookie checks.
 - **Design Tokens**: Renders layouts matching design specifications using a dark theme sports aesthetic with Tailwind CSS 4.
@@ -25,18 +25,37 @@ The Next.js 16 App Router frontend provides the user interface, booking dashboar
 - `(admin)/` — Admin authenticated area (overview, bookings, schedule, pricing, courts, users, settings)
 
 ### Auth Architecture
-- **Single check**: Server layout calls `getSession()` (memoized via React `cache()`)
-- **No client-side auth context**: Session passed as props from server layouts
-- **Token refresh**: Handled exclusively in `lib/apiClient.js` on 401 responses
+- **Session check**: Server layouts/pages call `getSession()` (memoized via React `cache()`), which reads cookies and calls `/api/v1/users/me`
+- **No client-side auth context**: Session passed as props from server components
+- **Token refresh**: Proactive in `proxy.js` — an expired access token is refreshed at the edge before the render runs (it forwards the new cookies to the render and sets them on the browser response). As a fallback for client-invoked Server Actions, an expired token is also refreshed on a 401 inside the transport (`lib/dal/httpClient.js`).
+
+### Data & Dependency Direction
+The dependency direction is strictly one-way: `app/` (routing/composition) → inner reusable
+layers. **Nothing under `components/`, `lib/`, or `hooks/` imports from `@/app/`** (ADR-W009,
+enforced by an ESLint `no-restricted-imports` boundary).
+
+- **Reads** flow through the Data Access Layer (`lib/dal/*`) — cacheable async functions that call
+  the transport (`lib/dal/httpClient.js`) directly. Public reads (venue config) are cached and tagged
+  (`"use cache"` + `cacheTag`); user/time-sensitive reads stay uncached behind `<Suspense>`.
+- **Authorization** lives at the DAL boundary (`lib/dal/session.js` `verifySession()`), with
+  role/permissions derived from `/users/me`. Pages call `requireRouteAccess()` with the real path.
+- **Mutations** are Server Actions in route-independent `lib/actions/*` (auth, booking, review) — each
+  validates with a shared Zod schema, authorizes, calls the backend, and revalidates cache tags.
+- **Validation** is one shared schema per input (`lib/schemas/*`), reused for client UX and
+  authoritative server enforcement.
 
 ### Codebase Structure
 All frontend source files reside in `web/src/`:
-- `app/` — Next.js App Router pages organized by route groups
+- `app/` — Next.js App Router pages organized by route groups (routing/composition only)
 - `components/` — Reusable React components (features, layout, shared, seo)
-- `hooks/` — Client-side hooks (`useOverlay`, `useTable`)
-- `lib/` — Server utilities (apiClient, session, cookies, rbac, normalizers, bookingEngine, validation)
+- `hooks/` — Client-side hooks (`useOverlay`, `useTable`, `useBookingSelection`, `useBookingStatusPoll`)
+- `lib/dal/` — Data Access Layer: reads + `httpClient` (transport, refresh-on-401) + `session` (authz)
+- `lib/actions/` — Server Actions (mutations only): auth, booking, review; `result.js` (shared typed `ok`/`fail` contract)
+- `lib/services/` — Multi-step domain logic (checkout, bookingStatus)
+- `lib/schemas/` — Shared Zod validation schemas
+- `lib/` — Domain/utility modules (normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext, mapLinks, utils)
 - `config/` — Application configuration (venue, metadata, map)
-- `proxy.js` — Thin redirect-only request interceptor
+- `proxy.js` — Optimistic proxy: cookie-presence redirects + proactive token refresh (+ security headers via `next.config`)
 
 ---
 
@@ -71,15 +90,19 @@ npm run start
 
 ---
 
-## 4. Testing & Linting
+## 4. Quality Gates
 
-- **Tests** (16 tests covering RBAC, validation, normalizers, booking engine):
+- **Unit tests** (`node:test`, pure logic — RBAC, schemas, normalizers, booking engine, checkout service, booking-status resolver):
   ```bash
   npm run test
   ```
-- **Lint Verification**:
+- **Lint** (ESLint, incl. the `@/app/*` module-boundary rule — ADR-W009):
   ```bash
   npm run lint
+  ```
+- **Build**:
+  ```bash
+  npm run build
   ```
 
 ---

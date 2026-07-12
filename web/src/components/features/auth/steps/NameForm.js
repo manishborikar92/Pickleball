@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/shared";
-import { FormField, Input, FormAlert } from "@/components/shared";
-import { validateName } from "@/lib/validation";
+import { Button, Input, FormField } from "@/components/shared";
+import { nameSchema } from "@/lib/schemas";
 import { User } from "lucide-react";
 
 /**
  * NameForm - Step 3: Collect full name for onboarding.
+ * Validation uses the shared `nameSchema` (reused server-side by the onboarding action).
  */
 export function NameForm({
   initialName = "",
@@ -24,21 +24,21 @@ export function NameForm({
     setError("");
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
-    const validationResult = validateName(name);
-    if (!validationResult.ok) {
-      setError(validationResult.message);
+    const parsed = nameSchema.safeParse(name);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || "Enter your full name.");
       return;
     }
 
-    onSubmit(validationResult.value);
+    onSubmit(parsed.data);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
           <User className="h-7 w-7" />
@@ -47,7 +47,7 @@ export function NameForm({
         <p className="mt-2 text-sm text-muted sm:text-base">{subtitle}</p>
       </div>
 
-      <FormField label="Full Name">
+      <FormField label="Full Name" error={error}>
         <Input
           value={name}
           onChange={handleChange}
@@ -58,8 +58,6 @@ export function NameForm({
           className="py-3.5 text-base"
         />
       </FormField>
-
-      <FormAlert type="error" message={error} />
 
       <Button
         className="w-full py-4 text-base justify-center"

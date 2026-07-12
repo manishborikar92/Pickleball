@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { BookingsView } from "@/components/features/dashboard";
-import { getUserBookings } from "@/lib/api";
+import { getUserBookings } from "@/lib/dal/bookings";
 
 export const metadata = { title: "My Bookings" };
 

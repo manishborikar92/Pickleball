@@ -15,7 +15,9 @@ We classify codebase features using the following lifecycle states:
 | Feature Module | Status | Target Specification | Mapped Directory |
 |---|---|---|---|
 | Customer Auth (OTP) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
-| Thin Redirect Proxy | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
+| Optimistic Proxy + Proactive Refresh | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
+| Data Access Layer + Authz Boundary | **Built** | `docs/plans/web-modernization/` | `web/src/lib/dal` |
+| Server Actions (mutations, route-independent) | **Built** | `docs/plans/web-modernization/` | `web/src/lib/actions` |
 | Customer Profiles | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
 | Admin Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
 | Scheduling & Hours | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/venues` |
@@ -37,7 +39,7 @@ We classify codebase features using the following lifecycle states:
 - [x] **Profile Creation**: Customer entries are auto-generated upon verifying OTP.
 - [x] **In-Context Authentication**: Login modal holds consecutive slot parameter state variables.
 - [x] **Onboarding Redirects**: Forces redirect to `/onboarding` if profile properties are missing.
-- [x] **Token Rotation**: Silent authentication refreshes handled in `web/src/lib/apiClient.js` on 401 responses. Proxy is thin redirect-only.
+- [x] **Token Rotation**: The access token is refreshed proactively in `web/proxy.js` at the edge (before the render) and, as a fallback for authenticated Server Action calls, on a 401 inside `web/src/lib/dal/httpClient.js`. Role/permissions derive from `/users/me`, not a cookie.
 
 ### 2.2 Admin Authentication & Management (Partial)
 - [x] **Email & Password Guards**: Restricts dashboard panels to admins.

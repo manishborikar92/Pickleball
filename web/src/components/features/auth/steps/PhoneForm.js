@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/shared";
-import { Input, FormAlert } from "@/components/shared";
-import { validatePhone } from "@/lib/validation";
+import { Button, Input, FormField } from "@/components/shared";
+import { phoneSchema } from "@/lib/schemas";
 import { Smartphone } from "lucide-react";
 
 /**
  * PhoneForm - Step 1: Input and validate phone number.
+ * Validation uses the shared `phoneSchema` (reused server-side by the OTP action).
  */
 export function PhoneForm({
   initialPhone = "",
@@ -24,21 +24,21 @@ export function PhoneForm({
     setError("");
   }
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e.preventDefault();
     setError("");
 
-    const validationResult = validatePhone(phone);
-    if (!validationResult.ok) {
-      setError(validationResult.message);
+    const parsed = phoneSchema.safeParse(phone);
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message || "Enter a valid phone number.");
       return;
     }
 
-    onSubmit(validationResult.value);
+    onSubmit(parsed.data);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Smartphone className="h-7 w-7" />
@@ -47,19 +47,19 @@ export function PhoneForm({
         <p className="mt-2 text-sm text-muted">{subtitle}</p>
       </div>
 
-      <Input
-        prefix="IN +91"
-        value={phone}
-        onChange={handleChange}
-        placeholder="98765 43210"
-        inputMode="tel"
-        maxLength={10}
-        autoFocus
-        disabled={loading}
-        error={!!error}
-      />
-
-      <FormAlert type="error" message={error} />
+      <FormField error={error}>
+        <Input
+          prefix="IN +91"
+          value={phone}
+          onChange={handleChange}
+          placeholder="98765 43210"
+          inputMode="tel"
+          maxLength={10}
+          autoFocus
+          disabled={loading}
+          error={!!error}
+        />
+      </FormField>
 
       <Button
         className="w-full py-4 text-base justify-center"

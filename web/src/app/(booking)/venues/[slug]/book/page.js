@@ -1,10 +1,11 @@
 import { connection } from "next/server";
 import Script from "next/script";
 import { BookingClient } from "@/components/features/booking";
-import { getAvailability, getVenue } from "@/lib/api";
-import { getSession } from "@/lib/session";
+import { getVenue } from "@/lib/dal/venues";
+import { getAvailability } from "@/lib/dal/availability";
+import { verifySession } from "@/lib/dal/session";
 import { JsonLd } from "@/components/seo";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 import { getTodayDateString } from "@/lib/bookingEngine";
 
 export async function generateMetadata({ params }) {
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }) {
 
   return getPageMetadata({
     title: `Book Court at ${name} | ${brandName}`,
-    description: `Select live pickleball court slots and complete secure checkout at ${brandName} in ${name}. Premium Pro Cushion indoor courts.`,
+    description: `Select live pickleball court slots and complete secure checkout at ${brandName} in ${name}. Premium Pro Cushion outdoor courts.`,
     path: `/venues/${slug}/book`,
   });
 }
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }) {
 export default async function BookPage({ params }) {
   await connection();
   const { slug } = await params;
-  const [venue, session] = await Promise.all([getVenue(slug), getSession()]);
+  const [venue, session] = await Promise.all([getVenue(slug), verifySession()]);
   const initialDate = getTodayDateString(venue.timezone);
   const availability = await getAvailability({
     venueId: venue.id,
@@ -34,7 +35,9 @@ export default async function BookPage({ params }) {
   const locationSchema = {
     "@context": "https://schema.org",
     "@type": "SportsActivityLocation",
-    "@id": `https://baselinearena.in/venues/${slug}/book/#venue`,
+    // Canonical venue entity id — shared with the landing page node so both
+    // describe one entity with consistent values (LO-6).
+    "@id": "https://baselinearena.in/#venue",
     "name": `${venue.brandName} ${venue.name}`,
     "image": [
       "https://baselinearena.in/court-1.png",

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { WalletView } from "@/components/features/dashboard";
-import { getWallet } from "@/lib/api";
+import { getWallet } from "@/lib/dal/wallet";
 
 export const metadata = { title: "Wallet" };
 

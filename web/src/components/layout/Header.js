@@ -1,14 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { UserCircle, MapPin } from "lucide-react";
-import { Montserrat } from "next/font/google";
 import { Button } from "@/components/shared";
 import { VENUE } from "@/config/venue.config";
-
-const logoFont = Montserrat({
-  subsets: ["latin"],
-  weight: "800",
-});
 
 export function Header() {
   return (
@@ -47,9 +41,9 @@ function BrandLogo() {
       </div>
       
       <div className="flex flex-col justify-center">
-        <span 
-          className={`${logoFont.className} text-[15px] font-extrabold text-foreground sm:text-lg md:text-xl leading-none`}
-          style={{ letterSpacing: "-0.04em" }}
+        <span
+          className="text-[15px] font-extrabold text-foreground sm:text-lg md:text-xl leading-none"
+          style={{ fontFamily: "var(--font-montserrat)", letterSpacing: "-0.04em" }}
         >
           Baseline Arena
         </span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { BaseSidebar } from "./BaseSidebar";
-import { signOutCustomerAction } from "@/app/(auth)/actions";
+import { signOutCustomerAction } from "@/lib/actions/auth";
 import { VENUE } from "@/config/venue.config";
 
 const NAV_LINKS = [

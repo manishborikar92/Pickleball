@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { getBookingById } from "../lib/api.js";
-import { getLatestPayment } from "../lib/bookingEngine.js";
+import { getBookingStatusAction } from "@/lib/actions/booking";
+import { getLatestPayment } from "@/lib/bookingEngine";
 
 /**
  * Client-side hook to poll for the booking status.
@@ -45,24 +45,33 @@ export function useBookingStatusPoll({
         return;
       }
 
-      try {
-        const booking = await getBookingById(bookingId);
-        pollCountRef.current += 1;
+      pollCountRef.current += 1;
+      const res = await getBookingStatusAction(bookingId);
 
-        // Resolve when the booking leaves pending_payment, OR when the booking is
-        // still pending but its latest payment has failed (a failure keeps the
-        // booking in pending_payment, so status alone never signals it). In both
-        // cases the parent refreshes so the server resolver can render the right view.
-        const paymentFailed = getLatestPayment(booking)?.status === "failed";
-
-        if (booking && (booking.status !== "pending_payment" || paymentFailed)) {
+      if (!res.ok) {
+        // A 4xx (auth/ownership/not-found) is terminal — stop and surface it
+        // rather than spinning until timeout (ME-7). Transient/5xx: keep polling.
+        if (res.error.status >= 400 && res.error.status < 500) {
           clearInterval(intervalId);
-          setStatus(booking.status);
-          if (onCompleteRef.current) onCompleteRef.current(booking.status);
+          setStatus("error");
+          setError("We couldn't verify this payment. Please check your bookings.");
+          if (onCompleteRef.current) onCompleteRef.current("error");
         }
-      } catch (err) {
-        // Log and swallow error, continue polling in case of transient API connectivity issues
-        console.error("[useBookingStatusPoll] Poll failed:", err);
+        return;
+      }
+
+      const booking = res.data;
+
+      // Resolve when the booking leaves pending_payment, OR when the booking is
+      // still pending but its latest payment has failed (a failure keeps the
+      // booking in pending_payment, so status alone never signals it). In both
+      // cases the parent refreshes so the server resolver can render the right view.
+      const paymentFailed = getLatestPayment(booking)?.status === "failed";
+
+      if (booking && (booking.status !== "pending_payment" || paymentFailed)) {
+        clearInterval(intervalId);
+        setStatus(booking.status);
+        if (onCompleteRef.current) onCompleteRef.current(booking.status);
       }
     }, intervalMs);
 

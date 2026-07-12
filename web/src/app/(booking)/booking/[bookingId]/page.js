@@ -1,5 +1,5 @@
-import { getSession } from "@/lib/session";
-import { resolveBookingResult } from "@/lib/bookingResolver";
+import { verifySession } from "@/lib/dal/session";
+import { resolveBookingResult } from "@/lib/services/bookingStatus";
 import { Header, Footer } from "@/components/layout";
 import {
   BookingDetailView,
@@ -11,7 +11,7 @@ import {
 export default async function BookingStatusOrchestrator(props) {
   const params = await props.params;
   const bookingId = params.bookingId;
-  const session = await getSession();
+  const session = await verifySession();
 
   const result = await resolveBookingResult(bookingId, session);
 

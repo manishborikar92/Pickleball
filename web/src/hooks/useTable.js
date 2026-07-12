@@ -20,8 +20,12 @@ export function useTable(
 ) {
   const [page, setPage] = useState(defaultPage);
   const [pageSize, setPageSize] = useState(defaultPageSize);
-  const [sortBy, setSortBy] = useState(defaultSortBy);
-  const [sortOrder, setSortOrder] = useState(defaultSortOrder);
+  // Sort direction and key are kept in ONE state object so a toggle computes the
+  // next state in a single pass — no setState nested inside another setState's
+  // updater (the ME-15 anti-pattern).
+  const [sort, setSort] = useState({ by: defaultSortBy, order: defaultSortOrder });
+  const sortBy = sort.by;
+  const sortOrder = sort.order;
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({});
   const [selectedRowIds, setSelectedRowIds] = useState(new Set());
@@ -60,13 +64,11 @@ export function useTable(
   }, [resetSelection]);
 
   const handleToggleSort = useCallback((columnKey) => {
-    setSortBy((currentSortBy) => {
-      if (currentSortBy === columnKey) {
-        setSortOrder((currentOrder) => (currentOrder === "asc" ? "desc" : "asc"));
-      } else {
-        setSortOrder("asc");
+    setSort((prev) => {
+      if (prev.by === columnKey) {
+        return { by: columnKey, order: prev.order === "asc" ? "desc" : "asc" };
       }
-      return columnKey;
+      return { by: columnKey, order: "asc" };
     });
     setPage(1);
   }, []);

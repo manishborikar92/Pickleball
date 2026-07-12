@@ -1,12 +1,12 @@
 import { InfoPageLayout } from "@/components/layout";
 import { Award, Compass, Heart } from "lucide-react";
 import { JsonLd } from "@/components/seo";
-import { getPageMetadata } from "@/config/metadata";
+import { getPageMetadata } from "@/config/metadata.config";
 
 export const metadata = getPageMetadata({
   title: "About Us",
   description:
-    "Discover the story of Baseline Arena, Nagpur's premier indoor pickleball facility offering top-tier cushion courts and professional play conditions.",
+    "Discover the story of Baseline Arena, Nagpur's premier outdoor pickleball facility offering top-tier cushion courts and professional play conditions.",
   path: "/about",
 });
 
