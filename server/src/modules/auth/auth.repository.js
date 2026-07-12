@@ -238,5 +238,30 @@ export const createAuthRepository = ({ prisma } = {}) => {
 
     return count > 0;
   },
+
+  async purgeExpiredRecords({ oneDayAgo, thirtyDaysAgo }) {
+    const [deletedOtps, deletedSessions, deletedTokens] = await Promise.all([
+      db().otpRequest.deleteMany({
+        where: { expiresAt: { lt: oneDayAgo } },
+      }),
+      db().authSession.deleteMany({
+        where: {
+          status: 'revoked',
+          revokedAt: { lt: thirtyDaysAgo },
+        },
+      }),
+      db().refreshToken.deleteMany({
+        where: {
+          revokedAt: { not: null, lt: thirtyDaysAgo },
+        },
+      }),
+    ]);
+
+    return {
+      deletedOtps: deletedOtps.count,
+      deletedSessions: deletedSessions.count,
+      deletedTokens: deletedTokens.count,
+    };
+  },
   };
 };

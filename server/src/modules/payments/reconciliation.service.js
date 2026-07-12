@@ -127,5 +127,71 @@ export const createReconciliationService = ({
       const refundAmount = Number(payment.refundAmount || payment.amount);
       return this.initiateRefund({ paymentId, amount: refundAmount });
     },
+
+    async reconcileStalePayments({ staleThresholdMinutes = 15, batchSize = 50 } = {}) {
+      if (!paymentProvider) {
+        logger.warn({ operation: 'reconciliation:skip', reason: 'no_payment_provider' });
+        return { total: 0, skipped: true, reason: 'no_payment_provider' };
+      }
+
+      const cutoff = new Date(clock().getTime() - staleThresholdMinutes * 60 * 1000);
+      const stalePayments = await paymentsRepository.findStalePayments({ cutoff, limit: batchSize });
+
+      let completed = 0;
+      let failed = 0;
+      let pending = 0;
+      let errors = 0;
+      let consecutiveErrors = 0;
+      const MAX_CONSECUTIVE_ERRORS = 3;
+
+      for (const payment of stalePayments) {
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          logger.warn({
+            operation: 'reconciliation:early_exit',
+            message: 'Stopping batch due to consecutive provider errors',
+          });
+          break;
+        }
+
+        try {
+          const state = await paymentProvider.getPaymentStatus({ payment });
+          logger.info({
+            operation: 'reconciliation:check',
+            merchantOrderId: payment.merchantOrderId,
+            state,
+          });
+
+          if (state === 'COMPLETED') {
+            await bookingsService.handleProviderPaymentEvent({
+              merchantOrderId: payment.merchantOrderId,
+              state,
+              payload: { provider: payment.gateway, state, source: 'reconciliation_job' },
+            });
+            completed++;
+          } else if (state === 'FAILED') {
+            await bookingsService.handleProviderPaymentEvent({
+              merchantOrderId: payment.merchantOrderId,
+              state,
+              payload: { provider: payment.gateway, state, source: 'reconciliation_job' },
+            });
+            failed++;
+          } else {
+            pending++;
+          }
+
+          consecutiveErrors = 0;
+        } catch (error) {
+          errors++;
+          consecutiveErrors++;
+          logger.error({
+            operation: 'reconciliation:payment_error',
+            merchantOrderId: payment.merchantOrderId,
+            error,
+          });
+        }
+      }
+
+      return { total: stalePayments.length, completed, failed, pending, errors };
+    },
   };
 };

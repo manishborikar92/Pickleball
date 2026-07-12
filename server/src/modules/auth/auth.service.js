@@ -425,5 +425,12 @@ export const createAuthService = ({
         permissionKey: permission,
       });
     },
+
+    async purgeExpiredRecords() {
+      const now = clock();
+      const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return repository.purgeExpiredRecords({ oneDayAgo, thirtyDaysAgo });
+    },
   };
 };

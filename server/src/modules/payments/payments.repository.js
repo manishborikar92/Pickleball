@@ -69,5 +69,24 @@ export const createPaymentsRepository = ({ prisma } = {}) => {
         },
       });
     },
+
+    async findStalePayments({ cutoff, limit = 50 }) {
+      return db().payment.findMany({
+        where: {
+          status: 'initiated',
+          createdAt: { lt: cutoff },
+        },
+        include: {
+          booking: {
+            select: {
+              id: true,
+              status: true,
+              userId: true,
+            },
+          },
+        },
+        take: limit,
+      });
+    },
   };
 };

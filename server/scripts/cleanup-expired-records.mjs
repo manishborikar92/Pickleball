@@ -1,33 +1,23 @@
 /* eslint-disable no-console */
-import { getPrisma } from '../src/lib/prisma.js';
+import { buildConfig } from '../src/config/env.js';
+import { disconnectPrisma } from '../src/lib/prisma.js';
+import { createDefaultAuthService } from '../src/modules/auth/index.js';
 import { createDefaultBookingsService } from '../src/modules/bookings/index.js';
 import { createDefaultVenuesService } from '../src/modules/venues/index.js';
 
-const prisma = getPrisma();
+const config = buildConfig();
 const venueService = createDefaultVenuesService();
+const authService = createDefaultAuthService({ config });
 const bookingsService = createDefaultBookingsService({ venueService });
-const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
 try {
-  // Purge expired OTPs
-  const deletedOtps = await prisma.otpRequest.deleteMany({
-    where: { expiresAt: { lt: oneDayAgo } }
-  });
-  console.log(`Deleted ${deletedOtps.count} expired OTP requests.`);
+  // Purge expired OTPs, revoked sessions, and revoked refresh tokens.
+  const purgeResult = await authService.purgeExpiredRecords();
+  console.log(`Deleted ${purgeResult.deletedOtps} expired OTP requests.`);
+  console.log(`Deleted ${purgeResult.deletedSessions} revoked sessions.`);
+  console.log(`Deleted ${purgeResult.deletedTokens} revoked refresh tokens.`);
 
-  // Purge old revoked sessions
-  const deletedSessions = await prisma.authSession.deleteMany({
-    where: { status: 'revoked', revokedAt: { lt: thirtyDaysAgo } }
-  });
-  console.log(`Deleted ${deletedSessions.count} revoked sessions.`);
-
-  // Purge old revoked refresh tokens
-  const deletedTokens = await prisma.refreshToken.deleteMany({
-    where: { revokedAt: { not: null, lt: thirtyDaysAgo } }
-  });
-  console.log(`Deleted ${deletedTokens.count} revoked refresh tokens.`);
-
+  // Expire pending booking holds (higher limit for manual backfill).
   const expiredBookings = await bookingsService.expirePendingHolds({
     limit: 500,
     requestContext: { requestId: 'cleanup-expired-records' },
@@ -35,7 +25,7 @@ try {
   console.log(`Expired ${expiredBookings.expired_count} pending booking holds.`);
   console.log(`Rolled back ${expiredBookings.wallet_credits_rolled_back} wallet credits from expired holds.`);
 
-  // Sweep completed bookings
+  // Sweep completed bookings.
   const sweepLimit = parseInt(process.env.COMPLETION_SWEEP_LIMIT || '100', 10);
   const sweptBookings = await bookingsService.sweepCompletedBookings({
     limit: sweepLimit,
@@ -45,5 +35,6 @@ try {
   console.error("Error running database cleanup:", error);
   process.exit(1);
 } finally {
+  await disconnectPrisma();
   process.exit(0);
 }

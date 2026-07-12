@@ -51,6 +51,10 @@ const envSchema = Joi.object({
   FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:3000'),
   BACKEND_BASE_URL: Joi.string().uri().default('http://localhost:5000'),
   BOOKING_TAX_RATE: Joi.number().min(0).default(0.00),
+
+  // Background scheduler — in-process periodic job runner.
+  SCHEDULER_INTERVAL_MS: Joi.number().integer().min(30000).default(5 * 60 * 1000),
+  DISABLE_INTERNAL_SCHEDULER: Joi.boolean().truthy('true').falsy('false').default(false),
 }).unknown(true);
 
 const parseCsv = (value) => String(value || '')
@@ -187,6 +191,10 @@ export const buildConfig = (overrides = {}) => {
     },
     bookings: {
       taxRate: value.BOOKING_TAX_RATE,
+    },
+    scheduler: {
+      intervalMs: value.SCHEDULER_INTERVAL_MS,
+      disabled: value.DISABLE_INTERNAL_SCHEDULER,
     },
     frontendBaseUrl: value.FRONTEND_BASE_URL,
     backendBaseUrl: value.BACKEND_BASE_URL,
