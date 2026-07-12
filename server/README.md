@@ -79,7 +79,30 @@ npm run test:coverage
 
 ---
 
-## 5. Deeper Documentation References
+## 5. Operational Scripts
+
+Standalone maintenance and provisioning utilities live in `server/scripts/` and are run directly with Node (they load `.env` via the shared config, so run them from the `server/` directory).
+
+### 5.1 Create a Promo Code
+Provisions a single `coupons` record, applying the same validation and business rules the platform enforces at checkout (code format, discount bounds, validity window). Codes are normalized to UPPERCASE and must be unique; duplicates and unknown venues are rejected with a clear message and a non-zero exit code.
+
+```bash
+# Platform-wide 10% coupon
+npm run promo:create -- --code=WELCOME10 --type=percentage --value=10
+
+# Venue-scoped ₹150 flat coupon, capped at 500 total redemptions
+npm run promo:create -- --code=FLAT150 --type=flat --value=150 \
+  --venue=<venue-uuid> --max-uses-total=500
+
+# Full option reference
+npm run promo:create -- --help
+```
+
+Add `--json` to print the created coupon to stdout. See `scripts/create-promo-code.mjs` for the complete flag list.
+
+---
+
+## 6. Deeper Documentation References
 
 - **Database Schemas & Relations**: [docs/specs/01-DATABASE-SCHEMA.md](../docs/specs/01-DATABASE-SCHEMA.md)
 - **API Router Route Definitions**: [docs/specs/02-API-SPECIFICATION.md](../docs/specs/02-API-SPECIFICATION.md)

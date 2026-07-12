@@ -80,6 +80,12 @@ We classify codebase features using the following lifecycle states:
 - [ ] **Scratch Canvas UI**: Interactive HTML5 scratch-off canvas components.
 - [ ] **Spinner Wheel**: Wheel interactive layouts. (*Deferred*)
 
+### 2.8 Promotions & Coupons (Partial)
+- [x] **Checkout Discounting**: The booking price quote resolves a valid coupon by code (active + validity-window filtered) and applies a flat or percentage discount to the subtotal in `booking-pricing.service.js`.
+- [x] **Promo Code Provisioning Tool**: `scripts/create-promo-code.mjs` (`npm run promo:create`) creates a `coupons` record with full input validation, discount-bound and validity-window rules, UPPERCASE normalization, and duplicate/unknown-venue rejection. Self-contained (Prisma-direct), in the style of `prisma/seed.mjs`.
+- [ ] **Admin Coupon Management API**: Create/list/deactivate endpoints. When built, coupon logic should join the pricing domain in the venues module (gated by `edit_pricing`) and the script becomes a thin client. (*Planned*)
+- [ ] **Usage Enforcement**: `coupon_usages` recording and `max_uses_total` / `max_uses_per_phone` cap enforcement at redemption. (*Planned*)
+
 ---
 
 ## 3. Specification-to-Code Divergences
