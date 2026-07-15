@@ -26,7 +26,7 @@ This platform solves these friction points through:
 - **Core Framework**: Next.js 16 (App Router, Cache Components, Partial Prerendering, Server Components)
 - **Styling**: Tailwind CSS 4 (premium dark aesthetic with CSS custom properties)
 - **State Management**: Server-side session via `getSession()` — no global client auth context
-- **Proxy**: Thin redirect-only `proxy.js` — cookie presence checks, no data fetching or token refresh
+- **Proxy**: Dynamic `src/proxy.js` at the edge — cookie-presence redirects, route guards, and proactive token refresh
 - **Route Groups**: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`
 
 ### 2.2 Backend (`server/`)
@@ -61,8 +61,8 @@ This platform solves these friction points through:
 └── web/                           # Next.js 16 App Router Frontend
     ├── src/app/                   # Pages: (marketing), (booking), (auth), (dashboard), (admin)
     ├── src/components/            # UI components (features, layout, shared, seo)
-    ├── src/lib/                   # Server utilities (apiClient, session, cookies, rbac)
-    └── proxy.js                   # Thin redirect-only proxy (cookie checks only)
+    ├── src/lib/                   # Shared logic: dal/ (httpClient, session), actions/, services/, schemas/
+    └── src/proxy.js               # Edge proxy (cookie redirects + proactive token refresh)
 ```
 
 ---

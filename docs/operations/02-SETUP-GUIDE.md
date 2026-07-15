@@ -227,17 +227,17 @@ This single command automatically:
 3. Select your **frontend repository**
 
 ### 6.2 Configure Build Settings
-Set the following based on your frontend framework:
+Set the build settings for the Next.js App Router frontend:
 
-| Framework | Build Command | Output Directory |
-|---|---|---|
-| React (Vite) | `npm run build` | `dist` |
-| Next.js (static) | `npm run build` | `out` |
-| React (CRA) | `npm run build` | `build` |
+- **Framework preset**: `Next.js`
+- **Build command**: `npm run build`
+- **Output directory**: `.next` (or `.vercel/output/static` for static/adapter outputs)
 
 ### 6.3 Add Environment Variables
-1. Under **Environment Variables**, add your API URL and any other required variables:
-   - `VITE_API_URL=https://api.baselinearena.in` (or equivalent for your framework)
+1. Under **Environment Variables**, add the API base URL and other required variables:
+   - `NEXT_PUBLIC_API_BASE_URL=https://api.baselinearena.in`
+   - `NEXT_PUBLIC_MAPTILER_KEY=<your_maptiler_api_key>`
+   - `NEXT_PUBLIC_PHONEPE_ENV=PRODUCTION`
 2. Click **Save and Deploy**
 
 ### 6.4 Connect Your Custom Domain
@@ -314,7 +314,9 @@ PORT=3000
 
 **Frontend — add in Cloudflare Pages → Settings → Environment Variables:**
 ```
-VITE_API_URL=https://api.baselinearena.in
+NEXT_PUBLIC_API_BASE_URL=https://api.baselinearena.in
+NEXT_PUBLIC_MAPTILER_KEY=your_maptiler_api_key_here
+NEXT_PUBLIC_PHONEPE_ENV=PRODUCTION
 ```
 
 ---
