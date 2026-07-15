@@ -1,0 +1,189 @@
+# End-User Feature Gap Analysis — Pickleball Platform
+
+This report presents a comprehensive, repository-wide audit of all remaining customer-facing feature gaps, missing integrations, and deferred workflows on the Pickleball platform. The findings are strictly limited to features and functionalities that are explicitly documented in the project's Markdown (`.md`) files but have not yet been fully implemented in the codebase.
+
+---
+
+## 1. Availability
+
+### Shared Court Selection Slot Intersection Highlighting
+* **Current Status:** Not Started
+* **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.2 ("Section 4 — Select Time Slots")
+* **Description:** 
+  The UI/UX Specification states: "When both courts are selected, the slot grids must show the intersection of available slots highlighted — slots that are available on at least one court show normally." The current slot grids ([SlotGrid.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/SlotGrid.js)) render court availabilities completely independently, with no overlay indicating which slots are open simultaneously on both courts.
+* **Missing Pieces:**
+  * Update the client-side state in `useBookingSelection.js` to compute intersecting slot ranges.
+  * Apply visual highlighting (such as matching border glows or indicator badges) on overlapping slots in the grids.
+* **User Impact:** Medium (Makes it harder for groups to book consecutive slots spanning both courts).
+* **Dependencies:** None.
+
+### Prevention of Asymmetric Multi-Court Selections in UI
+* **Current Status:** Needs Improvement
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 5.1 ("Selection Model")
+* **Description:** 
+  The business logic requires all selected courts to share the exact same start and end times. The client normalizer [normalizers.js:257-261](file:///c:/Users/manis/Projects/Pickleball/web/src/lib/normalizers.js#L257-L261) validates this and disables checkout with the error "Select the same time range for each selected court." However, the interactive `SlotGrid` still allows users to select mismatched slots (e.g. 9-10 AM on Court 1, 10-11 AM on Court 2), resulting in a confusing, reactive validation state.
+* **Missing Pieces:**
+  * Update the click handler in `SlotGrid.js` to automatically mirror selections across all active courts, or lock the selection range on secondary courts once the primary court's slots are selected.
+* **User Impact:** Medium (Clunky checkout UX).
+* **Dependencies:** None.
+
+---
+
+## 2. Booking & Checkout
+
+### 10-Minute Hold Countdown Timer
+* **Current Status:** Not Started
+* **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.4 ("Checkout — Hold Confirmed")
+* **Description:** 
+  The UI/UX Specification requests a "countdown timer showing remaining hold time (10 minutes)" on the checkout and waiver screen. No countdown timer exists in the checkout modal ([AuthFlow.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/AuthFlow.js)).
+  Furthermore, the slot hold is not actually requested from the backend until the user checks the waiver and clicks "Pay" ([BookingClient.js:105](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/BookingClient.js#L105)). Thus, the user reviews checkout details *before* slots are locked, exposing them to slot contention during review.
+* **Missing Pieces:**
+  * Refactor checkout flow to call `createHold` at the transition to the waiver step.
+  * Pass the hold expiration timestamp (`expiresAt`) to `WaiverStep`.
+  * Implement an active countdown clock on the checkout card that releases state and returns the user to the grid if time runs out.
+* **User Impact:** High (Without a timer, users have no idea how much time they have to pay; slot hoarding or locking conflicts are hidden).
+* **Dependencies:** None.
+
+### Court Access PIN Display
+* **Current Status:** Completely Missing
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 5.2 Step 6, [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.5 ("Booking Confirmation Screen"), [schema.prisma](file:///c:/Users/manis/Projects/Pickleball/server/prisma/schema.prisma)
+* **Description:** 
+  The Prisma schema defines `accessPin String? @map("access_pin") @db.Char(4)` ([schema.prisma:451](file:///c:/Users/manis/Projects/Pickleball/server/prisma/schema.prisma#L451)). The UI/UX Specification notes that the booking confirmation card should display the "Court access PIN (if smart lock integration is active — future feature)." Currently, no pin generation exists on the backend, and `BookingDetailView.js` does not render this field.
+* **Missing Pieces:**
+  * Implement random 4-digit PIN generation upon payment confirmation in `bookings.service.js`.
+  * Update `BookingDetailView.js` to display the PIN for confirmed bookings.
+* **User Impact:** Low (Future smart lock integration blocker).
+* **Dependencies:** None.
+
+---
+
+## 3. Notifications
+
+### Scheduled WhatsApp Reminders (T-24h / T-2h)
+* **Current Status:** Not Started / Deferred
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
+* **Description:** 
+  The matrix lists scheduled notifications (reminders 24 hours and 2 hours before play time) as deferred due to the lack of an asynchronous job queue/scheduler.
+* **Missing Pieces:**
+  * Integrate a background job scheduler (e.g. BullMQ or pg-boss) into the Express server.
+  * Schedule WhatsApp jobs upon booking confirmation.
+  * Implement reminder template dispatch handlers.
+* **User Impact:** Medium.
+* **Dependencies:** None.
+
+### Post-Session WhatsApp Review Requests
+* **Current Status:** Not Started / Deferred
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
+* **Description:** 
+  Review request links are intended to be sent via WhatsApp after the play window ends, urging players to rate their session. This is currently deferred and not implemented.
+* **Missing Pieces:**
+  * Schedule review request notification jobs when a booking is confirmed, targeting the slot end time.
+  * Build the message handler to send a direct template link (`/review/[bookingId]`).
+* **User Impact:** Medium (Reduces organic user review collection).
+* **Dependencies:** Scheduled WhatsApp Reminders.
+
+### WhatsApp Inbound Support Webhook Handler
+* **Current Status:** Not Started / Deferred
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
+* **Description:** 
+  The matrix lists inbound support messages as deferred, requiring a webhook handler and support inbox.
+* **Missing Pieces:**
+  * Define and enable the WhatsApp inbound callback webhook in the Meta dashboard.
+  * Implement route controllers to parse incoming messages and alert the operator team.
+* **User Impact:** Low.
+* **Dependencies:** None.
+
+---
+
+## 4. Help & Support
+
+### Support Form Submission Delivery
+* **Current Status:** Mock Only
+* **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.8 ("Contact Form")
+* **Description:** 
+  The contact page `/support` renders a form for names, emails, and messages. However, submitting the form does not transmit data. It invokes a mock handler that displays the error: `"Support form delivery is not configured yet. Please use the listed phone or email contact."` ([SupportClient.js:66](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/support/SupportClient.js#L66)).
+* **Missing Pieces:**
+  * Create a support ticket/message endpoint on the backend (or integrate an email delivery service like SendGrid/SES).
+  * Update the frontend form to POST to the support endpoint.
+* **User Impact:** High (Users attempting to contact support via the web form will receive a failure notice and must manually email or call).
+* **Dependencies:** None.
+
+---
+
+## 5. Other User Features
+
+### Reward Engine (Scratch Cards / Prize Fulfillment)
+* **Current Status:** Not Started / Deferred
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 12 ("Reward Engine"), [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 3.3 ("My Rewards" and "Scratch Card Screen"), [schema.prisma](file:///c:/Users/manis/Projects/Pickleball/server/prisma/schema.prisma)
+* **Description:** 
+  The Prisma schema defines tables for `RewardMechanism` and `RewardInstance`. The business logic specifications describe post-booking scratch cards and spinner wheels with automated wallet credit or coupon prize issuance. 
+  No codebase implementation of the Reward Engine exists. There are no backend controller routes (`GET /api/v1/rewards`, `POST /api/v1/rewards/instances/:id/reveal`), no fulfillment handlers, and no frontend scratch card animations or canvas components.
+* **Missing Pieces:**
+  * Build the backend `rewards` module (routes, controllers, repository, service) to draw and snapshot prizes upon booking confirmation.
+  * Implement prize fulfillment transactions (updating wallet credits or generating dynamic coupons).
+  * Build the frontend reward overview page and deep-linked scratch card / spinner canvas components.
+* **User Impact:** Low (Deferred post-launch engagement feature).
+* **Dependencies:** None.
+
+---
+
+# Execution & Release Roadmap
+
+The identified gaps are prioritized into three phases to organize development prior to production release.
+
+```mermaid
+graph TD
+    %% Phase 1: Production Launch Blockers
+    subgraph Phase 1 ["Phase 1 — Critical Before Production"]
+        A3["10-Minute Hold Countdown Timer"]
+        A4["Support Form Submission Delivery"]
+    end
+
+    %% Phase 2: High Priority MVP Features
+    subgraph Phase 2 ["Phase 2 — High Priority MVP"]
+        B1["Slot Intersection Highlighting"]
+        B2["Asymmetric Court Selection Prevention"]
+    end
+
+    %% Phase 3: Nice to Have / Post-Launch Enhancements
+    subgraph Phase 3 ["Phase 3 — Nice to Have / Post-Launch"]
+        C1["Scheduled WhatsApp Reminders (T-24h/T-2h)"]
+        C2["Post-Session Review Requests"]
+        C4["Reward Engine (Scratch Cards)"]
+        C6["Court Access PIN Display"]
+    end
+
+    A3 --> B2
+```
+
+## Phase 1 — Critical Before Production
+*Features that prevent a production-ready, secure user experience.*
+
+1. **10-Minute Hold Countdown Timer & Hold Lock Timing**
+   * *Rationale:* Essential to prevent users from attempting checkout on expired/taken slots, and coordinates client-server timing.
+2. **Support Form Submission Delivery**
+   * *Rationale:* Submitting contact details currently returns an explicit failure notice to the end user.
+
+---
+
+## Phase 2 — High Priority
+*Important usability or compliance improvements expected in an MVP.*
+
+1. **Shared Court Selection Slot Intersection Highlighting**
+   * *Rationale:* Greatly improves multi-court selection workflow efficiency.
+2. **Prevention of Asymmetric Multi-Court Selections in UI**
+   * *Rationale:* Prevents validation alerts on checkout submit by locking inputs earlier.
+
+---
+
+## Phase 3 — Nice to Have
+*Enhancements that improve user engagement, retention, or support multi-venue scaling.*
+
+1. **Scheduled WhatsApp Reminders (T-24h / T-2h)**
+   * *Rationale:* Enhances attendance rate and preparedness.
+2. **Post-Session WhatsApp Review Requests**
+   * *Rationale:* Automates review gathering.
+3. **Reward Engine (Scratch Cards & Prize Fulfillment)**
+   * *Rationale:* Promotes engagement via post-booking gamification (scratch cards).
+4. **Court Access PIN Generation & Display**
+   * *Rationale:* Preparation for unmanned/smart lock court operations.
