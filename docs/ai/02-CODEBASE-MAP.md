@@ -47,7 +47,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
         ├── components/            # Reusable UI React components (features, layout, shared, seo)
         ├── lib/                   # Inner reusable layers (never import from app/):
         │   ├── dal/               #   Data Access Layer — cacheable reads + httpClient + auth boundary (session.js)
-        │   ├── services/          #   Multi-step domain logic (checkout, bookingStatus)
+        │   ├── services/          #   Multi-step domain logic (checkout, bookingStatus, reviewStatus)
         │   ├── actions/           #   Server Actions (auth, booking, review) + shared result contract (result.js)
         │   ├── schemas/           #   Shared Zod validation schemas (client + server)
         │   └── …                  #   normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext

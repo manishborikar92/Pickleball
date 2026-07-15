@@ -51,7 +51,7 @@ All frontend source files reside in `web/src/`:
 - `hooks/` — Client-side hooks (`useOverlay`, `useTable`, `useBookingSelection`, `useBookingStatusPoll`)
 - `lib/dal/` — Data Access Layer: reads + `httpClient` (transport, refresh-on-401) + `session` (authz)
 - `lib/actions/` — Server Actions (mutations only): auth, booking, review; `result.js` (shared typed `ok`/`fail` contract)
-- `lib/services/` — Multi-step domain logic (checkout, bookingStatus)
+- `lib/services/` — Multi-step domain logic (checkout, bookingStatus, reviewStatus)
 - `lib/schemas/` — Shared Zod validation schemas
 - `lib/` — Domain/utility modules (normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext, mapLinks, utils)
 - `config/` — Application configuration (venue, metadata, map)

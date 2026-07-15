@@ -145,9 +145,11 @@ export async function proxy(request) {
     return redirectWithCookies(onboardingUrl);
   }
 
-  // Authenticated → away from login pages
+  // Authenticated → away from login pages. Honor a safe `next` target (e.g. a
+  // review/booking deep link opened while already signed in) like /admin/login does.
   if (pathname === "/login" && hasToken && onboarded) {
-    return redirectWithCookies(new URL("/dashboard/overview", request.url));
+    const target = safeNext(request.nextUrl.searchParams.get("next"), "/dashboard/overview");
+    return redirectWithCookies(new URL(target, request.url));
   }
   if (pathname === "/login" && hasToken && !onboarded) {
     const onboardingUrl = new URL("/onboarding", request.url);
@@ -156,7 +158,8 @@ export async function proxy(request) {
     return redirectWithCookies(onboardingUrl);
   }
   if (pathname === "/onboarding" && hasToken && onboarded) {
-    return redirectWithCookies(new URL("/dashboard/overview", request.url));
+    const target = safeNext(request.nextUrl.searchParams.get("next"), "/dashboard/overview");
+    return redirectWithCookies(new URL(target, request.url));
   }
   if (pathname === "/onboarding" && !hasToken) {
     const loginUrl = new URL("/login", request.url);

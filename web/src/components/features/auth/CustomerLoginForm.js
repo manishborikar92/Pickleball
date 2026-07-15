@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
 import { sendCustomerOtpAction, verifyCustomerOtpAction } from "@/lib/actions/auth";
+import { safeNext } from "@/lib/safeNext";
 import { PhoneForm } from "./steps/PhoneForm";
 import { OtpForm } from "./steps/OtpForm";
 
@@ -48,8 +49,7 @@ export function CustomerLoginForm({ onSuccess, showAdminLink = false, inline = f
       if (onSuccess) {
         onSuccess({ phone, isNew: nextStep === "complete_onboarding" });
       } else {
-        const nextParam = searchParams.get("next");
-        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";
+        const next = safeNext(searchParams.get("next"), "/dashboard/overview");
         if (nextStep === "complete_onboarding") {
           router.push(`/onboarding?next=${encodeURIComponent(next)}`);
         } else {

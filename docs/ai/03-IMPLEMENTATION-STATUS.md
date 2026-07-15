@@ -72,7 +72,8 @@ We classify codebase features using the following lifecycle states:
 - [x] **Owner Self-Lookup**: `GET /reviews/me?booking_id=` returns the caller's own review for a booking.
 - [x] **Moderation Listing**: `GET /reviews/moderation?venue_id=` returns all reviews (published + unpublished) with reviewer/booking detail, gated by the `manage_bookings` venue permission.
 - [x] **Moderation Action**: `PATCH /reviews/:reviewId` publishes/unpublishes a review; authorization resolved in the service against the review's own `venue_id`.
-- [x] **Tests**: `tests/unit/reviews-service.test.js` and `tests/integration/review-routes.test.js`; OpenAPI + Postman coverage.
+- [x] **Review Page Lifecycle (web)**: `/review/[bookingId]` resolves its state server-side via `web/src/lib/services/reviewStatus.js` (sibling of `bookingStatus.js`) — sign-in gate with `?next=` restoration, onboarding redirect, ownership/eligibility guards, already-reviewed submitted state, and the form (with real court/venue/session context from the booking) only when submittable. Own review read via `getMyBookingReview` in `web/src/lib/dal/reviews.js`.
+- [x] **Tests**: `tests/unit/reviews-service.test.js` and `tests/integration/review-routes.test.js` (server); `web/tests/review.test.js` (lifecycle state machine + review normalizer); OpenAPI + Postman coverage.
 - [ ] **Photo Uploads**: `photo_url` reserved in schema; awaiting Cloudflare R2 integration. (*Deferred*)
 
 ### 2.7 Rewards (Planned / Deferred)

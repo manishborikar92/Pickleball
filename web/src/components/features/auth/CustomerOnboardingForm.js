@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, FormAlert } from "@/components/shared";
 import { completeOnboardingAction } from "@/lib/actions/auth";
+import { safeNext } from "@/lib/safeNext";
 import { NameForm } from "./steps/NameForm";
 
 /**
@@ -22,13 +23,12 @@ export function CustomerOnboardingForm({ onSuccess, inline = false }) {
 
     try {
       const res = await completeOnboardingAction(fullName);
-      if (!res.success) throw new Error(res.error);
+      if (!res.ok) throw new Error(res.error.message);
 
       if (onSuccess) {
         onSuccess({ name: fullName });
       } else {
-        const nextParam = searchParams.get("next");
-        const next = nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard/overview";
+        const next = safeNext(searchParams.get("next"), "/dashboard/overview");
         router.push(next);
         router.refresh();
       }

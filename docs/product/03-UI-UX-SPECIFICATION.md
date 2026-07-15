@@ -227,9 +227,9 @@ If `GET /users/me` returns a user with `name IS NOT NULL` and the JWT is valid, 
 
 **Purpose:** Full-page authentication entry point for all flows outside an active booking. Supports direct navigation, route guard redirects, and shared links.
 
-**URL:** `/login?callbackUrl=[encoded-path]`
+**URL:** `/login?next=[encoded-path]`
 
-The `callbackUrl` query param carries the destination the user should be sent to after successful auth. If absent, defaults to `/`.
+The `next` query param carries the destination the user should be sent to after successful auth. It is validated by the shared `safeNext()` open-redirect guard; if absent or unsafe, it defaults to `/dashboard/overview`.
 
 **Layout:**
 - Platform logo and "Welcome back" heading at the top.
@@ -254,13 +254,13 @@ The `callbackUrl` query param carries the destination the user should be sent to
 
 | `next_step` | Action |
 |---|---|
-| `complete_onboarding` | Redirect to `/onboarding?callbackUrl=[original callbackUrl]` |
-| `resume_booking` | Redirect to `callbackUrl` (or `/` if absent) |
+| `complete_onboarding` | Redirect to `/onboarding?next=[original next]` |
+| `resume_booking` | Redirect to `next` (or `/dashboard/overview` if absent) |
 | `admin_dashboard` | Redirect to `/admin` |
 
 **Route guards on `/login`:**
-- If already authenticated (`name IS NOT NULL`): redirect to `callbackUrl` or `/` immediately.
-- If authenticated but onboarding incomplete (`name IS NULL`): redirect to `/onboarding?callbackUrl=...`.
+- If already authenticated (`name IS NOT NULL`): redirect to `next` (or `/dashboard/overview`) immediately.
+- If authenticated but onboarding incomplete (`name IS NULL`): redirect to `/onboarding?next=...`.
 
 ---
 
@@ -268,11 +268,11 @@ The `callbackUrl` query param carries the destination the user should be sent to
 
 **Purpose:** Full-page name collection for first-time users arriving from `/login` or from a route guard redirect. Never shown during an active booking flow (the modal handles that case).
 
-**URL:** `/onboarding?callbackUrl=[encoded-path]`
+**URL:** `/onboarding?next=[encoded-path]`
 
 **Access rules:**
-- Requires a valid JWT (`requireAuth`). If no JWT → redirect to `/login?callbackUrl=/onboarding?callbackUrl=...`.
-- If `name IS NOT NULL` (already onboarded) → redirect to `callbackUrl` or `/`.
+- Requires a valid JWT. If no JWT → redirect to `/login?next=[same next]` (the destination passes through unchanged).
+- If `name IS NOT NULL` (already onboarded) → redirect to `next` or `/dashboard/overview`.
 
 **Layout:**
 - Progress indicator: "Step 2 of 2 — Almost done!"
@@ -283,33 +283,37 @@ The `callbackUrl` query param carries the destination the user should be sent to
 
 **On submit:**
 - Calls `POST /auth/onboarding { name }`.
-- On success: redirect to `callbackUrl` or `/`.
+- On success: redirect to `next` or `/dashboard/overview`.
 - Error states shown inline.
 
 ---
 
 ### 2.9 Route Guard Reference
 
-All protected customer routes check auth state client-side (via a `useRequireAuth` hook in Next.js) and server-side (via Next.js middleware). Both layers must agree.
+Protected routes are guarded in two layers: an optimistic edge pass in the proxy (`web/src/proxy.js`) and authoritative server-side session checks at the data boundary (`web/src/lib/dal/session.js`). Both layers must agree. Post-auth destinations always travel in the `next` query param, validated by the shared `safeNext()` open-redirect guard.
 
 | Route | Accessible to | Redirect if not met |
 |---|---|---|
-| `/login` | Unauthenticated only | `/` or `callbackUrl` if already authenticated |
-| `/onboarding` | JWT only (name may be null) | `/login?callbackUrl=/onboarding` if no JWT |
+| `/login` | Unauthenticated only | `next` (or `/dashboard/overview`) if already authenticated |
+| `/onboarding` | JWT only (name may be null) | `/login?next=[target]` if no JWT |
 | `/book` | Public (auth triggered mid-flow via modal) | — |
-| `/bookings`, `/wallet`, `/rewards` | JWT + onboarding complete | `/login?callbackUrl=[current path]` |
-| `/review/[id]` | JWT + booking owner | `/login?callbackUrl=[current path]` |
-| `/admin/*` | JWT + non-customer role | `/admin/login` |
-| `/admin/login` | Unauthenticated (or non-admin JWT) | `/admin` if already authenticated as an admin |
+| `/bookings`, `/wallet`, `/rewards` | JWT + onboarding complete | `/login?next=[current path]` |
+| `/review/[id]` | JWT + booking owner | In-page sign-in gate linking to `/login?next=[current path]` |
+| `/admin/*` | JWT + non-customer role | `/admin/login?next=[current path]` |
+| `/admin/login` | Unauthenticated (or non-admin JWT) | `next` (or `/admin/overview`) if already authenticated as an admin |
 
-**Next.js middleware (`middleware.ts`) handles:**
-- No JWT present → redirect to `/login` (customer) or `/admin/login` (admin paths).
-- Admin JWT on customer-only routes → allowed (admins can browse the customer experience).
+**The optimistic proxy (`web/src/proxy.js` — Next.js 16's successor to `middleware.ts`) handles:**
+- No JWT present on `/dashboard/*` or `/admin/*` → redirect to `/login` / `/admin/login` carrying `?next=[current path]`.
+- Expired access token with a valid refresh token → proactive refresh, forwarding fresh cookies to the render.
+- Authenticated users landing on `/login` / `/onboarding` → bounced to `next` (or the dashboard overview).
+- Admin JWT on customer routes → allowed (admins can browse the customer experience).
 
-**Page-level `useRequireAuth` hook handles:**
-- JWT present but onboarding incomplete → redirect to `/onboarding`.
-- JWT present but insufficient role → show `403` component (not a redirect).
-- `force_password_change` flag on an admin → redirect to `/admin/change-password` regardless of target route.
+**Authoritative server-side checks (`verifySession()` / `requireUser()` / `requireRouteAccess()`) handle:**
+- No verified session on a protected page → redirect to `/login?next=[pathname]`.
+- Customer session without a name → redirect to `/onboarding?next=[pathname]`.
+- Fail-closed route→permission mapping; denial redirects to the area overview.
+- Deep-linked pages (`/booking/[id]`, `/review/[id]`) render in-page sign-in gates whose login links carry `?next=` instead of redirecting.
+- `force_password_change` flag on an admin → redirect to `/admin/change-password`. *(Planned — ships with the admin email flows.)*
 
 ---
 
@@ -321,17 +325,24 @@ All protected customer routes check auth state client-side (via a `useRequireAut
 
 **Content (top to bottom):**
 
-1. **Hero** — Full-bleed dark court image (same as on landing). "✕" close button top-left.
-2. **Header** — "Thank you for playing!" heading. Venue name with location pin (e.g., "Court 3 – The Apex Club").
-3. **Rating Card** — Dark card with "How was your experience?" heading. "Tap a star to rate your session." subtext. Five-star tap-to-rate row (filled stars in accent yellow-green).
-4. **Share Your Thoughts** — "Share your thoughts" section label. Multi-line text input with placeholder: "How was the court surface? Did you have a good game?" Labeled "Optional" in bottom-right corner.
-5. **Add a Photo** — "Add a photo" section label. Dashed-border upload area with camera icon and "Tap to upload a court selfie" label.
-6. **Sticky CTA** — "▶ SUBMIT REVIEW" full-width accent button.
+1. **Hero** — Full-bleed dark court image (same as on landing).
+2. **Header** — "Thank you for playing!" heading. Session context sourced from the booking record — court name(s), venue brand, and the session date/time (e.g., "Court 1, Court 2 — Baseline Arena · Sunday, 13 Jul · 09:00 – 10:00"). Never hardcoded copy.
+3. **Rating Card** — Dark card with "How was your experience?" heading. "Tap a star to rate your session." subtext. Five-star tap-to-rate row (filled stars in accent yellow-green) with a rating label (Poor → Excellent). Keyboard: arrow keys move the selection (radiogroup semantics).
+4. **Share Your Thoughts** — "Share your thoughts" section label. Multi-line text input with placeholder: "How was the court surface? Did you have a good game?" Labeled "Optional" in bottom-right corner; shows remaining characters near the 1000-char cap.
+5. **Add a Photo** *(deferred)* — Dashed-border upload area with camera icon; ships with the Cloudflare R2 integration.
+6. **CTA** — "Submit Review" full-width accent button, disabled until a star rating is selected.
 
 **Behaviour:**
-- Star rating is required to enable submit.
-- Photo upload sends the file to Cloudflare R2 and stores the URL in the `reviews.photo_url` column.
-- After submit, a success state is shown and the screen is no longer accessible for that booking.
+- The page resolves its state server-side before rendering, so the form only appears when it can actually be submitted:
+  - **Unauthenticated** → sign-in gate ("Sign In to Rate Your Session") whose login CTA carries `?next=/review/[id]`; the user returns to this exact page after verifying. Any draft rating/comment is kept on-device and restored.
+  - **Authenticated but not onboarded** → redirect to `/onboarding?next=/review/[id]`.
+  - **Booking not found / not owned** → not-found / access-denied card (existence is never leaked).
+  - **Booking not yet completed** → "This session hasn't been played yet" card with a link to the booking.
+  - **Booking cancelled or expired** → "This booking can't be reviewed" card.
+  - **Review already exists** → the submitted state (stars, comment, submission date) — the form is no longer accessible for that booking.
+- Star rating is required to enable submit; the comment stays optional.
+- Photo upload is deferred until Cloudflare R2 integration lands (`reviews.photo_url` is reserved in the schema).
+- After submit, the same submitted state is shown (server-refreshed in the same round trip); duplicate submissions from another tab resolve to it as well.
 
 ---
 
@@ -344,7 +355,7 @@ This section defines the shared architecture that powers both the modal and page
 A custom React hook that encapsulates the entire customer auth state machine. Both `AuthModal` and the `/login` page import and use this hook — they are simply different shells around the same logic.
 
 ```
-useAuth({ callbackUrl, onSuccess, mode })
+useAuth({ next, onSuccess, mode })
   mode: 'modal' | 'page'
 
 State machine:
@@ -403,7 +414,7 @@ LoginPage (/login, for all other contexts):
   </PageLayout>
 
   No dismiss — user uses browser back button
-  callbackUrl from query param drives post-auth redirect
+  next from query param drives post-auth redirect (validated by safeNext)
 ```
 
 ### 2A.4 Post-Auth Routing Logic
@@ -417,8 +428,8 @@ Modal mode (onSuccess):
   nextStep === 'admin_dashboard'     → full page navigate to /admin
 
 Page mode (onSuccess):
-  nextStep === 'complete_onboarding' → router.push('/onboarding?callbackUrl=...')
-  nextStep === 'resume_booking'      → router.push(callbackUrl || '/')
+  nextStep === 'complete_onboarding' → router.push('/onboarding?next=...')
+  nextStep === 'resume_booking'      → router.push(next || '/dashboard/overview')
   nextStep === 'admin_dashboard'     → router.push('/admin')
 ```
 
@@ -427,7 +438,7 @@ Page mode (onSuccess):
 A narrower hook used only on the `/onboarding` page (and by the `NameStep` component inside the auth flow). Encapsulates name collection only:
 
 ```
-useOnboarding({ callbackUrl, onSuccess })
+useOnboarding({ next, onSuccess })
   State: name, isLoading, error
   Actions: setName(value), submit()
 ```

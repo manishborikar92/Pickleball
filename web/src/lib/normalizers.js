@@ -236,6 +236,24 @@ export function normalizeWalletResponse(payload = {}) {
   };
 }
 
+/**
+ * Normalizes a review response (`POST /reviews`, `GET /reviews/me`) into
+ * camelCase (ME-2). Returns null for an empty payload. Photo fields are
+ * deferred along with the upload feature.
+ * @param {object} review
+ */
+export function normalizeReviewResponse(review) {
+  if (!review) return null;
+  return {
+    id: review.id,
+    bookingId: review.booking_id,
+    venueId: review.venue_id,
+    rating: Number(review.rating ?? 0),
+    comment: review.comment || "",
+    createdAt: review.created_at || "",
+  };
+}
+
 export function buildBookingSelectionPayload({
   venueId,
   selectedDate,

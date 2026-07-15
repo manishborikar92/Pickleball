@@ -667,6 +667,22 @@ One review is permitted per booking. Admin can suppress a review from public dis
 
 > **Note on review triggers:** At launch, review links are sent manually or surfaced in the My Bookings screen after a session ends. Automated WhatsApp review request messages are deferred along with the scheduled notification system.
 
+### 11.3 Review Page Lifecycle
+
+`/review/[booking_id]` resolves its state **server-side before rendering** (`web/src/lib/services/reviewStatus.js`), so a visitor is never shown a form that cannot be submitted:
+
+| Resolved state | Condition | Rendered view |
+|---|---|---|
+| `unauthorized` | No session | Sign-in gate; login link carries `?next=` back to the review page |
+| `not_found` | Booking missing, not owned, or malformed id | Not-found card (existence never leaked) |
+| `forbidden` | Booking readable but owned by another user (staff view) | Access-denied card |
+| `not_completed` | Booking is pending/confirmed/walk-in | "Session not played yet" card linking to the booking |
+| `not_reviewable` | Booking cancelled or expired | "Can't be reviewed" card |
+| `already_reviewed` | `GET /reviews/me` returns a review | Submitted state (stars, comment, submission date) |
+| `form` | Completed, owned, unreviewed | The review form with real court/venue/session context |
+
+The submitted state is intentionally identical for a fresh submission and a return visit — the submit action's cache revalidation re-renders the route in the same round trip, so a single unified view guarantees no divergent success flash. Duplicate submissions (double-click, second tab) surface the backend's 409 and settle on the same submitted state.
+
 ---
 
 
