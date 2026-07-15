@@ -1,0 +1,33 @@
+# Global Ignores
+node_modules/
+coverage/
+logs/
+*.log
+.DS_Store
+*.pem
+*.tsbuildinfo
+
+# Env Files
+.env*
+!.env.example
+
+# Server-specific Ignores
+/server/src/generated/
+
+# Web-specific Ignores
+/web/.pnp
+/web/.pnp.*
+/web/.yarn/*
+!/web/.yarn/patches
+!/web/.yarn/plugins
+!/web/.yarn/releases
+!/web/.yarn/versions
+/web/.next/
+/web/out/
+/web/build/
+/web/.vercel/
+/web/next-env.d.ts
+
+# Documentation Ignores
+/docs/prompts/
+
