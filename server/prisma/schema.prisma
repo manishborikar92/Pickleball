@@ -105,16 +105,7 @@ enum RewardInstanceStatus {
 
 enum PrizeType {
   no_prize
-  wallet_credit
-  coupon
-  free_booking
-}
-
-enum FulfillmentStatus {
-  pending
-  fulfilled
-  not_applicable
-  failed
+  voucher
 }
 
 model Venue {
@@ -579,11 +570,12 @@ model RewardInstance {
   configSnapshot    Json                 @map("config_snapshot")
   outcome           Json
   prizeType         PrizeType            @map("prize_type")
-  prizeValue        Decimal?             @map("prize_value") @db.Decimal(10, 2)
   revealedAt        DateTime?            @map("revealed_at") @db.Timestamptz(6)
   expiresAt         DateTime             @map("expires_at") @db.Timestamptz(6)
-  fulfillmentStatus FulfillmentStatus    @default(pending) @map("fulfillment_status")
-  fulfillmentNote   String?              @map("fulfillment_note")
+  voucherCode       String?              @unique @map("voucher_code") @db.VarChar(20)
+  voucherValidUntil DateTime?            @map("voucher_valid_until") @db.Timestamptz(6)
+  redeemedAt        DateTime?            @map("redeemed_at") @db.Timestamptz(6)
+  redemptionNote    String?              @map("redemption_note")
   createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   mechanism         RewardMechanism      @relation(fields: [mechanismId], references: [id], onDelete: Cascade)
   user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)

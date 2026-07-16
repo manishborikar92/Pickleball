@@ -112,17 +112,17 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 
 ## 5. Other User Features
 
-### Reward Engine (Scratch Cards / Prize Fulfillment)
-* **Current Status:** Not Started / Deferred
-* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 12 ("Reward Engine"), [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 3.3 ("My Rewards" and "Scratch Card Screen"), [schema.prisma](file:///c:/Users/manis/Projects/Pickleball/server/prisma/schema.prisma)
+### Reward Engine (Scratch Cards / Voucher Prizes)
+* **Current Status:** ✅ Implemented (2026-07-16)
+* **Documented in:** [ADR-010](file:///c:/Users/manis/Projects/Pickleball/docs/adrs/ADR-010-rewards-module.md), [01-DATABASE-SCHEMA.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/01-DATABASE-SCHEMA.md) Domain F, [02-API-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/02-API-SPECIFICATION.md) Sections 10–11
 * **Description:** 
-  The Prisma schema defines tables for `RewardMechanism` and `RewardInstance`. The business logic specifications describe post-booking scratch cards and spinner wheels with automated wallet credit or coupon prize issuance. 
-  No codebase implementation of the Reward Engine exists. There are no backend controller routes (`GET /api/v1/rewards`, `POST /api/v1/rewards/instances/:id/reveal`), no fulfillment handlers, and no frontend scratch card animations or canvas components.
-* **Missing Pieces:**
-  * Build the backend `rewards` module (routes, controllers, repository, service) to draw and snapshot prizes upon booking confirmation.
-  * Implement prize fulfillment transactions (updating wallet credits or generating dynamic coupons).
-  * Build the frontend reward overview page and deep-linked scratch card / spinner canvas components.
-* **User Impact:** Low (Deferred post-launch engagement feature).
+  The Reward Engine is live end-to-end: booking confirmation atomically issues reward instances (weighted server-side draw, outcome hidden until reveal); on arrival at the confirmation page the scratch overlay presents itself automatically (closable via a top-right X), and a dismissed card persists as a tappable foil teaser in the right panel above the map that reopens the overlay. Prizes are external offer vouchers (e.g., the venue's F&B stall) with unique codes and staff-tracked redemption. Prizes never touch wallet credits (product direction — see ADR-010).
+* **Delivered Pieces:**
+  * Backend `rewards` module: issuance inside the booking-confirmation transaction, reveal + voucher issuance, staff redemption, mechanism management (`edit_pricing`), moderation listing (`manage_bookings`), and the expiry sweeper job.
+  * Frontend (customer): `RewardExperience` overlay flow (auto-present once → teaser card fallback → reopen on tap) with the `RewardReveal` scratch surface (painted foil, stroke-based scratching, ~55% auto-clear, confetti on wins, accessible no-gesture reveal) on the booking-confirmation page and `/dashboard/rewards`; voucher display with tap-to-copy; "🎁 Scratch Card waiting!" badge on My Bookings. Scratch card is the only reward experience the web app exposes.
+  * Frontend (admin): `/admin/rewards` panel — voucher redemption desk, mechanism create/edit with live probability-sum validation, pause/activate, and an issued-rewards table with per-row redeem/expire.
+* **Remaining (Deferred):** Spinner wheel UI component (backend-only support; intentionally absent from the web app), WhatsApp reward notification.
+* **User Impact:** Resolved.
 * **Dependencies:** None.
 
 ---
@@ -149,7 +149,7 @@ graph TD
     subgraph Phase 3 ["Phase 3 — Nice to Have / Post-Launch"]
         C1["Scheduled WhatsApp Reminders (T-24h/T-2h)"]
         C2["Post-Session Review Requests"]
-        C4["Reward Engine (Scratch Cards)"]
+        C4["Reward Engine (Scratch Cards) — ✅ DONE"]
         C6["Court Access PIN Display"]
     end
 
@@ -183,7 +183,7 @@ graph TD
    * *Rationale:* Enhances attendance rate and preparedness.
 2. **Post-Session WhatsApp Review Requests**
    * *Rationale:* Automates review gathering.
-3. **Reward Engine (Scratch Cards & Prize Fulfillment)**
-   * *Rationale:* Promotes engagement via post-booking gamification (scratch cards).
+3. **Reward Engine (Scratch Cards & Voucher Prizes)** — ✅ Implemented 2026-07-16
+   * *Rationale:* Promotes engagement via post-booking gamification (scratch cards). Delivered with voucher-only prizes and staff-tracked redemption (ADR-010); spinner UI and admin screen remain deferred.
 4. **Court Access PIN Generation & Display**
    * *Rationale:* Preparation for unmanned/smart lock court operations.

@@ -98,6 +98,46 @@ export const createOpenApiSpec = ({ config } = {}) => {
             },
           },
         },
+        RewardMechanismConfig: {
+          type: 'object',
+          required: ['prizes'],
+          properties: {
+            card_theme: { type: 'string', example: 'court_green' },
+            segment_count: { type: 'integer', minimum: 2, maximum: 12, example: 8 },
+            prizes: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 20,
+              items: {
+                type: 'object',
+                required: ['id', 'label', 'type', 'probability'],
+                properties: {
+                  id: { type: 'string', example: 'p1' },
+                  label: { type: 'string', example: 'Free Iced Coffee at the Baseline Café' },
+                  type: { type: 'string', enum: ['no_prize', 'voucher'] },
+                  probability: { type: 'number', example: 0.25 },
+                  terms: { type: 'string', maxLength: 500, description: 'Voucher smallprint shown to the customer', example: 'Show this voucher at the café counter. One per visit.' },
+                  validity_days: { type: 'integer', minimum: 1, maximum: 365, description: 'Redemption window after reveal (voucher prizes; default 30)', example: 14 },
+                },
+              },
+            },
+          },
+        },
+        RewardMechanismInput: {
+          type: 'object',
+          required: ['venue_id', 'name', 'type', 'config'],
+          properties: {
+            venue_id: { type: 'string', format: 'uuid' },
+            name: { type: 'string', example: 'Post-Booking Scratch Card' },
+            type: { type: 'string', enum: ['scratch_card', 'spinner'] },
+            trigger_event: { type: 'string', enum: ['booking_confirmed'], default: 'booking_confirmed' },
+            instance_expiry_days: { type: 'integer', minimum: 1, maximum: 365, default: 7 },
+            is_active: { type: 'boolean', default: false },
+            valid_from: { type: 'string', format: 'date-time' },
+            valid_until: { type: 'string', format: 'date-time' },
+            config: { $ref: '#/components/schemas/RewardMechanismConfig' },
+          },
+        },
       },
     },
     paths: {
@@ -914,6 +954,183 @@ export const createOpenApiSpec = ({ config } = {}) => {
           responses: {
             200: { description: 'Review moderation state updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
             404: { description: 'Review not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/instances`]: {
+        get: {
+          tags: ['Rewards'],
+          summary: 'List the authenticated user\'s reward instances',
+          description: 'The outcome field is omitted for pending instances — it is only returned after reveal.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['pending', 'revealed', 'expired'] } },
+          ],
+          responses: {
+            200: { description: 'The caller\'s reward instances', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+          },
+        },
+      },
+      [`/rewards/instances/moderation`]: {
+        get: {
+          tags: ['Rewards'],
+          summary: 'List reward instances for a managed venue',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['pending', 'revealed', 'expired'] } },
+            { name: 'mechanism_id', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } },
+            { name: 'voucher_code', in: 'query', required: false, schema: { type: 'string', maxLength: 20 } },
+            { name: 'redeemed', in: 'query', required: false, schema: { type: 'boolean' } },
+            { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          ],
+          responses: {
+            200: { description: 'Moderation view of venue reward instances', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            403: { description: 'Missing manage_bookings permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/instances/{instanceId}`]: {
+        get: {
+          tags: ['Rewards'],
+          summary: 'Get a single owned reward instance',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'instanceId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'The reward instance (outcome hidden while pending)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Reward not found or not owned by the caller (REWARD_NOT_FOUND)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/instances/{instanceId}/reveal`]: {
+        post: {
+          tags: ['Rewards'],
+          summary: 'Reveal a pending reward instance',
+          description: 'Validates ownership, pending status, and non-expiry. A voucher prize is materialized atomically: a unique voucher code and redemption window are issued in the same transaction. The outcome is returned to the client for the first time.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'instanceId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Reward revealed with outcome and voucher detail', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Reward not found or not owned by the caller (REWARD_NOT_FOUND)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'Reward already revealed (REWARD_ALREADY_REVEALED)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            410: { description: 'Reward has expired (REWARD_EXPIRED)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/instances/{instanceId}/expire`]: {
+        patch: {
+          tags: ['Rewards'],
+          summary: 'Manually expire a pending reward instance',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'instanceId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Reward expired', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Reward not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'Reward is not pending', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/instances/{instanceId}/redeem`]: {
+        patch: {
+          tags: ['Rewards'],
+          summary: 'Mark a revealed voucher as redeemed at the venue stall',
+          description: 'Staff-tracked redemption: first redemption wins; repeat attempts return 409 (VOUCHER_ALREADY_REDEEMED). A voucher past its validity window returns 410 (VOUCHER_EXPIRED).',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'instanceId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    note: { type: 'string', maxLength: 500, example: 'Redeemed at café counter' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Voucher redeemed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'Reward not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            409: { description: 'Voucher not redeemable or already redeemed', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            410: { description: 'Voucher validity period has passed (VOUCHER_EXPIRED)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/mechanisms`]: {
+        get: {
+          tags: ['Rewards'],
+          summary: 'List a venue\'s reward mechanisms (active and inactive)',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'The venue\'s reward mechanisms', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            403: { description: 'Missing edit_pricing permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+        post: {
+          tags: ['Rewards'],
+          summary: 'Create a reward mechanism for a venue',
+          description: 'Prize probabilities must sum to exactly 1.0 — validated server-side on save.',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RewardMechanismInput' },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Reward mechanism created', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Invalid prize configuration (e.g. probabilities do not sum to 1.0)', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            403: { description: 'Missing edit_pricing permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/rewards/mechanisms/{mechanismId}`]: {
+        patch: {
+          tags: ['Rewards'],
+          summary: 'Edit a reward mechanism (name, config, active state, validity window)',
+          description: 'Config edits affect only future issuances — existing instances retain their config snapshot.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'mechanismId', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    name: { type: 'string', maxLength: 255 },
+                    instance_expiry_days: { type: 'integer', minimum: 1, maximum: 365 },
+                    is_active: { type: 'boolean' },
+                    valid_from: { type: 'string', format: 'date-time', nullable: true },
+                    valid_until: { type: 'string', format: 'date-time', nullable: true },
+                    config: { $ref: '#/components/schemas/RewardMechanismConfig' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Reward mechanism updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            400: { description: 'Invalid prize configuration', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            404: { description: 'Mechanism not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
           },
         },
       },

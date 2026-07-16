@@ -21,6 +21,11 @@ const BOOKING_COLUMNS = [
         </strong>
         <span className="mx-1 text-muted/50 font-normal">&mdash;</span>
         <span className="text-xs sm:text-sm text-muted">{row.venueName}</span>
+        {row.pendingRewardId && (
+          <div className="mt-1.5">
+            <RewardBadgeLink />
+          </div>
+        )}
       </div>
     ),
   },
@@ -241,6 +246,26 @@ function Metric({ label, value, className = "" }) {
   );
 }
 
+/* ── Reward Badge ───────────────────────────────── */
+
+/**
+ * Accent badge on booking rows with an unrevealed reward instance (UX spec
+ * §3.1) — links to My Rewards, where the scratch card is embedded inline.
+ */
+function RewardBadgeLink() {
+  return (
+    <Link
+      href="/dashboard/rewards"
+      onClick={(e) => e.stopPropagation()}
+      aria-label="Scratch card waiting — reveal your reward in My Rewards"
+      className="inline-flex items-center gap-1 rounded-full border border-accent/40 bg-accent px-2.5 py-0.5 text-xs font-bold leading-5 text-black transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+    >
+      <span aria-hidden="true">🎁</span>
+      <span>Scratch Card waiting!</span>
+    </Link>
+  );
+}
+
 /* ── Custom Mobile Layout Renderers ─────────────── */
 
 function MobileBookingCard(row) {
@@ -253,6 +278,11 @@ function MobileBookingCard(row) {
         <div className="mt-1">
           <DateTime date={row.date} time={row.time} />
         </div>
+        {row.pendingRewardId && (
+          <div className="mt-2">
+            <RewardBadgeLink />
+          </div>
+        )}
       </div>
       
       <div className="flex items-center justify-between border-t border-line/40 pt-2.5">

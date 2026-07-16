@@ -218,10 +218,50 @@ async function seedAdmin(venue) {
   console.log(`Seeded admin user: ${email}`);
 }
 
+async function seedRewardMechanism(venue) {
+  // Post-booking scratch card, seeded ACTIVE so the reward flow works
+  // end-to-end out of the box. Admins can pause or edit it (prize pool,
+  // expiry, validity window) from /admin/rewards.
+  const existing = await prisma.rewardMechanism.findFirst({
+    where: { venueId: venue.id, type: 'scratch_card', deletedAt: null },
+  });
+
+  const config = {
+    card_theme: 'court_green',
+    prizes: [
+      { id: 'p1', label: 'Better luck next time!', type: 'no_prize', probability: 0.7 },
+      { id: 'p2', label: 'Free Iced Coffee at the Baseline Café', type: 'voucher', terms: 'Show this voucher at the café counter. One per visit.', validity_days: 14, probability: 0.2 },
+      { id: 'p3', label: '20% Off Any Snack Combo', type: 'voucher', terms: 'Valid on snack combos at the venue stall.', validity_days: 30, probability: 0.1 },
+    ],
+  };
+
+  if (existing) {
+    await prisma.rewardMechanism.update({
+      where: { id: existing.id },
+      data: { config, isActive: true },
+    });
+  } else {
+    await prisma.rewardMechanism.create({
+      data: {
+        venueId: venue.id,
+        name: 'Post-Booking Scratch Card',
+        type: 'scratch_card',
+        triggerEvent: 'booking_confirmed',
+        config,
+        instanceExpiryDays: 7,
+        isActive: true,
+      },
+    });
+  }
+
+  console.log('Seeded reward mechanism: Post-Booking Scratch Card (active)');
+}
+
 try {
   await seedRolesAndPermissions();
   const venue = await seedVenue();
   await seedAdmin(venue);
+  await seedRewardMechanism(venue);
 } finally {
   await prisma.$disconnect();
 }

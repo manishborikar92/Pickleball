@@ -33,6 +33,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
 │   │       ├── payments/          # Gateway logic: PhonePe provider, webhook, redirect, reconciliation
 │   │       ├── reviews/           # Venue reviews: submission, public listing, and moderation
+│   │       ├── rewards/           # Reward engine: issuance, reveal, vouchers, mechanisms, moderation
 │   │       ├── users/             # User profile, wallet, and history
 │   │       └── venues/            # Venues, courts, and availability
 │   └── tests/                     # Node.js native test suite
@@ -42,13 +43,13 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
         │   ├── (marketing)/       # Static/cached public pages (landing, about, terms, privacy, support)
         │   ├── (booking)/         # Dynamic booking flow (venue selection, checkout, confirmation)
         │   ├── (auth)/            # Auth views (login, onboarding, admin login)
-        │   ├── (dashboard)/       # Customer authenticated views (overview, bookings, wallet)
-        │   └── (admin)/           # Admin dashboards (overview, bookings, schedule, pricing, courts, users, settings)
+        │   ├── (dashboard)/       # Customer authenticated views (overview, bookings, wallet, rewards)
+        │   └── (admin)/           # Admin dashboards (overview, bookings, schedule, pricing, rewards, courts, users, settings)
         ├── components/            # Reusable UI React components (features, layout, shared, seo)
         ├── lib/                   # Inner reusable layers (never import from app/):
         │   ├── dal/               #   Data Access Layer — cacheable reads + httpClient + auth boundary (session.js)
         │   ├── services/          #   Multi-step domain logic (checkout, bookingStatus, reviewStatus)
-        │   ├── actions/           #   Server Actions (auth, booking, review) + shared result contract (result.js)
+        │   ├── actions/           #   Server Actions (auth, booking, review, rewards, rewardsAdmin) + shared result contract (result.js)
         │   ├── schemas/           #   Shared Zod validation schemas (client + server)
         │   └── …                  #   normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext
         ├── config/                # Application configuration (venue, metadata, map)
@@ -65,6 +66,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **Authentication Module (`server/src/modules/auth/`)**: Handles OTP dispatch via WhatsApp API, credential verification, and JSON Web Token (JWT) session cookies. *Owner: Security Engineer*.
 - **User Profile & Wallet Module (`server/src/modules/users/`)**: Manages user onboard states, user profile fields, and wallet ledger logs. *Owner: Core Developer*.
 - **Reviews Module (`server/src/modules/reviews/`)**: Owns all `/reviews` routes — submission for completed bookings, public venue listings with rating summaries, the owner's own-review lookup, and permission-gated moderation. Reviews depend one-way on bookings (eligibility gate) and never the reverse. *Owner: Core Developer*.
+- **Rewards Module (`server/src/modules/rewards/`)**: Owns all `/rewards` routes — customer instance listing and atomic reveal, voucher redemption, mechanism management (`edit_pricing`), and moderation (`manage_bookings`). Its issuance service is injected into the bookings repository so instances are created inside the booking-confirmation transaction (ADR-010). *Owner: Core Developer*.
 - **API Spec & OpenAPI Modules (`server/src/modules/openapi/`)**: Compiles Swagger specs and serves OpenAPI schemas. *Owner: Tech Lead*.
 
 ### 2.2 Frontend Components (`web/src/`)
@@ -75,7 +77,8 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **Marketing Pages (`web/src/app/(marketing)/`)**: Static/cached pages with shared Header + Footer layout. *Owner: Frontend Engineer*.
 - **Booking Flow (`web/src/app/(booking)/`)**: Dynamic booking; the checkout transaction runs server-side via `checkoutBookingAction`. *Owner: Frontend Engineer*.
 - **Customer Dashboard (`web/src/app/(dashboard)/`)**: Renders bookings list, wallet balance with Suspense streaming. *Owner: Frontend Engineer*.
-- **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, courts, users. *Owner: Frontend Engineer*.
+- **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, rewards (redemption desk, mechanism editor, instance table), courts, users. *Owner: Frontend Engineer*.
+- **Shared Portal (`web/src/components/shared/Portal.js`)**: SSR-safe `createPortal` wrapper that projects overlay content under `document.body`. Any `position: fixed` dialog rendered deep in the tree must go through it — ancestor CSS containment contexts (transform/overflow/contain on layout wrappers) otherwise re-scope fixed positioning and clip the overlay (first hit: the reward scratch overlay). *Owner: Frontend Engineer*.
 
 ---
 
@@ -93,6 +96,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **Next.js (`next`)**: Used for Server-Side Rendering (SSR), App Router layouts, and edge API route proxying.
 - **Tailwind CSS (`tailwindcss`)**: Standard CSS framework chosen to construct a responsive, premium dark theme layout using custom colors (e.g., `#CBFF00` accent color).
 - **Zod (`zod`)**: The one endorsed runtime dependency (ADR-W003) — one schema per input in `lib/schemas/*`, reused for client UX feedback and authoritative server-side validation inside every mutation action. Replaced the former hand-rolled, client-only `lib/validation.js`.
+- **canvas-confetti (`canvas-confetti`)**: Celebration burst on reward wins (`RewardReveal`). Dynamically imported only at the reveal moment (zero initial-bundle cost), `disableForReducedMotion` honors the user's motion preference, and the win view never depends on it — the import failing is silent.
 
 ---
 
@@ -110,4 +114,4 @@ This matrix establishes bidirectional mapping between product specifications and
 | **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(dashboard)/dashboard` |
 | **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(dashboard)/dashboard/wallet` |
 | **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews` | `web/src/components/features/review` |
-| **Rewards Engine** | `docs/product/01-PROJECT-OVERVIEW.md` | `RewardInstance` | `server/src/modules/rewards (Planned)` | `web/src/app/(dashboard)/dashboard/rewards` |
+| **Rewards Engine** | `docs/adrs/ADR-010-rewards-module.md` | `RewardMechanism`, `RewardInstance` | `server/src/modules/rewards` | `web/src/components/features/rewards` |

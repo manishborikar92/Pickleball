@@ -254,6 +254,108 @@ export function normalizeReviewResponse(review) {
   };
 }
 
+/**
+ * Normalizes a reward instance (`GET /rewards/instances[/:id]`) into camelCase
+ * (ME-2). The backend omits `outcome`/`voucher` while the instance is pending —
+ * those stay undefined here so views can branch on their presence.
+ * @param {object} instance
+ */
+export function normalizeRewardInstance(instance) {
+  if (!instance) return null;
+  return {
+    id: instance.id,
+    mechanismType: instance.mechanism_type,
+    mechanismName: instance.mechanism_name || "",
+    status: instance.status,
+    bookingId: instance.booking_id,
+    bookingSlotDate: instance.booking_slot_date || "",
+    cardTheme: instance.card_theme || "",
+    expiresAt: instance.expires_at || "",
+    createdAt: instance.created_at || "",
+    revealedAt: instance.revealed_at || "",
+    outcome: instance.outcome
+      ? {
+          prizeId: instance.outcome.prize_id,
+          label: instance.outcome.label,
+          type: instance.outcome.type,
+          terms: instance.outcome.terms || "",
+        }
+      : undefined,
+    voucher: instance.voucher
+      ? {
+          code: instance.voucher.code,
+          validUntil: instance.voucher.valid_until || "",
+          redeemed: Boolean(instance.voucher.redeemed),
+          redeemedAt: instance.voucher.redeemed_at || "",
+        }
+      : undefined,
+  };
+}
+
+export function normalizeMyRewardsResponse(payload = {}) {
+  const rows = Array.isArray(payload) ? payload : payload.data || [];
+  return rows.map(normalizeRewardInstance);
+}
+
+/**
+ * Normalizes a reward mechanism (`GET/POST/PATCH /rewards/mechanisms`) into
+ * camelCase (ME-2). The prize pool keeps its backend snake_case field names
+ * (`validity_days`) — it is a JSONB config passed back verbatim on save.
+ * @param {object} mechanism
+ */
+export function normalizeRewardMechanism(mechanism) {
+  if (!mechanism) return null;
+  return {
+    id: mechanism.id,
+    venueId: mechanism.venue_id,
+    name: mechanism.name,
+    type: mechanism.type,
+    triggerEvent: mechanism.trigger_event,
+    config: mechanism.config || { prizes: [] },
+    instanceExpiryDays: Number(mechanism.instance_expiry_days ?? 7),
+    isActive: Boolean(mechanism.is_active),
+    validFrom: mechanism.valid_from || "",
+    validUntil: mechanism.valid_until || "",
+    createdAt: mechanism.created_at || "",
+    updatedAt: mechanism.updated_at || "",
+  };
+}
+
+/**
+ * Normalizes a moderation-view instance (`GET /rewards/instances/moderation`).
+ * Staff surface: outcome/voucher are present regardless of status, plus the
+ * owning user and any redemption note for lookup at the stall.
+ * @param {object} instance
+ */
+export function normalizeModerationInstance(instance) {
+  if (!instance) return null;
+  return {
+    ...normalizeRewardInstance(instance),
+    redemptionNote: instance.redemption_note || "",
+    user: instance.user
+      ? { id: instance.user.id, name: instance.user.name || "", phone: instance.user.phone || "" }
+      : null,
+  };
+}
+
+/**
+ * Normalizes the reveal response (`POST /rewards/instances/:id/reveal`). The
+ * shape intentionally matches `normalizeRewardInstance` where fields overlap so
+ * the reveal screen can settle on the same view a revisit renders (ADR-W004 —
+ * identical success views server/client).
+ * @param {object} payload
+ */
+export function normalizeRevealResponse(payload = {}) {
+  return normalizeRewardInstance({
+    id: payload.instance_id,
+    mechanism_type: payload.mechanism_type,
+    status: payload.status,
+    revealed_at: payload.revealed_at,
+    outcome: payload.outcome,
+    voucher: payload.voucher,
+  });
+}
+
 export function buildBookingSelectionPayload({
   venueId,
   selectedDate,

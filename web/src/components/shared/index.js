@@ -6,3 +6,4 @@ export { Input, Select, Textarea, FormField, FormAlert } from "./Form";
 export { EmptyState } from "./EmptyState";
 export { Loader } from "./Loader";
 export { DataTable } from "./Table";
+export { Portal } from "./Portal";

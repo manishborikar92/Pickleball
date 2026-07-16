@@ -1,5 +1,6 @@
 import { Card, Button } from "@/components/shared";
 import { Map } from "@/components/shared/Map";
+import { RewardExperience } from "@/components/features/rewards";
 import {
   Calendar,
   Clock,
@@ -31,12 +32,16 @@ function formatDate(dateStr) {
 /**
  * Presentational view for successfully confirmed bookings.
  * Renders ticket receipt details, contact guidelines, and interactive maps.
+ * When the booking earned rewards, the scratch overlay auto-presents once on
+ * arrival; closed unscratched, it survives as a tappable teaser card in the
+ * right panel above the map (UX spec §3.4 revision).
  *
  * @param {Object} props
  * @param {Object} props.booking - Normalized booking details.
  * @param {Object} props.receipt - Normalized payment receipt details.
+ * @param {Object[]} [props.rewards] - Normalized reward instances for this booking.
  */
-export function BookingDetailView({ booking, receipt }) {
+export function BookingDetailView({ booking, receipt, rewards = [] }) {
   const { venue } = booking;
   const courtName = booking.courtNames?.join(", ") || "Court";
   const timeSlot = `${booking.sessionStartTime} - ${booking.sessionEndTime}`;
@@ -185,8 +190,14 @@ export function BookingDetailView({ booking, receipt }) {
           </div>
         </div>
 
-        {/* Right Column: Interactive Map (5 cols) */}
+        {/* Right Column: Reward + Interactive Map (5 cols) */}
         <div className="space-y-6 lg:col-span-5">
+          {/* Reward experience — auto-presents the scratch overlay on arrival;
+              closed unscratched it remains here as a tappable teaser card. */}
+          {rewards.map((reward, index) => (
+            <RewardExperience key={reward.id} instance={reward} autoOpen={index === 0} />
+          ))}
+
           <Card className="overflow-hidden p-0">
             {/* Map wrapper */}
             <div className="relative aspect-video w-full border-b border-line bg-surface-soft">

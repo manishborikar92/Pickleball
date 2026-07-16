@@ -13,4 +13,5 @@ export { otpSchema } from "./otp.js";
 export { nameSchema, collapseSpaces } from "./name.js";
 export { couponSchema } from "./coupon.js";
 export { reviewSchema } from "./review.js";
+export { rewardMechanismSchema, redemptionNoteSchema } from "./rewardMechanism.js";
 export { bookingSelectionSchema } from "./bookingSelection.js";

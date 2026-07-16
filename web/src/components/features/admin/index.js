@@ -3,6 +3,7 @@ export { AdminOverview } from "./AdminOverview";
 export { SettingsView } from "./SettingsView";
 export { CourtsManager } from "./CourtsManager";
 export { PricingManager } from "./PricingManager";
+export { RewardsManager } from "./RewardsManager";
 export { ScheduleManager } from "./ScheduleManager";
 export { UsersManager } from "./UsersManager";
 export { AdminTable } from "./AdminTable";

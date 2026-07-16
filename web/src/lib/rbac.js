@@ -33,11 +33,15 @@ export const routeAccess = {
   "/dashboard/overview": { auth: true, permission: "view_own_bookings" },
   "/dashboard/bookings": { auth: true, permission: "view_own_bookings" },
   "/dashboard/wallet": { auth: true, permission: "view_own_bookings" },
+  "/dashboard/rewards": { auth: true, permission: "view_own_bookings" },
   "/admin": { auth: true, permission: "manage_bookings" },
   "/admin/overview": { auth: true, permission: "manage_bookings" },
   "/admin/bookings": { auth: true, permission: "manage_bookings" },
   "/admin/schedule": { auth: true, permission: "edit_schedule" },
   "/admin/pricing": { auth: true, permission: "edit_pricing" },
+  // Staff run the redemption desk (manage_bookings); the mechanisms panel
+  // inside the page is additionally gated on edit_pricing.
+  "/admin/rewards": { auth: true, permission: "manage_bookings" },
   "/admin/courts": { auth: true, permission: "manage_courts" },
   "/admin/users": { auth: true, permission: "manage_bookings" },
   "/admin/settings": { auth: true, permission: "manage_venues" },

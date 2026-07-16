@@ -25,8 +25,16 @@ const bookingIncludeForPayment = {
   },
 };
 
-export const createBookingsRepository = ({ prisma } = {}) => {
+export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
   const db = () => prisma || getPrisma();
+
+  // Issue reward instances inside the same transaction that confirms the
+  // booking (spec §12.2): confirmation and issuance commit or roll back
+  // together. No-op when the issuance service is not injected (unit tests).
+  const issueRewards = async (tx, booking, now) => {
+    if (!rewardIssuance) return;
+    await rewardIssuance.issueForBooking({ tx, booking, now });
+  };
 
   const expirePendingHolds = async (tx, now) => {
     await tx.booking.updateMany({
@@ -291,6 +299,8 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           data: { status: 'confirmed' },
         });
 
+        await issueRewards(tx, confirmed, now);
+
         return { booking: confirmed, payment };
       });
     },
@@ -433,6 +443,8 @@ export const createBookingsRepository = ({ prisma } = {}) => {
               where: { bookingId },
               data: { status: 'confirmed' },
             });
+
+            await issueRewards(tx, updatedBooking, now);
           }
         }
 
@@ -714,11 +726,11 @@ export const createBookingsRepository = ({ prisma } = {}) => {
       });
     },
 
-    async confirmBooking({ bookingId }) {
+    async confirmBooking({ bookingId, now = new Date() }) {
       return db().$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({ where: { id: bookingId } });
         if (!booking) throw new NotFoundError('Booking not found');
-        
+
         if (booking.status === 'confirmed') {
           return booking;
         }
@@ -736,6 +748,8 @@ export const createBookingsRepository = ({ prisma } = {}) => {
           where: { bookingId },
           data: { status: 'confirmed' },
         });
+
+        await issueRewards(tx, confirmed, now);
 
         return confirmed;
       });

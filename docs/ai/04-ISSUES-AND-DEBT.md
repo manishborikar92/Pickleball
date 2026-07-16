@@ -22,8 +22,8 @@ Our QA gating requires all tests to pass prior to merging.
 
 ### 2.1 Backend Tests (`server/tests/`)
 - **Framework**: Built using the native Node.js test runner (`node --test`), keeping testing free of third-party package dependencies like Jest.
-- **Pass Metrics**: All 127 native test cases are passing successfully (91 unit tests and 36 integration tests).
-  - Passes: 127
+- **Pass Metrics**: All 214 native test cases are passing successfully (153 unit tests and 61 integration tests).
+  - Passes: 214
   - Failures: 0
 - **Execution Command**:
   ```bash
@@ -32,8 +32,9 @@ Our QA gating requires all tests to pass prior to merging.
   ```
 
 ### 2.2 Frontend Tests (`web/tests/`)
-- **Framework**: Node.js native test runner for pure logic (RBAC, Zod schemas, normalizers, booking
-  engine, the checkout service, and the booking-status resolver).
+- **Framework**: Node.js native test runner for pure logic (RBAC, Zod schemas — including the reward
+  mechanism editor's, normalizers, booking engine, the checkout service, and the booking- and
+  review-status resolvers).
 - **Pass Metrics**: All native `node:test` cases pass (Failures: 0).
 - **Execution Command**:
   ```bash
@@ -71,3 +72,8 @@ As development progresses, we record architectural compromises to ensure they ar
 - **Compromise**: To handle concurrent silent refresh requests from client applications, the Express backend verifies active refresh tokens using an in-memory rotation log.
 - **Debt Impact**: The grace period cache is instance-specific. If the backend scales horizontally to multiple VM instances, concurrent refreshes routed to different instances will fail.
 - **Remediation Plan**: Multi-instance scaling will require migrating the grace period cache from local in-memory stores to a shared Redis cluster.
+
+### 4.3 Reward Mechanism Enum Reserve
+- **Compromise**: The `RewardMechanismType` Prisma enum includes `coupon_drop` and `points` values with no launch implementation; the backend API accepts `scratch_card` and `spinner` at mechanism creation, but the web app exposes only the scratch-card experience — `rewardMechanismSchema` pins `type: "scratch_card"`, and no spinner UI, text, or option exists anywhere in the frontend.
+- **Debt Impact**: Backend capability (`spinner`) with no reachable UI, plus enum values that cannot be exercised end-to-end. Product docs (`02-BUSINESS-LOGIC.md` §12.5) still describe the pre-voucher prize model pending PO sign-off (see `03-IMPLEMENTATION-STATUS.md` §3).
+- **Remediation Plan**: Build the spinner wheel component when marketing wants a second experience (then widen the web schema's type enum); drop or implement `coupon_drop`/`points` at the next schema review; sync product docs with ADR-010 once the PO signs off.

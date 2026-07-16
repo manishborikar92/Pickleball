@@ -9,6 +9,7 @@ const ADMIN_LINKS = [
   { href: "/admin/bookings", label: "Bookings" },
   { href: "/admin/schedule", label: "Schedule" },
   { href: "/admin/pricing", label: "Pricing" },
+  { href: "/admin/rewards", label: "Rewards" },
   { href: "/admin/courts", label: "Courts" },
   { href: "/admin/users", label: "Users" },
   { href: "/admin/settings", label: "Settings" },

@@ -71,6 +71,7 @@ We document major technology selections and designs through ADRs.
 | **ADR-007** | Centralized Permission Catalog | Approved | 2026-06-19 | [ADR-007 Permission Catalog](adrs/ADR-007-permission-catalog.md) |
 | **ADR-008** | Standardized Domain Error Hierarchy | Approved | 2026-06-19 | [ADR-008 Error Hierarchy](adrs/ADR-008-error-hierarchy.md) |
 | **ADR-009** | Reviews as an Independent Domain Under `/reviews` | Approved | 2026-06-28 | [ADR-009 Reviews Module](adrs/ADR-009-reviews-module.md) |
+| **ADR-010** | Rewards as an Independent Domain Under `/rewards` with Voucher-Only Prizes | Approved | 2026-07-16 | [ADR-010 Rewards Module](adrs/ADR-010-rewards-module.md) |
 
 ---
 *For quick startup, see the root [README.md](../README.md).*

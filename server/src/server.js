@@ -11,6 +11,7 @@ import { createDefaultAuthService } from './modules/auth/index.js';
 import { createDefaultBookingsService } from './modules/bookings/index.js';
 import { createDefaultPaymentsService } from './modules/payments/index.js';
 import { createDefaultVenuesService } from './modules/venues/index.js';
+import { createDefaultRewardsService } from './modules/rewards/index.js';
 import { createPaymentProviderFromEnv } from './modules/payments/provider-factory.js';
 
 export const startServer = async () => {
@@ -66,6 +67,7 @@ export const startServer = async () => {
   const authService = createDefaultAuthService({ config });
   const paymentProvider = createPaymentProviderFromEnv(config);
   const bookingsService = createDefaultBookingsService({ config, venueService, paymentProvider });
+  const rewardsService = createDefaultRewardsService();
   const { reconciliationService } = createDefaultPaymentsService({
     bookingsService,
     config,
@@ -78,6 +80,7 @@ export const startServer = async () => {
       { name: 'purge-expired-records', execute: () => authService.purgeExpiredRecords() },
       { name: 'expire-pending-holds', execute: () => bookingsService.expirePendingHolds() },
       { name: 'sweep-completed-bookings', execute: () => bookingsService.sweepCompletedBookings() },
+      { name: 'sweep-expired-reward-instances', execute: () => rewardsService.sweepExpiredInstances() },
       { name: 'reconcile-stale-payments', execute: () => reconciliationService.reconcileStalePayments() },
     ],
     intervalMs: config.scheduler.intervalMs,

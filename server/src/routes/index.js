@@ -11,6 +11,7 @@ import { createDefaultVenuesRouter, createDefaultVenuesService } from '../module
 import { createPaymentProviderFromEnv } from '../modules/payments/provider-factory.js';
 import { createWebhookRouter } from '../modules/payments/webhook.routes.js';
 import { createDefaultReviewsService, createReviewsRouter } from '../modules/reviews/index.js';
+import { createDefaultRewardsService, createRewardsRouter } from '../modules/rewards/index.js';
 import { createRequireVenuePermission } from '../middleware/authorize.middleware.js';
 
 export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
@@ -31,6 +32,7 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
 
   const bookingsService = createDefaultBookingsService({ config, venueService, paymentProvider });
   const reviewsService = createDefaultReviewsService({ authorizationService });
+  const rewardsService = createDefaultRewardsService({ authorizationService });
 
   const { router: paymentsRouter, reconciliationService } = createDefaultPaymentsRouter({
     bookingsService,
@@ -49,6 +51,7 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   router.use('/payments', paymentsRouter);
   router.use('/webhooks', createWebhookRouter({ bookingsService, reconciliationService, config }));
   router.use('/reviews', createReviewsRouter({ reviewsService, requireVenuePermission }));
+  router.use('/rewards', createRewardsRouter({ rewardsService, requireVenuePermission }));
   router.use('/docs', createOpenApiRouter({ config }));
 
   return router;

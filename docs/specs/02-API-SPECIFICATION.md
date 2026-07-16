@@ -1247,18 +1247,22 @@ On success: creates `users` record (name pre-set), `admin_credentials` record (`
 
 ### Reward Engine Management
 
+> [!NOTE]
+> **Implementation Status: Built.** Management routes live under the `/rewards` prefix (owned by the rewards module, mirroring the reviews module's moderation surface) rather than an `/admin` namespace — see ADR-010 and the divergence note in `docs/ai/03-IMPLEMENTATION-STATUS.md`.
+
 | Method | Endpoint | Permission | Description |
 |---|---|---|---|
-| `GET` | `/admin/venues/:id/reward-mechanisms` | `edit_pricing` | List all mechanisms (active and inactive) |
-| `POST` | `/admin/venues/:id/reward-mechanisms` | `edit_pricing` | Create a new mechanism |
-| `PATCH` | `/admin/reward-mechanisms/:id` | `edit_pricing` | Edit name, type, config (prize pool), active state, validity window |
-| `GET` | `/admin/reward-instances` | `manage_bookings` | List instances with filters (status, mechanism_type, date range) |
-| `PATCH` | `/admin/reward-instances/:id/expire` | `manage_bookings` | Manually expire an unrevealed instance |
-| `PATCH` | `/admin/reward-instances/:id/fulfill` | `manage_bookings` | Mark a `free_booking` prize as manually fulfilled |
+| `GET` | `/rewards/mechanisms?venue_id=<uuid>` | `edit_pricing` | List all mechanisms (active and inactive) for a venue |
+| `POST` | `/rewards/mechanisms` | `edit_pricing` | Create a new mechanism (`venue_id` in body) |
+| `PATCH` | `/rewards/mechanisms/:id` | `edit_pricing` (service-resolved venue) | Edit name, config (prize pool), active state, validity window |
+| `GET` | `/rewards/instances/moderation?venue_id=<uuid>` | `manage_bookings` | List instances with filters (`status`, `mechanism_id`, `voucher_code`, `redeemed`, paginated) |
+| `PATCH` | `/rewards/instances/:id/expire` | `manage_bookings` (service-resolved venue) | Manually expire an unrevealed instance |
+| `PATCH` | `/rewards/instances/:id/redeem` | `manage_bookings` (service-resolved venue) | Mark a revealed voucher as redeemed at the venue stall (optional `note` in body) |
 
-**Create/update mechanism body example (scratch card):**
+**Create mechanism body example (scratch card):**
 ```json
 {
+  "venue_id": "<uuid>",
   "name": "Post-Booking Scratch Card",
   "type": "scratch_card",
   "trigger_event": "booking_confirmed",
@@ -1267,56 +1271,80 @@ On success: creates `users` record (name pre-set), `admin_credentials` record (`
   "config": {
     "card_theme": "court_green",
     "prizes": [
-      { "id": "p1", "label": "Better luck next time!", "type": "no_prize",      "probability": 0.60 },
-      { "id": "p2", "label": "₹50 Court Credit",       "type": "wallet_credit", "value": 50,   "probability": 0.25 },
-      { "id": "p3", "label": "10% Off Next Booking",   "type": "coupon", "coupon_template_id": "<uuid>", "probability": 0.12 },
-      { "id": "p4", "label": "Free 1-Hour Session!",   "type": "free_booking",  "duration_mins": 60, "probability": 0.03 }
+      { "id": "p1", "label": "Better luck next time!",               "type": "no_prize", "probability": 0.70 },
+      { "id": "p2", "label": "Free Iced Coffee at the Baseline Café", "type": "voucher",  "terms": "Show this voucher at the café counter. One per visit.", "validity_days": 14, "probability": 0.20 },
+      { "id": "p3", "label": "20% Off Any Snack Combo",              "type": "voucher",  "terms": "Valid on snack combos at the venue stall.", "validity_days": 30, "probability": 0.10 }
     ]
   }
 }
 ```
 
-Prize `probability` values must sum to exactly 1.0 — validated server-side on save.
+Prize `probability` values must sum to exactly 1.0 — validated server-side on save. Prize `type` is `no_prize` or `voucher` (external offers such as the venue's F&B stall — rewards never issue wallet credits). Voucher prizes may set `terms` (customer-facing smallprint, max 500 chars) and `validity_days` (redemption window after reveal, default 30).
+
+**Voucher redemption (`PATCH /rewards/instances/:id/redeem`):** staff look up the instance by voucher code in the moderation list, then redeem it. First redemption wins; a second attempt returns `409 VOUCHER_ALREADY_REDEEMED`. A voucher past `voucher_valid_until` returns `410 VOUCHER_EXPIRED`.
+
+**Response `200`:**
+```json
+{
+  "instance_id": "<uuid>",
+  "voucher_code": "RWD-K7MQ2XWP",
+  "redeemed_at": "2026-07-16T12:30:00Z",
+  "redemption_note": "Redeemed at café counter"
+}
+```
 
 
 
 ## 11. Reward Engine Endpoints
 
-> [!WARNING]
-> **Implementation Status:** Target Product Contracts / Not Implemented in the live backend.
+> [!NOTE]
+> **Implementation Status: Built** (`server/src/modules/rewards/`). Reward prizes are external offer vouchers — see `docs/specs/01-DATABASE-SCHEMA.md` Domain F.
 
 ### `GET /rewards/instances`
 
-*Protected.* Returns all reward instances for the authenticated user. The `outcome` field is **omitted** for `status = 'pending'` instances — only returned after reveal.
+*Protected (JWT + onboarding).* Returns all reward instances for the authenticated user. The `outcome` and `voucher` fields are **omitted** for `status = 'pending'` instances — only returned after reveal.
 
 **Query params:** `status` (pending, revealed, expired)
 
 **Response `200`:**
 ```json
 {
+  "success": true,
+  "message": "Success",
   "data": [
     {
       "id": "<uuid>",
       "mechanism_type": "scratch_card",
+      "mechanism_name": "Post-Booking Scratch Card",
       "status": "pending",
       "booking_id": "<uuid>",
-      "expires_at": "2025-05-24T10:00:00Z",
-      "created_at": "2025-05-17T10:00:00Z"
+      "booking_slot_date": "2026-07-13",
+      "card_theme": "court_green",
+      "expires_at": "2026-07-24T10:00:00Z",
+      "created_at": "2026-07-17T10:00:00Z"
     },
     {
       "id": "<uuid>",
       "mechanism_type": "scratch_card",
+      "mechanism_name": "Post-Booking Scratch Card",
       "status": "revealed",
       "booking_id": "<uuid>",
-      "revealed_at": "2025-05-16T15:30:00Z",
+      "booking_slot_date": "2026-07-05",
+      "card_theme": "court_green",
+      "expires_at": "2026-07-17T09:00:00Z",
+      "created_at": "2026-07-10T09:00:00Z",
+      "revealed_at": "2026-07-16T15:30:00Z",
       "outcome": {
         "prize_id": "p2",
-        "label": "₹50 Court Credit",
-        "type": "wallet_credit",
-        "value": 50
+        "label": "Free Iced Coffee at the Baseline Café",
+        "type": "voucher",
+        "terms": "Show this voucher at the café counter. One per visit."
       },
-      "fulfillment_status": "fulfilled",
-      "created_at": "2025-05-10T09:00:00Z"
+      "voucher": {
+        "code": "RWD-K7MQ2XWP",
+        "valid_until": "2026-07-30T15:30:00Z",
+        "redeemed": false
+      }
     }
   ]
 }
@@ -1324,29 +1352,39 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 ---
 
+### `GET /rewards/instances/:instanceId`
+
+*Protected (JWT + onboarding).* A single owned instance, same serialization rules as the list (outcome hidden while pending). A missing id and someone else's instance both return `404 REWARD_NOT_FOUND` — existence is never leaked.
+
+---
+
 ### `POST /rewards/instances/:instanceId/reveal`
 
-*Protected.* Reveals a pending reward instance. Validates ownership, `pending` status, and non-expiry. Executes prize fulfillment atomically. Returns the outcome for the first time.
+*Protected (JWT + onboarding).* Reveals a pending reward instance. Validates ownership, `pending` status, and non-expiry. For a `voucher` prize, a unique voucher code and its redemption window are issued atomically in the same transaction that marks the instance revealed. Returns the outcome for the first time. Concurrent reveals are safe: only one wins the status transition; the other receives `409`.
 
 **Body:** *(none)*
 
-**Response `200`:**
+**Response `200` — voucher prize:**
 ```json
 {
-  "instance_id": "<uuid>",
-  "mechanism_type": "scratch_card",
-  "status": "revealed",
-  "revealed_at": "2025-05-17T11:22:00Z",
-  "outcome": {
-    "prize_id": "p2",
-    "label": "₹50 Court Credit",
-    "type": "wallet_credit",
-    "value": 50
-  },
-  "fulfillment_status": "fulfilled",
-  "fulfillment_detail": {
-    "wallet_credit_added": 50,
-    "new_wallet_balance": 250.00
+  "success": true,
+  "message": "Reward revealed",
+  "data": {
+    "instance_id": "<uuid>",
+    "mechanism_type": "scratch_card",
+    "status": "revealed",
+    "revealed_at": "2026-07-16T11:22:00Z",
+    "outcome": {
+      "prize_id": "p2",
+      "label": "Free Iced Coffee at the Baseline Café",
+      "type": "voucher",
+      "terms": "Show this voucher at the café counter. One per visit."
+    },
+    "voucher": {
+      "code": "RWD-K7MQ2XWP",
+      "valid_until": "2026-07-30T11:22:00Z",
+      "redeemed": false
+    }
   }
 }
 ```
@@ -1354,11 +1392,15 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 **Response `200` — no prize:**
 ```json
 {
-  "instance_id": "<uuid>",
-  "mechanism_type": "scratch_card",
-  "status": "revealed",
-  "outcome": { "prize_id": "p1", "label": "Better luck next time!", "type": "no_prize" },
-  "fulfillment_status": "not_applicable"
+  "success": true,
+  "message": "Reward revealed",
+  "data": {
+    "instance_id": "<uuid>",
+    "mechanism_type": "scratch_card",
+    "status": "revealed",
+    "revealed_at": "2026-07-16T11:22:00Z",
+    "outcome": { "prize_id": "p1", "label": "Better luck next time!", "type": "no_prize" }
+  }
 }
 ```
 
@@ -1366,8 +1408,8 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 | Code | HTTP Status | Description |
 |---|---|---|
-| `REWARD_ALREADY_REVEALED` | 409 | Instance is not in `pending` state |
-| `REWARD_EXPIRED` | 410 | Instance expiry has passed |
+| `REWARD_ALREADY_REVEALED` | 409 | Instance is not in `pending` state (including losing a concurrent-reveal race) |
+| `REWARD_EXPIRED` | 410 | Instance expiry has passed (lazily expired even if the sweeper hasn't run) |
 | `REWARD_NOT_FOUND` | 404 | Instance does not exist or does not belong to the user |
 
 ---
@@ -1427,6 +1469,9 @@ All errors follow a consistent structure:
 | `REWARD_ALREADY_REVEALED` | 409 | Reward instance already revealed |
 | `REWARD_EXPIRED` | 410 | Reward instance past its expiry date |
 | `REWARD_NOT_FOUND` | 404 | Instance not found or not owned by user |
+| `VOUCHER_NOT_REDEEMABLE` | 409 | Redemption attempted on an unrevealed instance or a no-prize outcome |
+| `VOUCHER_ALREADY_REDEEMED` | 409 | Voucher was already marked redeemed (first redemption wins) |
+| `VOUCHER_EXPIRED` | 410 | Voucher redemption window (`voucher_valid_until`) has passed |
 | `UNAUTHORIZED` | 401 | Missing or invalid token |
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |
