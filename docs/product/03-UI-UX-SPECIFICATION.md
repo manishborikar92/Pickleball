@@ -302,7 +302,7 @@ Protected routes are guarded in two layers: an optimistic edge pass in the proxy
 | `/admin/*` | JWT + non-customer role | `/admin/login?next=[current path]` |
 | `/admin/login` | Unauthenticated (or non-admin JWT) | `next` (or `/admin/overview`) if already authenticated as an admin |
 
-**The optimistic proxy (`web/src/proxy.js` — Next.js 16's successor to `middleware.ts`) handles:**
+**The optimistic proxy (`web/src/proxy.js`) handles:**
 - No JWT present on `/dashboard/*` or `/admin/*` → redirect to `/login` / `/admin/login` carrying `?next=[current path]`.
 - Expired access token with a valid refresh token → proactive refresh, forwarding fresh cookies to the render.
 - Authenticated users landing on `/login` / `/onboarding` → bounced to `next` (or the dashboard overview).
