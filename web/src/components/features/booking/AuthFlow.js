@@ -1,24 +1,33 @@
 import Link from "next/link";
 import { Button } from "@/components/shared";
-import { formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
-import { X, Lock, CalendarDays, Clock, Wallet, Tag } from "lucide-react";
+import { formatCountdown, formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
+import { X, Lock, CalendarDays, Clock, Wallet, Tag, TimerReset } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 import { useOverlay } from "@/hooks/useOverlay";
 
 /**
  * Full-screen checkout modal that walks users through auth → waiver → success steps.
  *
+ * Checkout is commit-on-confirm: the waiver step opens instantly with the live
+ * price preview and reserves nothing. Once Confirm & Pay commits the booking
+ * (hold + payment initiation), a live countdown shows the remaining 10-minute
+ * payment window, and an expired window renders a dedicated panel that routes
+ * the user back to the slot grid.
+ *
  * @param {Object}   props
- * @param {Object}   props.auth               - Current auth step state machine object
- * @param {string}   props.selectedDate       - ISO date string of the selected booking date
- * @param {Array}    props.selectedCourtsData - Active court + slot selections with pricing
- * @param {Object}   props.quote              - Calculated price quote from booking engine
- * @param {number}   props.walletBalance      - Signed-in user's wallet credits (0 when anonymous)
- * @param {Object}   props.waiver             - Current waiver checkbox checked states
- * @param {Function} props.setWaiver          - Waiver state setter
- * @param {Function} props.onAuthSuccess      - Callback when authentication completes
- * @param {Function} props.confirmPayment     - Callback to initiate payment confirmation
- * @param {Function} props.onClose            - Callback to close/dismiss the modal
+ * @param {Object}   props.auth                 - Current auth step state machine object
+ * @param {string}   props.selectedDate         - ISO date string of the selected booking date
+ * @param {Array}    props.selectedCourtsData   - Active court + slot selections with pricing
+ * @param {Object}   props.quote                - Calculated price quote from booking engine
+ * @param {number}   props.walletBalance        - Signed-in user's wallet credits (0 when anonymous)
+ * @param {Object}   props.waiver               - Current waiver checkbox checked states
+ * @param {Function} props.setWaiver            - Waiver state setter
+ * @param {Object}   props.hold                 - Hold state machine: { status, bookingId, expiresAt }
+ * @param {number}   props.holdRemainingSeconds - Live seconds left on the active hold
+ * @param {Function} props.onAuthSuccess        - Callback when authentication completes
+ * @param {Function} props.confirmPayment       - Callback to commit/resume payment
+ * @param {Function} props.onReturnToGrid       - Callback to release checkout state and reselect
+ * @param {Function} props.onClose              - Callback to close/dismiss the modal
  */
 export function AuthFlow({
   auth,
@@ -28,10 +37,13 @@ export function AuthFlow({
   walletBalance = 0,
   waiver,
   setWaiver,
+  hold,
+  holdRemainingSeconds = 0,
   checkoutError = "",
   checkoutLoading = false,
   onAuthSuccess,
   confirmPayment,
+  onReturnToGrid,
   onClose,
 }) {
   const { containerRef, contentRef, handleBackdropClick } = useOverlay({
@@ -92,9 +104,12 @@ export function AuthFlow({
               walletBalance={walletBalance}
               waiver={waiver}
               setWaiver={setWaiver}
+              hold={hold}
+              holdRemainingSeconds={holdRemainingSeconds}
               checkoutError={checkoutError}
               checkoutLoading={checkoutLoading}
               onConfirm={confirmPayment}
+              onReturnToGrid={onReturnToGrid}
             />
           )}
         </div>
@@ -109,13 +124,21 @@ export function AuthFlow({
  * Final confirmation step: shows a clean booking summary card with court, date,
  * time, and total — plus the liability waiver checkbox and pay CTA.
  *
+ * Before commit nothing is reserved, so the step renders instantly from the
+ * live price preview. After commit (active hold) the live countdown shows the
+ * remaining payment window; an expired window replaces the step with a release
+ * panel that returns the user to the grid.
+ *
  * @param {Object}   props
- * @param {string}   props.selectedDate        - ISO date of booking
- * @param {Array}    props.selectedCourtsData  - Courts with slots and pricing
- * @param {Object}   props.quote               - Price quote from booking engine
- * @param {Object}   props.waiver              - Checked state for waiver fields
- * @param {Function} props.setWaiver           - Waiver setter
- * @param {Function} props.onConfirm           - Payment confirmation callback
+ * @param {string}   props.selectedDate         - ISO date of booking
+ * @param {Array}    props.selectedCourtsData   - Courts with slots and pricing
+ * @param {Object}   props.quote                - Price quote from booking engine
+ * @param {Object}   props.waiver               - Checked state for waiver fields
+ * @param {Function} props.setWaiver            - Waiver setter
+ * @param {Object}   props.hold                 - Hold state machine object
+ * @param {number}   props.holdRemainingSeconds - Live seconds left on the hold
+ * @param {Function} props.onConfirm            - Commit/resume payment callback
+ * @param {Function} props.onReturnToGrid       - Release checkout state and reselect
  */
 function WaiverStep({
   selectedDate,
@@ -124,13 +147,29 @@ function WaiverStep({
   walletBalance = 0,
   waiver,
   setWaiver,
+  hold,
+  holdRemainingSeconds,
   checkoutError,
   checkoutLoading,
   onConfirm,
+  onReturnToGrid,
 }) {
   const allChecked = waiver?.time && waiver?.policy;
   const courts = selectedCourtsData ?? [];
   const breakdown = getCheckoutBreakdown(quote, walletBalance);
+
+  if (hold?.status === "expired") {
+    return (
+      <HoldEndedPanel
+        title="Your payment window has expired"
+        message="The 10-minute payment window ran out, so your slots were released. Please reselect a time that works for you."
+        actionLabel="Back to slot selection"
+        onAction={onReturnToGrid}
+      />
+    );
+  }
+
+  const holdActive = hold?.status === "active";
 
   return (
     <div className="space-y-5">
@@ -143,6 +182,8 @@ function WaiverStep({
           Confirm Booking
         </h2>
       </div>
+
+      {holdActive && <HoldCountdown remainingSeconds={holdRemainingSeconds} />}
 
       {/* Booking summary card */}
       <div className="overflow-hidden rounded-2xl border border-line/40 bg-surface/30">
@@ -242,7 +283,8 @@ function WaiverStep({
         }
       />
 
-      {/* Pay CTA */}
+      {/* Pay CTA — commits the booking (reserve + pay) on first click; with an
+          active hold it resumes the same payment instead */}
       <Button
         type="button"
         disabled={!allChecked || checkoutLoading}
@@ -250,7 +292,7 @@ function WaiverStep({
         className="w-full py-4 text-base font-bold disabled:cursor-not-allowed disabled:opacity-50"
       >
         {checkoutLoading
-          ? "Confirming..."
+          ? "Reserving & confirming..."
           : breakdown.amountPayable > 0
             ? `Pay ${formatCurrency(breakdown.amountPayable)}`
             : "Confirm booking"}
@@ -273,6 +315,94 @@ function WaiverStep({
 
 
 /* ── Helpers ──────────────────────────────────────── */
+
+/**
+ * The live payment-window countdown pill, shown once the booking is committed
+ * (slots reserved, payment initiated). Counts down the 10-minute window,
+ * switching to the danger tone for the final minute. The `role="timer"` label
+ * announces at minute granularity rather than every second.
+ *
+ * @param {Object}  props
+ * @param {number}  props.remainingSeconds - Seconds left on the payment window
+ */
+function HoldCountdown({ remainingSeconds }) {
+  const urgent = remainingSeconds <= 60;
+
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+        urgent
+          ? "border-red-500/40 bg-red-500/10"
+          : "border-accent/30 bg-accent/5"
+      }`}
+    >
+      <span
+        className={`flex min-w-0 items-center gap-2 text-sm font-semibold ${
+          urgent ? "text-red-200" : "text-foreground"
+        }`}
+      >
+        <TimerReset className={`h-4 w-4 shrink-0 ${urgent ? "text-red-300" : "text-accent"}`} aria-hidden="true" />
+        Slots reserved for you
+      </span>
+      <span
+        role="timer"
+        aria-label={`${Math.ceil(remainingSeconds / 60)} minutes remaining to complete payment`}
+        className={`shrink-0 font-mono text-lg font-black tabular-nums ${
+          urgent ? "text-red-300" : "text-accent"
+        }`}
+      >
+        {formatCountdown(remainingSeconds)}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Terminal hold panel (expired payment window): explains what happened and
+ * routes the user back to the grid to reselect.
+ *
+ * @param {Object}   props
+ * @param {string}   props.title
+ * @param {string}   props.message
+ * @param {string}   props.actionLabel
+ * @param {Function} props.onAction
+ * @param {string}   [props.secondaryLabel]
+ * @param {Function} [props.onSecondaryAction]
+ */
+function HoldEndedPanel({ title, message, actionLabel, onAction, secondaryLabel, onSecondaryAction }) {
+  return (
+    <div className="space-y-5 py-4 text-center">
+      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-line/40 bg-surface/50">
+        <TimerReset className="h-7 w-7 text-muted" />
+      </div>
+      <div role="alert">
+        <h2 className="text-2xl font-black">{title}</h2>
+        <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
+          {message}
+        </p>
+      </div>
+      <div className="space-y-3">
+        <Button
+          type="button"
+          onClick={onAction}
+          className="w-full py-4 text-base font-bold"
+        >
+          {actionLabel}
+        </Button>
+        {secondaryLabel && (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onSecondaryAction}
+            className="w-full py-3 text-sm font-bold"
+          >
+            {secondaryLabel}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Custom styled accessible checkbox with animated checkmark and focus ring.

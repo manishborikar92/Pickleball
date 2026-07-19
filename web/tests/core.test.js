@@ -17,8 +17,12 @@ import {
 } from "../src/lib/schemas/index.js";
 import {
   buildDateWindow,
+  formatCountdown,
   getPaymentReceiptDetails,
   getCheckoutBreakdown,
+  getRemainingSeconds,
+  getSharedAvailableSlotTimes,
+  reduceSlotClick,
   summarizeCourtSlots,
   getLatestPayment,
 } from "../src/lib/bookingEngine.js";
@@ -31,7 +35,7 @@ import {
   normalizeHoldResponse,
   normalizePaymentInitiationResponse,
 } from "../src/lib/normalizers.js";
-import { runCheckout } from "../src/lib/services/checkout.js";
+import { createBookingHold, confirmHeldBooking, runCheckout } from "../src/lib/services/checkout.js";
 
 test("role permissions are permission-key based and expandable", () => {
   assert.equal(hasPermission("manager", "edit_pricing"), true);
@@ -524,29 +528,70 @@ test("normalizePaymentInitiationResponse discriminates confirmed vs redirect (ME
   assert.equal(redirect.redirectUrl, "https://mercury.phonepe.com/pay/xyz");
 });
 
-test("runCheckout returns a confirmed result for a wallet-only payment (HI-13)", async () => {
+test("createBookingHold resolves the normalized hold with bookingId and expiresAt (hold-first)", async () => {
   const calls = [];
-  const result = await runCheckout(
+  const hold = await createBookingHold(
     {
-      createHold: async (sel) => { calls.push(["hold", sel]); return { bookingId: "bk-1" }; },
+      createHold: async (sel) => {
+        calls.push(["hold", sel]);
+        return { bookingId: "bk-1", expiresAt: "2026-07-19T10:10:00.000Z", status: "pending_payment" };
+      },
+    },
+    { selection: { venue_id: "v" } },
+  );
+  assert.equal(hold.bookingId, "bk-1");
+  assert.equal(hold.expiresAt, "2026-07-19T10:10:00.000Z");
+  assert.deepEqual(calls, [["hold", { venue_id: "v" }]]);
+});
+
+test("createBookingHold throws hold_failed when the hold has no bookingId", async () => {
+  await assert.rejects(
+    () => createBookingHold(
+      { createHold: async () => ({ bookingId: null }) },
+      { selection: {} },
+    ),
+    /Could not create booking hold/,
+  );
+});
+
+test("createBookingHold throws hold_failed when expiresAt is missing or invalid", async () => {
+  await assert.rejects(
+    () => createBookingHold(
+      { createHold: async () => ({ bookingId: "bk-1", expiresAt: "" }) },
+      { selection: {} },
+    ),
+    /missing its expiry time/,
+  );
+  await assert.rejects(
+    () => createBookingHold(
+      { createHold: async () => ({ bookingId: "bk-1", expiresAt: "not-a-date" }) },
+      { selection: {} },
+    ),
+    /missing its expiry time/,
+  );
+});
+
+test("confirmHeldBooking returns a confirmed result for a wallet-only payment (HI-13)", async () => {
+  const calls = [];
+  const result = await confirmHeldBooking(
+    {
       acceptWaiver: async (id) => { calls.push(["waiver", id]); },
       initiatePayment: async (id, opts) => { calls.push(["pay", id, opts]); return { kind: "confirmed" }; },
     },
-    { selection: { venue_id: "v" }, useWalletCredits: true },
+    { bookingId: "bk-1", useWalletCredits: true },
   );
   assert.deepEqual(result, { kind: "confirmed", bookingId: "bk-1" });
-  // Enforces the ordered sequence hold → waiver → pay.
-  assert.deepEqual(calls.map((c) => c[0]), ["hold", "waiver", "pay"]);
+  // Enforces the ordered sequence waiver → pay on the already-held booking.
+  assert.deepEqual(calls, [["waiver", "bk-1"], ["pay", "bk-1", { useWalletCredits: true }]]);
 });
 
-test("runCheckout returns a redirect result for a gateway payment (HI-13)", async () => {
-  const result = await runCheckout(
+test("confirmHeldBooking returns a redirect result for a gateway payment (HI-13)", async () => {
+  const result = await confirmHeldBooking(
     {
-      createHold: async () => ({ bookingId: "bk-2" }),
       acceptWaiver: async () => {},
       initiatePayment: async () => ({ kind: "redirect", redirectUrl: "https://pay", merchantOrderId: "PP-2" }),
     },
-    { selection: {} },
+    { bookingId: "bk-2" },
   );
   assert.equal(result.kind, "redirect");
   assert.equal(result.bookingId, "bk-2");
@@ -554,18 +599,85 @@ test("runCheckout returns a redirect result for a gateway payment (HI-13)", asyn
   assert.equal(result.merchantOrderId, "PP-2");
 });
 
-test("runCheckout throws when the hold cannot be created (HI-13)", async () => {
+test("confirmHeldBooking rejects without a bookingId and never calls the backend", async () => {
+  let called = false;
+  await assert.rejects(
+    () => confirmHeldBooking(
+      {
+        acceptWaiver: async () => { called = true; },
+        initiatePayment: async () => { called = true; },
+      },
+      { bookingId: "" },
+    ),
+    /Missing booking reference/,
+  );
+  assert.equal(called, false);
+});
+
+test("confirmHeldBooking throws payment_init_failed when initiation returns neither kind", async () => {
+  await assert.rejects(
+    () => confirmHeldBooking(
+      {
+        acceptWaiver: async () => {},
+        initiatePayment: async () => ({ kind: "redirect", redirectUrl: "" }),
+      },
+      { bookingId: "bk-3" },
+    ),
+    /Payment could not be initiated/,
+  );
+});
+
+test("runCheckout commits hold → waiver → pay in order and threads expiresAt (commit-on-confirm)", async () => {
+  const calls = [];
+  const result = await runCheckout(
+    {
+      createHold: async (sel) => {
+        calls.push(["hold", sel]);
+        return { bookingId: "bk-9", expiresAt: "2026-07-19T10:10:00.000Z" };
+      },
+      acceptWaiver: async (id) => { calls.push(["waiver", id]); },
+      initiatePayment: async (id, opts) => {
+        calls.push(["pay", id, opts]);
+        return { kind: "redirect", redirectUrl: "https://pay", merchantOrderId: "PP-9" };
+      },
+    },
+    { selection: { venue_id: "v" }, useWalletCredits: true },
+  );
+  assert.deepEqual(calls.map((c) => c[0]), ["hold", "waiver", "pay"]);
+  assert.equal(result.kind, "redirect");
+  assert.equal(result.bookingId, "bk-9");
+  assert.equal(result.expiresAt, "2026-07-19T10:10:00.000Z"); // starts the payment-window countdown
+  assert.equal(result.redirectUrl, "https://pay");
+});
+
+test("runCheckout returns a confirmed result with expiresAt for wallet-only payments", async () => {
+  const result = await runCheckout(
+    {
+      createHold: async () => ({ bookingId: "bk-10", expiresAt: "2026-07-19T10:10:00.000Z" }),
+      acceptWaiver: async () => {},
+      initiatePayment: async () => ({ kind: "confirmed" }),
+    },
+    { selection: {} },
+  );
+  assert.equal(result.kind, "confirmed");
+  assert.equal(result.bookingId, "bk-10");
+  assert.equal(result.expiresAt, "2026-07-19T10:10:00.000Z");
+});
+
+test("runCheckout stops at a failed hold — waiver and payment are never called", async () => {
+  const calls = [];
   await assert.rejects(
     () => runCheckout(
       {
         createHold: async () => ({ bookingId: null }),
-        acceptWaiver: async () => {},
-        initiatePayment: async () => ({ kind: "confirmed" }),
+        acceptWaiver: async () => { calls.push("waiver"); },
+        initiatePayment: async () => { calls.push("pay"); },
       },
       { selection: {} },
     ),
     /Could not create booking hold/,
   );
+  assert.deepEqual(calls, []);
 });
 
 test("getCheckoutBreakdown with no wallet leaves the full total payable via UPI", () => {
@@ -610,4 +722,325 @@ test("summarizeCourtSlots is safe for an empty selection", () => {
   assert.equal(s.durationMins, 0);
   assert.equal(s.courtTotal, 0);
   assert.equal(s.startTime, undefined);
+});
+
+/* ── Multi-court selection model (02-BUSINESS-LOGIC §5.1) ─────────────── */
+
+const slot = (startTime, endTime, status = "available") => ({ startTime, endTime, status, price: 500 });
+
+const twoCourtAvailability = () => ([
+  {
+    courtId: "c1",
+    courtName: "Court 1",
+    slots: [slot("09:00", "10:00"), slot("10:00", "11:00"), slot("11:00", "12:00"), slot("12:00", "13:00")],
+  },
+  {
+    courtId: "c2",
+    courtName: "Court 2",
+    slots: [slot("09:00", "10:00", "booked"), slot("10:00", "11:00"), slot("11:00", "12:00"), slot("12:00", "13:00", "pending")],
+  },
+]);
+
+test("getSharedAvailableSlotTimes intersects availability across all courts", () => {
+  const shared = getSharedAvailableSlotTimes(twoCourtAvailability(), ["c1", "c2"]);
+  // 09:00 booked on c2, 12:00 pending on c2 → only 10:00 and 11:00 are shared.
+  assert.deepEqual([...shared].sort(), ["10:00", "11:00"]);
+});
+
+test("getSharedAvailableSlotTimes is empty for fewer than two courts", () => {
+  assert.equal(getSharedAvailableSlotTimes(twoCourtAvailability(), ["c1"]).size, 0);
+  assert.equal(getSharedAvailableSlotTimes([], []).size, 0);
+});
+
+test("reduceSlotClick starts a selection on the first available click", () => {
+  const { selections, notice } = reduceSlotClick({
+    selections: new Map(),
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("10:00", "11:00"),
+  });
+  assert.equal(notice, null);
+  assert.deepEqual(selections.get("c1"), { startTime: "10:00", endTime: "11:00" });
+});
+
+test("reduceSlotClick ignores unavailable slots without touching state", () => {
+  const prev = new Map([["c1", { startTime: "10:00", endTime: "11:00" }]]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c2",
+    slot: slot("09:00", "10:00", "booked"),
+  });
+  assert.equal(selections, prev); // same reference — no re-render cascade
+  assert.equal(notice, null);
+});
+
+test("reduceSlotClick extends the shared range on all selected courts (mirroring)", () => {
+  const prev = new Map([
+    ["c1", { startTime: "10:00", endTime: "11:00" }],
+    ["c2", { startTime: "10:00", endTime: "11:00" }],
+  ]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("11:00", "12:00"),
+  });
+  assert.equal(notice, null);
+  assert.deepEqual(selections.get("c1"), { startTime: "10:00", endTime: "12:00" });
+  assert.deepEqual(selections.get("c2"), { startTime: "10:00", endTime: "12:00" });
+});
+
+test("reduceSlotClick refuses an extension when another selected court is not free (no asymmetry)", () => {
+  const prev = new Map([
+    ["c1", { startTime: "10:00", endTime: "12:00" }],
+    ["c2", { startTime: "10:00", endTime: "12:00" }],
+  ]);
+  // 12:00 is pending on Court 2 → extending to 12:00–13:00 must be refused.
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("12:00", "13:00"),
+  });
+  assert.equal(selections, prev);
+  assert.equal(notice.courtId, "c1");
+  assert.match(notice.message, /Court 2 isn't free for 10:00–13:00/);
+});
+
+test("reduceSlotClick joins an unselected court by mirroring the shared range", () => {
+  const prev = new Map([["c1", { startTime: "10:00", endTime: "12:00" }]]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c2",
+    slot: slot("11:00", "12:00"),
+  });
+  assert.equal(notice, null);
+  // Court 2 mirrors the FULL shared range, not just the clicked slot.
+  assert.deepEqual(selections.get("c2"), { startTime: "10:00", endTime: "12:00" });
+  assert.deepEqual(selections.get("c1"), { startTime: "10:00", endTime: "12:00" });
+});
+
+test("reduceSlotClick refuses joining a court that is not free for the whole shared range", () => {
+  const prev = new Map([["c1", { startTime: "09:00", endTime: "11:00" }]]);
+  // Court 2's 09:00 slot is booked → it cannot join the 09:00–11:00 session.
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c2",
+    slot: slot("10:00", "11:00"),
+  });
+  assert.equal(selections, prev);
+  assert.match(notice.message, /isn't free for the full 09:00–11:00 range/);
+});
+
+test("reduceSlotClick refuses an out-of-range click on an unselected court with guidance", () => {
+  const prev = new Map([["c1", { startTime: "10:00", endTime: "11:00" }]]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c2",
+    slot: slot("12:00", "13:00"),
+  });
+  assert.equal(selections, prev);
+  assert.match(notice.message, /All courts share the same time range \(10:00–11:00\)/);
+});
+
+test("reduceSlotClick removes a court on an in-range click, clearing fully at the last court", () => {
+  const both = new Map([
+    ["c1", { startTime: "10:00", endTime: "11:00" }],
+    ["c2", { startTime: "10:00", endTime: "11:00" }],
+  ]);
+  const afterFirst = reduceSlotClick({
+    selections: both,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c2",
+    slot: slot("10:00", "11:00"),
+  });
+  assert.equal(afterFirst.selections.has("c2"), false);
+  assert.deepEqual(afterFirst.selections.get("c1"), { startTime: "10:00", endTime: "11:00" });
+
+  const afterSecond = reduceSlotClick({
+    selections: afterFirst.selections,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("10:00", "11:00"),
+  });
+  assert.equal(afterSecond.selections.size, 0);
+});
+
+test("reduceSlotClick jump-fills to a distant slot, selecting the intermediates automatically", () => {
+  const prev = new Map([["c1", { startTime: "09:00", endTime: "10:00" }]]);
+  // 09:00 selected, tap 12:00 → 09:00 through 13:00 with 10:00/11:00 auto-filled.
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("12:00", "13:00"),
+  });
+  assert.equal(notice, null);
+  assert.deepEqual(selections.get("c1"), { startTime: "09:00", endTime: "13:00" });
+});
+
+test("reduceSlotClick jump-fills backwards from the range start", () => {
+  const prev = new Map([["c1", { startTime: "12:00", endTime: "13:00" }]]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: twoCourtAvailability(),
+    courtId: "c1",
+    slot: slot("09:00", "10:00"),
+  });
+  assert.equal(notice, null);
+  assert.deepEqual(selections.get("c1"), { startTime: "09:00", endTime: "13:00" });
+});
+
+test("reduceSlotClick refuses a jump-fill that would span an unavailable slot (no gaps)", () => {
+  const availabilityData = [
+    {
+      courtId: "c1",
+      courtName: "Court 1",
+      slots: [
+        slot("09:00", "10:00"),
+        slot("10:00", "11:00", "booked"), // hole in the middle
+        slot("11:00", "12:00"),
+      ],
+    },
+  ];
+  const prev = new Map([["c1", { startTime: "09:00", endTime: "10:00" }]]);
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData,
+    courtId: "c1",
+    slot: slot("11:00", "12:00"),
+  });
+  assert.equal(selections, prev);
+  assert.match(notice.message, /includes slots that aren't free on this court/);
+});
+
+test("reduceSlotClick caps a session at 12 slots with a clear notice", () => {
+  const hour = (h) => `${String(h).padStart(2, "0")}:00`;
+  const longDay = [{
+    courtId: "c1",
+    courtName: "Court 1",
+    slots: Array.from({ length: 14 }, (_, i) => slot(hour(7 + i), hour(8 + i))),
+  }];
+  const prev = new Map([["c1", { startTime: "07:00", endTime: "08:00" }]]);
+  // 07:00 → tap 19:00 would make 13 slots — one over the backend's cap of 12.
+  const { selections, notice } = reduceSlotClick({
+    selections: prev,
+    availabilityData: longDay,
+    courtId: "c1",
+    slot: slot("19:00", "20:00"),
+  });
+  assert.equal(selections, prev);
+  assert.match(notice.message, /up to 12 consecutive slots/);
+
+  // Exactly 12 slots (07:00 → tap 18:00) is allowed.
+  const ok = reduceSlotClick({
+    selections: prev,
+    availabilityData: longDay,
+    courtId: "c1",
+    slot: slot("18:00", "19:00"),
+  });
+  assert.equal(ok.notice, null);
+  assert.deepEqual(ok.selections.get("c1"), { startTime: "07:00", endTime: "19:00" });
+});
+
+test("reduceSlotClick caps a session at 8 courts with a clear notice", () => {
+  const nineCourts = Array.from({ length: 9 }, (_, i) => ({
+    courtId: `c${i + 1}`,
+    courtName: `Court ${i + 1}`,
+    slots: [slot("09:00", "10:00")],
+  }));
+  const eightSelected = new Map(
+    nineCourts.slice(0, 8).map((c) => [c.courtId, { startTime: "09:00", endTime: "10:00" }]),
+  );
+  const { selections, notice } = reduceSlotClick({
+    selections: eightSelected,
+    availabilityData: nineCourts,
+    courtId: "c9",
+    slot: slot("09:00", "10:00"),
+  });
+  assert.equal(selections, eightSelected);
+  assert.match(notice.message, /up to 8 courts/);
+});
+
+test("reducer-produced selections always satisfy the checkout symmetry validation", () => {
+  // Walk a full interaction and assert buildBookingSelectionPayload never fails
+  // on symmetry — the reducer makes asymmetric states unrepresentable.
+  const availabilityData = twoCourtAvailability();
+  let selections = new Map();
+  const clicks = [
+    ["c1", slot("10:00", "11:00")],
+    ["c2", slot("10:00", "11:00")],
+    ["c1", slot("11:00", "12:00")],
+    ["c2", slot("12:00", "13:00", "pending")], // ignored (unavailable)
+  ];
+  for (const [courtId, s] of clicks) {
+    selections = reduceSlotClick({ selections, availabilityData, courtId, slot: s }).selections;
+    const selectedCourtsData = [...selections.entries()].map(([id, range]) => {
+      const courtSlots = availabilityData.find((c) => c.courtId === id).slots;
+      const startIdx = courtSlots.findIndex((sl) => sl.startTime === range.startTime);
+      const endIdx = courtSlots.findIndex((sl) => sl.endTime === range.endTime);
+      return { courtId: id, courtName: id, slots: courtSlots.slice(startIdx, endIdx + 1) };
+    });
+    if (selectedCourtsData.length > 0) {
+      const payload = buildBookingSelectionPayload({
+        venueId: "v1",
+        selectedDate: "2026-07-20",
+        selectedCourtsData,
+      });
+      assert.equal(payload.ok, true, `asymmetric state after clicking ${JSON.stringify(s)}`);
+    }
+  }
+});
+
+test("buildBookingSelectionPayload refuses over-limit sessions with actionable messages", () => {
+  const hour = (h) => `${String(h).padStart(2, "0")}:00`;
+  const thirteenSlots = Array.from({ length: 13 }, (_, i) => ({
+    startTime: hour(7 + i),
+    endTime: hour(8 + i),
+    price: 500,
+  }));
+  const overSlots = buildBookingSelectionPayload({
+    venueId: "v1",
+    selectedDate: "2026-07-20",
+    selectedCourtsData: [{ courtId: "c1", courtName: "Court 1", slots: thirteenSlots }],
+  });
+  assert.equal(overSlots.ok, false);
+  assert.match(overSlots.message, /up to 12 consecutive slots/);
+
+  const nineCourts = Array.from({ length: 9 }, (_, i) => ({
+    courtId: `c${i + 1}`,
+    courtName: `Court ${i + 1}`,
+    slots: [{ startTime: "09:00", endTime: "10:00", price: 500 }],
+  }));
+  const overCourts = buildBookingSelectionPayload({
+    venueId: "v1",
+    selectedDate: "2026-07-20",
+    selectedCourtsData: nineCourts,
+  });
+  assert.equal(overCourts.ok, false);
+  assert.match(overCourts.message, /up to 8 courts/);
+});
+
+/* ── Hold countdown helpers (03-UI-UX-SPECIFICATION §2.4) ─────────────── */
+
+test("getRemainingSeconds counts down from expiresAt and floors at zero", () => {
+  const now = new Date("2026-07-19T10:00:00.000Z").getTime();
+  assert.equal(getRemainingSeconds("2026-07-19T10:10:00.000Z", now), 600);
+  assert.equal(getRemainingSeconds("2026-07-19T10:00:30.500Z", now), 31); // ceils partial seconds
+  assert.equal(getRemainingSeconds("2026-07-19T09:59:59.000Z", now), 0);  // past → 0, never negative
+  assert.equal(getRemainingSeconds("garbage", now), 0);                    // invalid → 0 (treated expired)
+});
+
+test("formatCountdown renders m:ss with zero-padded seconds", () => {
+  assert.equal(formatCountdown(600), "10:00");
+  assert.equal(formatCountdown(599), "9:59");
+  assert.equal(formatCountdown(61), "1:01");
+  assert.equal(formatCountdown(9), "0:09");
+  assert.equal(formatCountdown(0), "0:00");
+  assert.equal(formatCountdown(-5), "0:00");
+  assert.equal(formatCountdown(NaN), "0:00");
 });

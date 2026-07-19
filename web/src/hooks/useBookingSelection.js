@@ -2,7 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { buildDateWindow, getSlotRange } from "@/lib/bookingEngine";
+import {
+  buildDateWindow,
+  getSharedAvailableSlotTimes,
+  getSlotRange,
+  reduceSlotClick,
+} from "@/lib/bookingEngine";
 import { couponSchema } from "@/lib/schemas";
 import { getAvailabilityAction, previewBookingPriceAction } from "@/lib/actions/booking";
 import { buildBookingSelectionPayload } from "@/lib/normalizers";
@@ -42,6 +47,7 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
   const [availabilityData, setAvailabilityData] = useState(initialAvailability || []);
   const [availabilityError, setAvailabilityError] = useState("");
   const [courtSelections, setCourtSelections] = useState(new Map());
+  const [selectionNotice, setSelectionNotice] = useState(null);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCouponCode, setAppliedCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
@@ -52,19 +58,15 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
   // prop, so we skip the first client fetch to avoid a server→client→server
   // waterfall / double-fetch (HI-4). Subsequent date changes fetch as normal.
   const initialFetchSkippedRef = useRef(false);
+  // Monotonic token so a manual refresh can't be clobbered by a stale in-flight
+  // fetch (and vice versa) — only the latest request may write state.
+  const fetchTokenRef = useRef(0);
 
-  useEffect(() => {
-    if (!initialFetchSkippedRef.current && selectedDate === initialDate) {
-      initialFetchSkippedRef.current = true;
-      return;
-    }
-    initialFetchSkippedRef.current = true;
-
-    let active = true;
-
-    getAvailabilityAction(venue.id, selectedDate)
+  const fetchAvailability = useCallback((date) => {
+    const token = ++fetchTokenRef.current;
+    return getAvailabilityAction(venue.id, date)
       .then((res) => {
-        if (!active) return;
+        if (token !== fetchTokenRef.current) return;
         if (res.ok) {
           setAvailabilityData(res.data);
           setAvailabilityError("");
@@ -74,15 +76,37 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
         }
       })
       .catch((error) => {
-        if (!active) return;
+        if (token !== fetchTokenRef.current) return;
         setAvailabilityData([]);
         setAvailabilityError(error.message || "Could not load availability.");
       });
+  }, [venue.id]);
 
-    return () => {
-      active = false;
-    };
-  }, [selectedDate, venue.id, initialDate]);
+  useEffect(() => {
+    if (!initialFetchSkippedRef.current && selectedDate === initialDate) {
+      initialFetchSkippedRef.current = true;
+      return;
+    }
+    initialFetchSkippedRef.current = true;
+    fetchAvailability(selectedDate);
+  }, [selectedDate, initialDate, fetchAvailability]);
+
+  /**
+   * Re-fetches availability for the current date without touching the selection.
+   * Used after a hold expires or fails on slot contention, so the grid reflects
+   * what other users have taken in the meantime.
+   */
+  const refreshAvailability = useCallback(
+    () => fetchAvailability(selectedDate),
+    [fetchAvailability, selectedDate],
+  );
+
+  // Start times available on EVERY court — the shared booking windows the grid
+  // highlights when the venue has multiple courts (03-UI-UX-SPECIFICATION §2.2).
+  const sharedSlotTimes = useMemo(
+    () => getSharedAvailableSlotTimes(availabilityData, availabilityData.map((c) => c.courtId)),
+    [availabilityData],
+  );
 
   const selectedCourtsData = useMemo(() => {
     const result = [];
@@ -160,32 +184,35 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     };
   }, [appliedCouponCode, hasSelection, selectionPayload]);
 
-  const selectSlot = useCallback((courtId, slotOrAction) => {
+  /**
+   * Handles a slot click. All gesture logic lives in `reduceSlotClick` — the
+   * reducer mirrors one shared time range across every selected court, so an
+   * asymmetric selection can never be produced by the UI (02-BUSINESS-LOGIC
+   * §5.1); `buildBookingSelectionPayload` remains the checkout-time safeguard.
+   */
+  const selectSlot = useCallback((courtId, slot) => {
+    const { selections, notice } = reduceSlotClick({
+      selections: courtSelections,
+      availabilityData,
+      courtId,
+      slot,
+    });
+    setSelectionNotice(notice);
+    if (selections !== courtSelections) {
+      setServerQuote(EMPTY_QUOTE);
+      setQuoteRequestError("");
+      setCourtSelections(selections);
+    }
+  }, [availabilityData, courtSelections]);
+
+  /** Clears every court selection (e.g. after a hold expires mid-checkout). */
+  const clearSelections = useCallback(() => {
+    setCourtSelections(new Map());
+    setSelectionNotice(null);
     setServerQuote(EMPTY_QUOTE);
     setQuoteRequestError("");
-    setCourtSelections((prev) => {
-      const next = new Map(prev);
-
-      if (slotOrAction === null) {
-        next.delete(courtId);
-        return next;
-      }
-
-      if (slotOrAction.startSlot && slotOrAction.endSlot) {
-        next.set(courtId, {
-          startTime: slotOrAction.startSlot.startTime,
-          endTime: slotOrAction.endSlot.endTime,
-        });
-      } else {
-        next.set(courtId, {
-          startTime: slotOrAction.startTime,
-          endTime: slotOrAction.endTime,
-        });
-      }
-
-      return next;
-    });
   }, []);
+
 
   const applyCoupon = useCallback(() => {
     const parsed = couponSchema.safeParse(couponCode);
@@ -205,6 +232,7 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     setSelectedDate(date);
     setAvailabilityError("");
     setCourtSelections(new Map());
+    setSelectionNotice(null);
     setServerQuote(EMPTY_QUOTE);
     setQuoteRequestError("");
   }, []);
@@ -218,6 +246,8 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     courtSelections,
     selectedCourtsData,
     selectionPayload,
+    selectionNotice,
+    sharedSlotTimes,
     // Coupon
     couponCode,
     setCouponCode,
@@ -230,6 +260,8 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     // Actions
     selectDate,
     selectSlot,
+    clearSelections,
+    refreshAvailability,
     applyCoupon,
   };
 }

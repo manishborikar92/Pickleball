@@ -7,23 +7,24 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 ## 1. Availability
 
 ### Shared Court Selection Slot Intersection Highlighting
-* **Current Status:** Not Started
+* **Current Status:** ✅ Implemented 2026-07-19
 * **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.2 ("Section 4 — Select Time Slots")
 * **Description:** 
-  The UI/UX Specification states: "When both courts are selected, the slot grids must show the intersection of available slots highlighted — slots that are available on at least one court show normally." The current slot grids ([SlotGrid.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/SlotGrid.js)) render court availabilities completely independently, with no overlay indicating which slots are open simultaneously on both courts.
-* **Missing Pieces:**
-  * Update the client-side state in `useBookingSelection.js` to compute intersecting slot ranges.
-  * Apply visual highlighting (such as matching border glows or indicator badges) on overlapping slots in the grids.
+  The UI/UX Specification states: "When both courts are selected, the slot grids must show the intersection of available slots highlighted — slots that are available on at least one court show normally."
+* **Delivered:**
+  * `getSharedAvailableSlotTimes()` in `bookingEngine.js` computes the start times available on every court; `useBookingSelection.js` exposes the set to the grids.
+  * `SlotGrid.js` renders shared slots with a subtle accent-border highlight (selected styling always wins). Covered by unit tests in `web/tests/core.test.js`.
 * **User Impact:** Medium (Makes it harder for groups to book consecutive slots spanning both courts).
 * **Dependencies:** None.
 
 ### Prevention of Asymmetric Multi-Court Selections in UI
-* **Current Status:** Needs Improvement
+* **Current Status:** ✅ Implemented 2026-07-19
 * **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 5.1 ("Selection Model")
 * **Description:** 
-  The business logic requires all selected courts to share the exact same start and end times. The client normalizer [normalizers.js:257-261](file:///c:/Users/manis/Projects/Pickleball/web/src/lib/normalizers.js#L257-L261) validates this and disables checkout with the error "Select the same time range for each selected court." However, the interactive `SlotGrid` still allows users to select mismatched slots (e.g. 9-10 AM on Court 1, 10-11 AM on Court 2), resulting in a confusing, reactive validation state.
-* **Missing Pieces:**
-  * Update the click handler in `SlotGrid.js` to automatically mirror selections across all active courts, or lock the selection range on secondary courts once the primary court's slots are selected.
+  The business logic requires all selected courts to share the exact same start and end times. Previously the grid allowed mismatched per-court selections that only failed reactively at checkout.
+* **Delivered:**
+  * All click gestures now run through the pure `reduceSlotClick()` reducer in `bookingEngine.js`, which mirrors one shared time range across every selected court: joining a court mirrors the full range (only if the court is free for all of it), extending the range extends it on all selected courts (refused with an inline notice if any selected court is not free), and tapping a distant slot auto-fills the intermediate slots. Session caps (12 slots / 8 courts, matching backend Joi validators) are refused up-front with clear notices.
+  * An asymmetric selection is now unrepresentable in the UI; `buildBookingSelectionPayload` symmetry validation remains as the checkout-time safeguard. Covered by unit tests in `web/tests/core.test.js`, including a regression walk asserting every reachable state passes the symmetry check.
 * **User Impact:** Medium (Clunky checkout UX).
 * **Dependencies:** None.
 
@@ -32,15 +33,14 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 ## 2. Booking & Checkout
 
 ### 10-Minute Hold Countdown Timer
-* **Current Status:** Not Started
+* **Current Status:** ✅ Implemented 2026-07-19
 * **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.4 ("Checkout — Hold Confirmed")
 * **Description:** 
-  The UI/UX Specification requests a "countdown timer showing remaining hold time (10 minutes)" on the checkout and waiver screen. No countdown timer exists in the checkout modal ([AuthFlow.js](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/AuthFlow.js)).
-  Furthermore, the slot hold is not actually requested from the backend until the user checks the waiver and clicks "Pay" ([BookingClient.js:105](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/booking/BookingClient.js#L105)). Thus, the user reviews checkout details *before* slots are locked, exposing them to slot contention during review.
-* **Missing Pieces:**
-  * Refactor checkout flow to call `createHold` at the transition to the waiver step.
-  * Pass the hold expiration timestamp (`expiresAt`) to `WaiverStep`.
-  * Implement an active countdown clock on the checkout card that releases state and returns the user to the grid if time runs out.
+  The UI/UX Specification requests a "countdown timer showing remaining hold time (10 minutes)" on the checkout and waiver screen, backed by a hold that is secured *before* the user reviews checkout.
+* **Delivered:**
+  * Checkout is commit-on-confirm: the confirm modal opens instantly with the live price preview and reserves nothing; `checkoutBookingAction` runs the whole hold → waiver → initiate-payment transaction when the user clicks the final Confirm & Pay button (`lib/services/checkout.js` — `runCheckout`). Abandoning the review step leaves no server-side state, and slot contention at commit surfaces as a clear conflict message with a grid refresh.
+  * From the commit, `useCountdown` (new hook) drives a live m:ss countdown of the 10-minute payment window on the waiver card (`AuthFlow.js`), switching to a danger tone for the final minute; an expired window releases local state, refreshes availability, and returns the user to the grid with an explanatory panel. Server-observed expiry (410 `BOOKING_EXPIRED`) follows the same path.
+  * The committed hold plus a checkout-view snapshot persist in `sessionStorage`, so a dismissed payment popup, closed modal, reload, or return from the gateway can all resume the same payment within the TTL (a "Resume checkout" banner shows the remaining time; `confirmHeldBookingAction` reuses the initiated payment order). Hold-limit (429) failures surface as actionable messages.
 * **User Impact:** High (Without a timer, users have no idea how much time they have to pay; slot hoarding or locking conflicts are hidden).
 * **Dependencies:** None.
 
@@ -54,6 +54,17 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
   * Update `BookingDetailView.js` to display the PIN for confirmed bookings.
 * **User Impact:** Low (Future smart lock integration blocker).
 * **Dependencies:** None.
+
+### Payment Redirect Backend Exposure
+* **Current Status:** Proposed Refinement
+* **Documented in:** [02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md) Section 2.2 ("Environment URLs"), Section 6 ("Browser Redirection & Status Check")
+* **Description:** 
+  During checkout, the PhonePe payment provider configures a direct backend callback URL (`http://localhost:5000/api/v1/payments/redirect?orderId=${merchantOrderId}`). After completing the payment, PhonePe redirects the customer's browser directly to this backend API URL. The browser URL bar briefly exposes the backend domain/port, displaying raw backend-level redirections (HTTP 302) before routing the client back to the frontend (`http://localhost:3000/booking/${bookingId}`). This compromises domain isolation, leaks private API server details to the client browser, and triggers cross-origin routing complexities.
+* **Proposed Solution:**
+  Establish a dedicated frontend **Payment Callback & Verification Route** (`/booking/callback?orderId=...`). Configure PhonePe to redirect users back to the frontend domain at `${frontendBaseUrl}/booking/callback?orderId=${merchantOrderId}`. On page load, show a themed spinner and reassuring confirmation loading state, while making an asynchronous fetch to the backend `/payments/redirect` endpoint to process and reconcile the payment status, and then smoothly redirect the user to `/booking/${bookingId}` (success) or `/booking/error` (failure).
+* **User Impact:** High (Aesthetic discontinuity, security risk of leaking internal backend ports, and CORS verification friction).
+* **Dependencies:** None.
+* **Note:** The proposed solution is a recommended approach to achieve the best possible end-user experience. If, during subsequent design stages or further technical analysis, an even better architectural solution is identified, it should be proposed instead. The overriding priority is always to implement the best overall solution, even if it differs from the proposed implementation route documented here.
 
 ---
 
@@ -160,14 +171,14 @@ The identified gaps are prioritized into three phases to organize development pr
 graph TD
     %% Phase 1: Production Launch Blockers
     subgraph Phase 1 ["Phase 1 — Critical Before Production"]
-        A3["10-Minute Hold Countdown Timer"]
+        A3["10-Minute Hold Countdown Timer — ✅ DONE"]
         A4["Support Form Submission Delivery"]
     end
 
     %% Phase 2: High Priority MVP Features
     subgraph Phase 2 ["Phase 2 — High Priority MVP"]
-        B1["Slot Intersection Highlighting"]
-        B2["Asymmetric Court Selection Prevention"]
+        B1["Slot Intersection Highlighting — ✅ DONE"]
+        B2["Asymmetric Court Selection Prevention — ✅ DONE"]
     end
 
     %% Phase 3: Nice to Have / Post-Launch Enhancements
@@ -184,8 +195,8 @@ graph TD
 ## Phase 1 — Critical Before Production
 *Features that prevent a production-ready, secure user experience.*
 
-1. **10-Minute Hold Countdown Timer & Hold Lock Timing**
-   * *Rationale:* Essential to prevent users from attempting checkout on expired/taken slots, and coordinates client-server timing.
+1. **10-Minute Hold Countdown Timer & Hold Lock Timing** — ✅ Implemented 2026-07-19
+   * *Rationale:* Essential to prevent users from attempting checkout on expired/taken slots, and coordinates client-server timing. Delivered as a hold-first checkout with a live countdown, sessionStorage-backed payment resume, and graceful expiry handling.
 2. **Support Form Submission Delivery**
    * *Rationale:* Submitting contact details currently returns an explicit failure notice to the end user.
 
@@ -194,10 +205,12 @@ graph TD
 ## Phase 2 — High Priority
 *Important usability or compliance improvements expected in an MVP.*
 
-1. **Shared Court Selection Slot Intersection Highlighting**
-   * *Rationale:* Greatly improves multi-court selection workflow efficiency.
-2. **Prevention of Asymmetric Multi-Court Selections in UI**
-   * *Rationale:* Prevents validation alerts on checkout submit by locking inputs earlier.
+1. **Shared Court Selection Slot Intersection Highlighting** — ✅ Implemented 2026-07-19
+   * *Rationale:* Greatly improves multi-court selection workflow efficiency. Delivered as an accent-border highlight (with legend and accessible labels) on slots open across all courts.
+2. **Prevention of Asymmetric Multi-Court Selections in UI** — ✅ Implemented 2026-07-19
+   * *Rationale:* Prevents validation alerts on checkout submit by locking inputs earlier. Delivered via the mirrored session-range selection reducer with jump-fill and proactive session caps.
+3. **Payment Redirect Backend Exposure**
+   * *Rationale:* Prevents exposing the direct backend API domain and port in the browser address bar and logs.
 
 ---
 

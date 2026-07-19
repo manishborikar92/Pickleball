@@ -3,11 +3,15 @@
 /**
  * lib/actions/booking.js — Booking mutation actions (route-independent, ADR-W009).
  *
- * The multi-step checkout transaction now lives on the server (HI-13): the client
- * calls `checkoutBookingAction` once and only navigates on the discriminated
- * result. Every action validates its input (HI-2) and, where it touches owned
- * resources, verifies the session (HI-14). All backend responses are normalized
- * to camelCase before crossing back to the client (ME-2).
+ * Checkout is commit-on-confirm (HI-13): nothing is reserved while the user
+ * reviews checkout. `checkoutBookingAction` runs the whole hold → waiver →
+ * initiate-payment transaction when the user clicks the final Confirm & Pay
+ * button, returning `expiresAt` so the client can count down the 10-minute
+ * payment window; `confirmHeldBookingAction` resumes an already-held booking
+ * (cancelled/abandoned gateway step) within that window. Every action validates
+ * its input (HI-2) and, where it touches owned resources, verifies the session
+ * (HI-14). All backend responses are normalized to camelCase before crossing
+ * back to the client (ME-2).
  */
 
 import { cookies } from "next/headers";
@@ -17,7 +21,7 @@ import { getAvailability } from "@/lib/dal/availability";
 import { getBooking } from "@/lib/dal/bookings";
 import { getWallet } from "@/lib/dal/wallet";
 import { verifySession } from "@/lib/dal/session";
-import { runCheckout } from "@/lib/services/checkout";
+import { runCheckout, confirmHeldBooking } from "@/lib/services/checkout";
 import {
   normalizePricePreviewResponse,
   normalizeHoldResponse,
@@ -100,15 +104,41 @@ export async function previewBookingPriceAction(selection) {
     });
     return ok(normalizePricePreviewResponse(payload.data));
   } catch (error) {
-    return fail(error, { message: "Could not calculate price." });
+    // Surface the backend's own 4xx explanation (e.g. "Slot 10:00 is not
+    // available") — masking it as a generic pricing failure hides the cause.
+    const message = error?.status && error.status < 500 && error.message
+      ? error.message
+      : "Could not calculate price.";
+    return fail(error, { message });
   }
 }
 
 /**
- * Runs the full checkout transaction (hold → waiver → initiate-payment) on the
- * server and returns a discriminated result the client acts on (HI-13).
+ * Maps a hold-time ApiError to a user-facing message keyed on its stable code
+ * (ME-1) — the backend's holds have three interesting failure modes the checkout
+ * UI treats differently from a generic error.
+ */
+function holdErrorMessage(error) {
+  switch (error?.code) {
+    case "conflict":
+      return "Some of your selected slots were just taken. Please pick a different time.";
+    case "rate_limited":
+      return "You already have active booking holds. Complete or wait for them to expire before starting another.";
+    case "gone":
+      return "This booking hold has expired. Please reselect your slots.";
+    default:
+      return error?.message || "Could not reserve your slots. Please try again.";
+  }
+}
+
+/**
+ * The checkout commit (HI-13, commit-on-confirm): reserves the slots and runs
+ * waiver → initiate-payment in one server pass when the user clicks the final
+ * Confirm & Pay button. Nothing is reserved before this call, so abandoning the
+ * review step leaves no server-side state. Returns a discriminated result the
+ * client acts on; `expiresAt` (on success) starts the 10-minute payment window.
  *
- * @returns {Promise<{kind:"confirmed"|"redirect"|"error", ...}>}
+ * @returns {Promise<{kind:"confirmed"|"redirect"|"conflict"|"error", ...}>}
  */
 export async function checkoutBookingAction(selection, { useWalletCredits = true } = {}) {
   const parsed = bookingSelectionSchema.safeParse(selection);
@@ -148,6 +178,62 @@ export async function checkoutBookingAction(selection, { useWalletCredits = true
       { selection: parsed.data, useWalletCredits },
     );
   } catch (error) {
+    // Slot contention at commit time — the client refreshes the grid so the
+    // user reselects against current truth.
+    if (error?.code === "conflict") {
+      return { kind: "conflict", message: holdErrorMessage(error) };
+    }
+    if (error?.code === "rate_limited") {
+      return { kind: "error", code: "hold_limit", message: holdErrorMessage(error) };
+    }
+    return { kind: "error", code: error?.code || "api_error", message: error?.message || "Could not complete booking." };
+  }
+}
+
+/**
+ * Step 2 of checkout: completes an already-held booking (waiver → initiate-payment)
+ * when the user clicks Pay. Returns a discriminated result the client acts on
+ * (HI-13). A 410 means the hold expired before the user paid — the client
+ * releases its local state and returns to the grid.
+ *
+ * @returns {Promise<{kind:"confirmed"|"redirect"|"error", ...}>}
+ */
+export async function confirmHeldBookingAction(bookingId, { useWalletCredits = true } = {}) {
+  if (!bookingId) {
+    return { kind: "error", code: "bad_request", message: "Missing booking reference." };
+  }
+
+  const session = await verifySession();
+  if (!session?.user) {
+    return { kind: "error", code: "unauthorized", message: "Please sign in to complete your booking." };
+  }
+
+  const tokens = await readTokens();
+  const request = (path, opts) => apiRequest(path, { ...tokens, retryOnUnauthorized: true, ...opts });
+
+  try {
+    return await confirmHeldBooking(
+      {
+        acceptWaiver: async (id) => {
+          await request(`/api/v1/bookings/${id}/waiver`, {
+            method: "POST",
+            body: { time_acknowledged: true, policy_accepted: true },
+          });
+        },
+        initiatePayment: async (id, { useWalletCredits: useCredits }) => {
+          const { payload } = await request(`/api/v1/bookings/${id}/initiate-payment`, {
+            method: "POST",
+            body: { use_wallet_credits: useCredits },
+          });
+          return normalizePaymentInitiationResponse(payload.data);
+        },
+      },
+      { bookingId, useWalletCredits },
+    );
+  } catch (error) {
+    if (error?.code === "gone") {
+      return { kind: "error", code: "hold_expired", message: "Your booking hold expired before payment. Please reselect your slots." };
+    }
     return { kind: "error", code: error?.code || "api_error", message: error?.message || "Could not complete booking." };
   }
 }

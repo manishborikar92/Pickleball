@@ -1,4 +1,5 @@
 import { VENUE } from "../config/venue.config.js";
+import { MAX_SESSION_COURTS, MAX_SESSION_SLOTS } from "./bookingEngine.js";
 
 const DEFAULT_BRAND = "Baseline Arena";
 
@@ -378,6 +379,16 @@ export function buildBookingSelectionPayload({
   const allMatch = slotRanges.every((range) => JSON.stringify(range) === reference);
   if (!allMatch) {
     return { ok: false, message: "Select the same time range for each selected court." };
+  }
+
+  // Backend session limits (Joi caps in bookings.validators.js). The selection
+  // reducer refuses over-limit clicks up front; this is the checkout-time
+  // safeguard so an oversized selection never reads as a pricing failure.
+  if (selectedCourtsData.length > MAX_SESSION_COURTS) {
+    return { ok: false, message: `You can book up to ${MAX_SESSION_COURTS} courts in one session.` };
+  }
+  if (slotRanges[0].length > MAX_SESSION_SLOTS) {
+    return { ok: false, message: `You can book up to ${MAX_SESSION_SLOTS} consecutive slots in one session.` };
   }
 
   const normalizedCoupon = String(couponCode || "").trim().toUpperCase();

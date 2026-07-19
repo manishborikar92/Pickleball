@@ -58,8 +58,12 @@ function codeForStatus(status) {
       return "not_found";
     case 409:
       return "conflict";
+    case 410:
+      return "gone";
     case 422:
       return "unprocessable";
+    case 429:
+      return "rate_limited";
     default:
       return status >= 500 ? "server_error" : "api_error";
   }

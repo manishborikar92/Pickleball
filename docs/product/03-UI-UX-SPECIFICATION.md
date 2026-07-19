@@ -91,7 +91,7 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 **Section 4 — Select Time Slots**
 - One slot grid per selected court, rendered side-by-side on tablet/desktop, stacked on mobile.
 - Slots are displayed as chips: `09:00 – 10:00`.
-- **Multi-select rule:** The user can tap any available slot to start a selection. Tapping an adjacent slot extends the range. Tapping a non-adjacent slot shows an inline warning: "Slots must be consecutive. Tap an adjoining slot to extend your selection."
+- **Multi-select rule:** The user can tap any available slot to start a selection. Tapping another slot on the same court extends the range up to it, auto-filling the slots in between (e.g. 7:00 selected, tap 11:00 → 7:00–12:00); the extension is refused with an inline notice if any slot in the span is unavailable or the session would exceed 12 slots. All selected courts share one time range: tapping a slot inside the range on another court adds that court with the same range (refused with a notice if the court isn't free for the whole range), and range changes apply to every selected court — an asymmetric selection cannot be created.
 - Slots that are booked, pending, or blocked are greyed out and non-interactive.
 - When both courts are selected, the slot grids must show the **intersection of available slots** highlighted — slots that are available on at least one court show normally, but the price-preview reflects both courts' pricing.
 - Selected slots are highlighted in accent colour. The range is visualised as a connected bar across the selected chips.
@@ -108,7 +108,7 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 **Sticky Bottom CTA**
 - "Confirm & Pay" pill button — disabled until at least one court and one slot are selected.
 - "🔒 Secure checkout" micro-label beneath.
-- Tapping triggers the auth gate (if not verified), then the hold API call.
+- Tapping triggers the auth gate (if not verified), then opens the confirm step instantly. Nothing is reserved yet — the hold API call runs only at the final Confirm & Pay click (commit-on-confirm), so abandoning the review leaves no stale hold.
 
 ---
 
@@ -193,9 +193,9 @@ If `GET /users/me` returns a user with `name IS NOT NULL` and the JWT is valid, 
 
 ---
 
-### 2.4 Checkout — Hold Confirmed → Waiver & Payment
+### 2.4 Checkout — Waiver & Payment (Commit-on-Confirm)
 
-**Trigger:** Auth gate completed (or skipped for returning users). Slot hold created successfully via `POST /bookings/hold`.
+**Trigger:** Auth gate completed (or skipped for returning users). The confirm step opens instantly from the live price preview — nothing is reserved while the user reviews.
 
 **Content:**
 - Full order summary rendered clearly: court(s), date, session time in full unambiguous format (e.g., "Sunday, 11 May 2025 · 9:00 AM to 12:00 PM · 3 hours").
@@ -203,9 +203,9 @@ If `GET /users/me` returns a user with `name IS NOT NULL` and the JWT is valid, 
 - Two mandatory checkboxes (both must be checked to enable "Confirm & Pay"):
   1. "I confirm my booking is for [full time string] and understand it is non-refundable."
   2. "I accept the Terms & Conditions and Liability Waiver."
-- Countdown timer showing remaining hold time (10 minutes).
 - Final total amount.
-- CTA: "Confirm & Pay" → opens PhonePe payment sheet or confirms wallet-only booking.
+- CTA: "Confirm & Pay" → commits the booking in one server pass (`POST /bookings/hold` → waiver → initiate-payment), then opens the PhonePe payment sheet or confirms a wallet-only booking. Slot contention at commit shows a clear conflict message and refreshes the grid.
+- From the commit, a countdown timer shows the remaining 10-minute payment window. If the gateway step is cancelled or abandoned (popup dismissed, modal closed, reload), the payment can be resumed within the window — a "Resume checkout" banner on the grid shows the remaining time, and the backend reuses the initiated payment order. An expired window releases the slots and returns the user to selection.
 
 ---
 

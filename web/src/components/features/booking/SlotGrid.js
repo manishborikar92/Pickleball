@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 const STATUS_STYLES = {
   available:
     "border-line bg-surface-high text-foreground hover:border-accent hover:bg-accent/10 cursor-pointer",
@@ -25,18 +23,30 @@ const STATUS_LABELS = {
 /**
  * SlotGrid — renders one slot grid per court.
  * All courts are always visible — no court toggle or filter needed.
- * Supports consecutive multi-slot selection per court.
+ *
+ * Click gestures are interpreted by `reduceSlotClick` (via `useBookingSelection`),
+ * which mirrors one shared time range across all selected courts — the grid only
+ * reports which slot was tapped and renders the resulting state, including the
+ * per-court notice when a tap was refused (02-BUSINESS-LOGIC §5.1).
+ *
+ * When the venue has multiple courts, slots open on EVERY court get a
+ * shared-window highlight so group bookings can spot common windows at a glance
+ * (03-UI-UX-SPECIFICATION §2.2).
  *
  * @param {Object}   props
  * @param {Array}    props.availability    - Array of { courtId, slots[] } per court
  * @param {Array}    props.courts          - Array of court config objects
  * @param {Map}      props.courtSelections - Map<courtId, { startTime, endTime }>
- * @param {Function} props.onSlotSelect   - (courtId, slot, allSlots) => void
+ * @param {Set}      props.sharedSlotTimes - Start times available on all courts
+ * @param {Object}   props.selectionNotice - { courtId, message } | null
+ * @param {Function} props.onSlotSelect    - (courtId, slot) => void
  */
 export function SlotGrid({
   availability,
   courts,
   courtSelections,
+  sharedSlotTimes,
+  selectionNotice,
   onSlotSelect,
 }) {
   if (!availability || availability.length === 0) {
@@ -52,16 +62,15 @@ export function SlotGrid({
       {availability.map((courtAvailability) => {
         const court = courts.find((c) => c.id === courtAvailability.courtId);
         if (!court) return null;
-        const sel = courtSelections.get(court.id) || null;
         return (
           <CourtSlots
             key={court.id}
             court={court}
             slots={courtAvailability.slots}
-            selection={sel}
-            onSlotSelect={(slot) =>
-              onSlotSelect(court.id, slot, courtAvailability.slots)
-            }
+            selection={courtSelections.get(court.id) || null}
+            sharedSlotTimes={availability.length > 1 ? sharedSlotTimes : undefined}
+            notice={selectionNotice?.courtId === court.id ? selectionNotice.message : ""}
+            onSlotSelect={(slot) => onSlotSelect(court.id, slot)}
           />
         );
       })}
@@ -69,9 +78,7 @@ export function SlotGrid({
   );
 }
 
-function CourtSlots({ court, slots, selection, onSlotSelect }) {
-  const [rangeWarning, setRangeWarning] = useState(false);
-
+function CourtSlots({ court, slots, selection, sharedSlotTimes, notice, onSlotSelect }) {
   // Compute which slots are in the selected range
   const selectedStartIdx = selection
     ? slots.findIndex((s) => s.startTime === selection.startTime)
@@ -83,55 +90,6 @@ function CourtSlots({ court, slots, selection, onSlotSelect }) {
   function isInRange(idx) {
     if (selectedStartIdx === -1) return false;
     return idx >= selectedStartIdx && idx <= selectedEndIdx;
-  }
-
-  function handleClick(slot, idx) {
-    if (slot.status !== "available") return;
-
-    if (!selection) {
-      // No current selection — start fresh
-      setRangeWarning(false);
-      onSlotSelect(slot);
-      return;
-    }
-
-    // If clicking the same single slot, deselect
-    if (
-      selection.startTime === slot.startTime &&
-      selection.endTime === slot.endTime
-    ) {
-      setRangeWarning(false);
-      onSlotSelect(null);
-      return;
-    }
-
-    // If clicking within the current range — deselect entire range (no gaps)
-    if (isInRange(idx)) {
-      setRangeWarning(false);
-      onSlotSelect(null);
-      return;
-    }
-
-    // Check adjacency: slot must be immediately adjacent to range
-    const isAdjacentBefore = idx === selectedStartIdx - 1;
-    const isAdjacentAfter = idx === selectedEndIdx + 1;
-
-    if (isAdjacentBefore || isAdjacentAfter) {
-      // Extend the range
-      setRangeWarning(false);
-      const newStart = isAdjacentBefore
-        ? slot
-        : slots[selectedStartIdx];
-      const newEnd = isAdjacentAfter
-        ? slot
-        : slots[selectedEndIdx];
-      onSlotSelect({ startSlot: newStart, endSlot: newEnd });
-      return;
-    }
-
-    // Non-adjacent — show warning, don't change selection
-    setRangeWarning(true);
-    setTimeout(() => setRangeWarning(false), 3000);
   }
 
   return (
@@ -146,13 +104,12 @@ function CourtSlots({ court, slots, selection, onSlotSelect }) {
         </span>
       </h4>
 
-      {rangeWarning && (
+      {notice && (
         <div
           role="alert"
           className="mt-2 rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-xs font-medium text-accent"
         >
-          Slots must be consecutive. Tap an adjoining slot to extend your
-          selection.
+          {notice}
         </div>
       )}
 
@@ -171,7 +128,8 @@ function CourtSlots({ court, slots, selection, onSlotSelect }) {
               isFirst={isFirst}
               isLast={isLast}
               isSingle={isSingle}
-              onSelect={() => handleClick(slot, idx)}
+              isShared={Boolean(sharedSlotTimes?.has(slot.startTime))}
+              onSelect={() => onSlotSelect(slot)}
             />
           );
         })}
@@ -192,7 +150,7 @@ function CourtSlots({ court, slots, selection, onSlotSelect }) {
   );
 }
 
-function SlotButton({ slot, inRange, isFirst, isLast, isSingle, onSelect }) {
+function SlotButton({ slot, inRange, isFirst, isLast, isSingle, isShared, onSelect }) {
   const isAvailable = slot.status === "available";
 
   let selectedStyle = "";
@@ -213,9 +171,13 @@ function SlotButton({ slot, inRange, isFirst, isLast, isSingle, onSelect }) {
     }
   }
 
+  // Shared-window treatment: accent border on unselected available slots that are
+  // open on every court. The selected state always wins visually.
+  const sharedStyle = isShared && !inRange ? " border-accent/60" : "";
+
   const baseStyle = inRange
     ? selectedStyle
-    : `rounded-lg ${STATUS_STYLES[slot.status] ?? STATUS_STYLES.available}`;
+    : `rounded-lg ${STATUS_STYLES[slot.status] ?? STATUS_STYLES.available}${sharedStyle}`;
 
   return (
     <button

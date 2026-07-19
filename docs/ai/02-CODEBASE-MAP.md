@@ -53,7 +53,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
         │   ├── schemas/           #   Shared Zod validation schemas (client + server)
         │   └── …                  #   normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext
         ├── config/                # Application configuration (venue, metadata, map)
-        ├── hooks/                 # Client-side hooks (useOverlay, useTable, useBookingSelection, useBookingStatusPoll)
+        ├── hooks/                 # Client-side hooks (useOverlay, useTable, useBookingSelection, useBookingStatusPoll, useCountdown)
         └── proxy.js               # Optimistic proxy: cookie-presence redirects + proactive token refresh
 ```
 
