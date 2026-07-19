@@ -60,38 +60,63 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 ## 3. Notifications
 
 ### Scheduled WhatsApp Reminders (T-24h / T-2h)
-* **Current Status:** Not Started / Deferred
+* **Current Status:** Not Started / Deferred (Implementation Planned)
 * **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
-* **Description:** 
-  The matrix lists scheduled notifications (reminders 24 hours and 2 hours before play time) as deferred due to the lack of an asynchronous job queue/scheduler.
+* **Description:**
+  The notification matrix defines scheduled WhatsApp reminders to be sent before the player's scheduled play time. By default, reminders should be sent **24 hours** and **2 hours** before the play time. Although WhatsApp Meta integration is currently deferred, the complete scheduling infrastructure, business logic, handlers, and admin management should be implemented now so that only Meta configuration will remain when the integration is activated.
 * **Missing Pieces:**
   * Integrate a background job scheduler (e.g. BullMQ or pg-boss) into the Express server.
-  * Schedule WhatsApp jobs upon booking confirmation.
-  * Implement reminder template dispatch handlers.
+  * Schedule WhatsApp reminder jobs when a booking is confirmed.
+  * Implement reminder notification dispatch handlers.
+  * Create a notification service abstraction to support future Meta WhatsApp integration.
+  * Admin toggle to enable or disable reminder notifications.
+  * Admin dashboard to manage reminder schedules, including:
+
+    * Configure how many reminder notifications should be sent.
+    * Configure how long before the play time each reminder should be sent (e.g. 24 hours before, 2 hours before, 30 minutes before).
+    * View, reschedule, or cancel pending reminder jobs if required.
 * **User Impact:** Medium.
 * **Dependencies:** None.
 
 ### Post-Session WhatsApp Review Requests
-* **Current Status:** Not Started / Deferred
+* **Current Status:** Not Started / Deferred (Implementation Planned)
 * **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
-* **Description:** 
-  Review request links are intended to be sent via WhatsApp after the play window ends, urging players to rate their session. This is currently deferred and not implemented.
+* **Description:**
+  After a booking has ended, the system should automatically schedule a WhatsApp notification requesting the player to review their session. The notification should contain a direct review link (`/review/{bookingId}`). The complete scheduling and notification logic should be implemented now, while actual message delivery will become active after Meta WhatsApp integration is completed.
 * **Missing Pieces:**
-  * Schedule review request notification jobs when a booking is confirmed, targeting the slot end time.
-  * Build the message handler to send a direct template link (`/review/[bookingId]`).
-* **User Impact:** Medium (Reduces organic user review collection).
-* **Dependencies:** Scheduled WhatsApp Reminders.
+  * Admin toggle to enable or disable review request notifications.
+  * Schedule review request notification jobs when a booking is confirmed, targeting the booking end time.
+  * Build the review request notification handler to send a direct review template link (`/review/{bookingId}`).
+  * Allow administrators to configure how long after the session ends the review request should be sent.
+* **User Impact:** Medium (reduces organic user review collection until activated).
+* **Dependencies:** Scheduled WhatsApp Reminders infrastructure.
 
 ### WhatsApp Inbound Support Webhook Handler
-* **Current Status:** Not Started / Deferred
-* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
-* **Description:** 
-  The matrix lists inbound support messages as deferred, requiring a webhook handler and support inbox.
+* **Current Status:** Not Started / Deferred (Implementation Planned)
+* **Documented in:** `02-BUSINESS-LOGIC.md` Section 8 ("Automated Notification Matrix")
+* **Description:**
+  The system should support inbound WhatsApp messages through a webhook handler, allowing users to communicate with the support team directly from WhatsApp. During the current development phase, the webhook architecture, routing, controllers, services, and documentation should be fully implemented. Once the Meta WhatsApp Business Platform is configured, only the webhook registration, environment variables, and Meta-specific configuration should be required to activate the feature.
 * **Missing Pieces:**
-  * Define and enable the WhatsApp inbound callback webhook in the Meta dashboard.
-  * Implement route controllers to parse incoming messages and alert the operator team.
+  * Design and implement the inbound WhatsApp webhook architecture.
+  * Define and implement webhook endpoints and route controllers to receive incoming messages.
+  * Validate and parse incoming webhook payloads.
+  * Build the inbound message processing service.
+  * Notify administrators or operators when new support messages are received.
+  * Add an Admin toggle to enable or disable inbound support processing.
+  * Document the complete inbound support workflow, including webhook verification, message processing, security, logging, error handling, and future support inbox or CRM integration.
 * **User Impact:** Low.
 * **Dependencies:** None.
+
+**Note:**
+WhatsApp Meta Business Platform setup is intentionally deferred and is not expected to begin for approximately the next **30 days**. During this period, all notification infrastructure, scheduling, business logic, APIs, handlers, admin controls, and documentation should be completed within the codebase. Once the Meta setup is completed, only the required environment variables, Meta credentials, webhook registration, template configuration, and any necessary Meta-specific settings should need to be updated to make the entire notification system operational.
+
+The documentation should clearly describe:
+
+* What has been implemented.
+* What remains pending until Meta setup is completed.
+* How each notification feature works.
+* How all notification features work together end-to-end.
+* The complete implementation and activation workflow for the **WhatsApp Inbound Support Webhook Handler**, including webhook verification, message processing, operator notifications, logging, and future extensibility.
 
 ---
 
