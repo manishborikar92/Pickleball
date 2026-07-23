@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CheckCircle2, User, ArrowRight } from "lucide-react";
 import { Button, FormField, Input, FormAlert } from "@/components/shared";
+import { validateName, validatePhone } from "@/lib/validation";
 
 export function InterestForm() {
   const [form, setForm] = useState({ name: "", phone: "" });
@@ -16,18 +17,16 @@ export function InterestForm() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const name = form.name.trim();
-    const phone = form.phone.trim();
-
-    if (name.length < 2) {
-      setErrorMessage("Please enter your full name.");
+    const nameVal = validateName(form.name);
+    if (!nameVal.ok) {
+      setErrorMessage(nameVal.message);
       setStatus("error");
       return;
     }
 
-    const digits = phone.replace(/\D/g, "");
-    if (digits.length !== 10) {
-      setErrorMessage("Please enter a valid 10-digit Indian phone number.");
+    const phoneVal = validatePhone(form.phone);
+    if (!phoneVal.ok) {
+      setErrorMessage(phoneVal.message);
       setStatus("error");
       return;
     }
@@ -37,24 +36,25 @@ export function InterestForm() {
 
     try {
       const payload = {
-        name,
-        phone: `+91 ${phone}`,
-        source: "Waitlist Form"
+        name: nameVal.value,
+        phone: phoneVal.value,
       };
 
       const res = await fetch("/api/interest", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json"
+        headers: {
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success) {
         setStatus("success");
         setForm({ name: "", phone: "" });
       } else {
-        throw new Error("Submission failed.");
+        throw new Error(data.error || "Submission failed. Please try again.");
       }
     } catch (err) {
       setErrorMessage(err.message || "Something went wrong. Please try again.");
@@ -101,7 +101,7 @@ export function InterestForm() {
           autoComplete="name"
           required
           className="py-2.5"
-          error={status === "error" && form.name.trim().length < 2}
+          error={status === "error" && !validateName(form.name).ok}
         />
       </FormField>
 
@@ -118,7 +118,7 @@ export function InterestForm() {
           maxLength={10}
           required
           className="py-2.5"
-          error={status === "error" && form.phone.replace(/\D/g, "").length !== 10}
+          error={status === "error" && !validatePhone(form.phone).ok}
         />
       </FormField>
 

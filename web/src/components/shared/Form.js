@@ -56,6 +56,7 @@ export function FormField({
  */
 export function Input({
   className = "",
+  containerClassName = "",
   error = false,
   prefix,
   suffix,
@@ -68,11 +69,11 @@ export function Input({
         className={cn(
           "flex items-stretch overflow-hidden rounded-xl border bg-background shadow-inner transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent border-line",
           error ? "border-danger" : "border-line",
-          className
+          containerClassName
         )}
       >
         {prefix && (
-          <span className="flex items-center border-r border-line bg-surface-panel/50 px-4 text-sm font-bold text-muted select-none">
+          <span className="flex items-center border-r border-line bg-surface-panel/50 px-3.5 text-sm font-bold text-muted select-none whitespace-nowrap">
             {prefix}
           </span>
         )}
@@ -84,12 +85,13 @@ export function Input({
         <input
           className={cn(
             "min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-foreground transition-colors focus:outline-none disabled:cursor-not-allowed md:text-sm",
-            Icon && "pl-2.5"
+            Icon && "pl-2.5",
+            className
           )}
           {...props}
         />
         {suffix && (
-          <span className="flex items-center border-l border-line bg-surface-panel/50 px-4 text-sm font-bold text-muted select-none">
+          <span className="flex items-center border-l border-line bg-surface-panel/50 px-3.5 text-sm font-bold text-muted select-none whitespace-nowrap">
             {suffix}
           </span>
         )}

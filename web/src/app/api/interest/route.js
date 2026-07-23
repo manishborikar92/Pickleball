@@ -1,49 +1,59 @@
 import { NextResponse } from "next/server";
+import { validateName, validatePhone } from "@/lib/validation";
 
-const PAGECLIP_SITE_KEY = process.env.NEXT_PUBLIC_PAGECLIP_SITE_KEY || "M6xW7YlgRqD6fmxtTWdcxaegUQLfFYuc";
-const PAGECLIP_FORM_NAME = process.env.NEXT_PUBLIC_PAGECLIP_FORM_NAME || "waitlist";
+const GOOGLE_SHEETS_SCRIPT_URL =
+  "https://script.google.com/macros/s/AKfycbyuVhY5xBVMTFgFcPUx_EnwohO4TkGSaR9YOlhUVb8CZd_-YwiT_5tbwZnPu29fVgkv/exec";
 
 export async function POST(req) {
   try {
-    const data = await req.json();
+    const body = await req.json();
+    const nameValidation = validateName(body?.name);
+    const phoneValidation = validatePhone(body?.phone);
 
-    // Convert JSON to URL-encoded form data, as expected by Pageclip's public endpoint
-    const formData = new URLSearchParams();
-    for (const key in data) {
-      formData.append(key, data[key]);
-    }
-
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    const userAgent = req.headers.get("user-agent") || "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36";
-
-    // Send the data from the server
-    const res = await fetch(`https://send.pageclip.co/${PAGECLIP_SITE_KEY}/${PAGECLIP_FORM_NAME}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Origin": origin,
-        "Referer": `${origin}/`,
-        "User-Agent": userAgent,
-      },
-      body: formData.toString(),
-      redirect: "manual", // Prevent Next.js from following the redirect
-    });
-
-    // Pageclip returns 302 Found on successful form submission
-    if (res.ok || res.status === 302 || res.status === 303) {
-      return NextResponse.json({ success: true });
-    } else {
-      const errorText = await res.text();
-      console.error("Pageclip Error:", res.status, errorText);
+    if (!nameValidation.ok) {
       return NextResponse.json(
-        { error: "Submission failed at origin.", details: errorText },
-        { status: res.status }
+        { error: nameValidation.message },
+        { status: 400 }
       );
     }
+
+    if (!phoneValidation.ok) {
+      return NextResponse.json(
+        { error: phoneValidation.message },
+        { status: 400 }
+      );
+    }
+
+    const payload = {
+      name: nameValidation.value,
+      phone: phoneValidation.value,
+    };
+
+    try {
+      const res = await fetch(GOOGLE_SHEETS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+        redirect: "follow",
+      });
+
+      if (!res.ok) {
+        console.warn("Google Sheets endpoint returned HTTP status:", res.status);
+      }
+    } catch (fetchErr) {
+      console.error("Network error submitting to Google Sheets:", fetchErr);
+    }
+
+    return NextResponse.json({ success: true });
   } catch (err) {
+    console.error("Interest form API error:", err);
     return NextResponse.json(
       { error: err.message || "Internal server error" },
       { status: 500 }
     );
   }
 }
+
+
