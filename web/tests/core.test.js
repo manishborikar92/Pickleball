@@ -46,6 +46,22 @@ test("booking validation normalizes customer auth inputs", () => {
   assert.equal(validateOtp("123456").ok, true);
 });
 
+test("interest form validation rejects invalid names and phone numbers", () => {
+  assert.equal(validateName("A").ok, false);
+  assert.equal(validateName("  ").ok, false);
+  assert.equal(validatePhone("123").ok, false);
+  assert.equal(validatePhone("0000000000").ok, false);
+  assert.deepEqual(validateName("Rohan Verma"), {
+    ok: true,
+    value: "Rohan Verma",
+  });
+  assert.deepEqual(validatePhone("9876543210"), {
+    ok: true,
+    value: "+919876543210",
+  });
+});
+
+
 test("date window respects configured advance booking days", () => {
   const days = buildDateWindow({
     startDate: "2026-05-13",
