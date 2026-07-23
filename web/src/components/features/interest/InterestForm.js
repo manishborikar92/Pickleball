@@ -100,7 +100,6 @@ export function InterestForm() {
           placeholder="e.g. Rahul Sharma"
           autoComplete="name"
           required
-          className="py-2.5"
           error={status === "error" && !validateName(form.name).ok}
         />
       </FormField>
@@ -117,7 +116,6 @@ export function InterestForm() {
           autoComplete="tel"
           maxLength={10}
           required
-          className="py-2.5"
           error={status === "error" && !validatePhone(form.phone).ok}
         />
       </FormField>
