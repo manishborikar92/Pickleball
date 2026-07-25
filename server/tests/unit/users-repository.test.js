@@ -117,7 +117,22 @@ test('UsersRepository - getMyBookings multi-court serialization regression tests
       },
     });
 
+    const queryWarnings = [];
+    const captureWarning = (warning) => {
+      if (warning.name === 'DeprecationWarning' && warning.message.includes('client.query() when the client is already executing a query')) {
+        queryWarnings.push(warning);
+      }
+    };
+
+    // Let deprecations caused by fixture setup flush before observing the
+    // repository call itself.
+    await new Promise((resolve) => setImmediate(resolve));
+    process.on('warning', captureWarning);
     const result = await repository.getMyBookings({ userId: user.id });
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off('warning', captureWarning);
+
+    assert.equal(queryWarnings.length, 0, 'getMyBookings must not issue concurrent PostgreSQL client queries');
     assert.equal(result.data.length, 1);
     
     const serialized = result.data[0];

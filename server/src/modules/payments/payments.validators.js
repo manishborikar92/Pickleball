@@ -4,6 +4,10 @@ export const paymentOrderParamsSchema = Joi.object({
   merchantOrderId: Joi.string().trim().min(6).max(255).required(),
 });
 
+export const paymentVerifyQuerySchema = Joi.object({
+  orderId: Joi.string().trim().min(6).max(255).required(),
+});
+
 export const paymentIdParamsSchema = Joi.object({
   paymentId: Joi.string().uuid().required(),
 });

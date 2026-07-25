@@ -138,9 +138,8 @@ PHONEPE_WEBHOOK_PASSWORD=your-webhook-password
 # PhonePe environment (SANDBOX for local dev)
 PHONEPE_ENV=SANDBOX
 
-# Base URLs
+# PhonePe browser return target
 FRONTEND_BASE_URL=http://localhost:3000
-BACKEND_BASE_URL=http://localhost:5000
 ```
 
 ---

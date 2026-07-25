@@ -13,6 +13,7 @@ The platform is divided into two primary execution boundaries designed for secur
 - **Optimistic Proxy + Proactive Refresh**: The `proxy.js` performs optimistic cookie-presence checks, coarse redirects, and **proactive token refresh** at the network edge — when the access token is expired but a refresh token is present, it refreshes before the render runs and forwards the fresh cookies. `lib/dal/httpClient.js` is a stateless transport that additionally performs refresh-on-401 for authenticated calls invoked from Server Actions.
 - **Data Access Layer & Authorization Boundary**: Reads flow through `lib/dal/*` (cacheable async functions), never through Server Actions. `lib/dal/session.js` `verifySession()` (memoized with React `cache()`) is the authorization boundary — it reads cookies, calls `/users/me`, and derives role/permissions from that authoritative response. Pages call `requireRouteAccess()`/`requireUser()` with the real path; mutation Server Actions live in route-independent `lib/actions/*` and validate (Zod) + authorize before calling the backend. No global client-side `AuthProvider` or `AuthContext` — public pages ship zero auth JavaScript.
 - **Client State Preservation**: Designed as a single-scroll interface under `/booking`. State variables (such as active slot arrays, selected dates, and venue identifiers) are maintained in React state. Authentication is requested via an in-context bottom-sheet modal rather than full-page redirects, preventing selection state loss during logins.
+- **Post-Payment Redirect**: PhonePe returns the browser only to `/booking/redirect?orderId=...`. The themed interstitial calls `verifyPaymentAction` server-to-server, then replaces itself with the unified booking page; the Express origin never appears in the browser.
 
 ### B. Express Backend (`server/`)
 - **Domain-Driven Architecture**: Backend routes, validators (Joi), services, and repositories are encapsulated under modular domain folders in `server/src/modules/` (e.g., `auth`, `users`).
@@ -78,7 +79,7 @@ When a customer attempts to secure a court booking, the system coordinates avail
 ## 4. Integration Boundaries
 
 - **WhatsApp Cloud API (OTP Delivery)**: Connects to Meta's WhatsApp Business API. The service falls back to sandbox logs in local environments. Rate-limiting rules prevent sending OTPs more than once every 60 seconds.
-- **PhonePe Checkout Gateway**: Integrates via checkout URL generation. The payment completion webhook uses custom basic authentication verified by matching the Authorization header with a SHA256 hash of the configured username and password.
+- **PhonePe Checkout Gateway**: Integrates via checkout URL generation. Each payment attempt receives a fresh 34-character, 64-bit-entropy merchant order ID stored in the payment ledger. The browser redirect lands on the frontend and the public JSON verification endpoint reconciles the exact ledger order idempotently; the S2S webhook remains primary and uses custom basic authentication verified by matching the Authorization header with a SHA256 hash of the configured username and password.
 - **Cloudflare R2**: Used for layout maps. Client uploads bypass Express backend using presigned URLs.
 
 ---

@@ -82,7 +82,7 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'POST /api/v1/bookings/{bookingId}/waiver',
     'POST /api/v1/bookings/{bookingId}/initiate-payment',
     'GET /api/v1/payments/status/{merchantOrderId}',
-    'GET /api/v1/payments/redirect',
+    'GET /api/v1/payments/verify',
     'POST /api/v1/webhooks/phonepe',
     'POST /api/v1/reviews',
     'GET /api/v1/reviews',

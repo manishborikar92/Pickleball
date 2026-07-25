@@ -449,7 +449,7 @@ One record per payment attempt. A single booking may have multiple `payments` re
 | `id` | UUID | PK | |
 | `booking_id` | UUID | FK → bookings.id, NOT NULL | |
 | `gateway` | VARCHAR(50) | NOT NULL, default 'phonepe' | Enum: phonepe, wallet |
-| `merchant_order_id` | VARCHAR(255) | UNIQUE | `merchantOrderId` sent to PhonePe (e.g., `PP-abc123`). NULL for wallet-only payments |
+| `merchant_order_id` | VARCHAR(255) | UNIQUE | Exact PhonePe correlation key. Every gateway attempt receives a new 34-character `PP-<booking-prefix>-<64-bit-entropy>` value; NULL for wallet-only payments |
 | `gateway_order_id` | VARCHAR(255) | | PhonePe's internal `orderId` (e.g., `OMO...`); filled from webhook |
 | `gateway_payment_id` | VARCHAR(255) | | PhonePe `transactionId` from `paymentDetails[0]`; filled on success |
 | `upi_vpa` | VARCHAR(255) | | UPI VPA used (e.g., `user@ybl`); filled from webhook `splitInstruments` |
@@ -458,7 +458,7 @@ One record per payment attempt. A single booking may have multiple `payments` re
 | `currency` | CHAR(3) | NOT NULL, default 'INR' | |
 | `status` | VARCHAR(20) | NOT NULL, default 'initiated' | Enum: initiated, success, failed, refund_pending, refunded, refund_failed |
 | `webhook_received_at` | TIMESTAMPTZ | | Timestamp of first webhook receipt |
-| `idempotency_key` | VARCHAR(255) | UNIQUE | Same as `merchant_order_id`; used to deduplicate webhook redeliveries |
+| `idempotency_key` | VARCHAR(255) | UNIQUE | Provider-namespaced attempt key (for example, `phonepe:<merchant_order_id>`); used to deduplicate processing |
 | `merchant_refund_id` | VARCHAR(255) | UNIQUE | UUID generated before calling the Refund API; used for refund idempotency |
 | `refund_amount` | NUMERIC(10,2) | | Amount refunded via PhonePe (INR) |
 | `refund_initiated_at` | TIMESTAMPTZ | | |

@@ -108,37 +108,41 @@ export const createUsersRepository = ({ prisma } = {}) => {
       };
       const skip = (page - 1) * limit;
 
-      const [rows, total] = await db().$transaction([
-        db().booking.findMany({
-          where,
-          orderBy: [
-            { slotDate: 'desc' },
-            { sessionStartTime: 'desc' },
-          ],
-          skip,
-          take: limit,
-          include: {
-            venue: {
-              select: { id: true, name: true, slug: true },
-            },
-            slots: {
-              orderBy: [
-                { slotDate: 'asc' },
-                { slotStartTime: 'asc' },
-              ],
-              include: {
-                court: {
-                  select: { id: true, name: true },
-                },
+      // These independent read queries deliberately avoid an interactive
+      // transaction: Prisma's PostgreSQL adapter executes relational includes
+      // internally, and wrapping them in one shared client causes pg's
+      // concurrent-query deprecation warning. The previous transaction used
+      // PostgreSQL's default READ COMMITTED isolation, so it did not provide a
+      // shared pagination snapshot in the first place.
+      const rows = await db().booking.findMany({
+        where,
+        orderBy: [
+          { slotDate: 'desc' },
+          { sessionStartTime: 'desc' },
+        ],
+        skip,
+        take: limit,
+        include: {
+          venue: {
+            select: { id: true, name: true, slug: true },
+          },
+          slots: {
+            orderBy: [
+              { slotDate: 'asc' },
+              { slotStartTime: 'asc' },
+            ],
+            include: {
+              court: {
+                select: { id: true, name: true },
               },
             },
-            review: {
-              select: { id: true },
-            },
           },
-        }),
-        db().booking.count({ where }),
-      ]);
+          review: {
+            select: { id: true },
+          },
+        },
+      });
+      const total = await db().booking.count({ where });
 
       return {
         data: rows.map(serializeBookingSummary),

@@ -1,5 +1,7 @@
 # 03 — Issues Register
 
+> **Historical plan record.** The issues and file references below are the pre-implementation audit baseline, not a list of current defects. See `docs/ai/03-IMPLEMENTATION-STATUS.md` for implemented work and remaining debt.
+
 Every issue found during the audit, severity-classified, with `file:line`, impact, and a concrete fix. IDs are stable references used by the implementation plan ([06](./06-implementation-plan.md)).
 
 **Severity key:** **Critical** = broken correctness or exploitable security / blocks scaling the codebase · **High** = significant security, performance, or correctness risk · **Medium** = real but bounded · **Low** = polish / hygiene.

@@ -12,7 +12,7 @@
 - OpenAPI JSON and Swagger UI.
 - Generated Postman collection and local environment.
 - Idempotent Prisma seed script for launch permissions, roles, venue, courts, base prices, and standard schedules.
-- Frontend auth integration away from demo OTP/localStorage assumptions for customer login, onboarding, and route-guard session hydration.
+- Cookie-based frontend auth integration for customer login, onboarding, and route-guard session hydration.
 - Frontend removal of fabricated booking, wallet, admin activity, review, and hard-coded coupon fixture data where backend APIs are not yet implemented.
 - Unit, integration, OpenAPI, Postman-generator, frontend lint, frontend unit, and frontend build validation.
 

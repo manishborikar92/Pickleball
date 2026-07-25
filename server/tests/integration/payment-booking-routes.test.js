@@ -157,6 +157,62 @@ test('payment routes expose refund and retry refund endpoints', async () => {
   ]);
 });
 
+test('payment verify route verifies orders and returns JSON (public)', async () => {
+  const events = [];
+  const app = createApp({
+    configureRoutes(router) {
+      router.use('/payments', createPaymentsRouter({
+        authMiddleware,
+        onboardingMiddleware,
+        paymentsService: {},
+        bookingsService: {
+          async getBookingIdByOrderId(orderId) {
+            return orderId === 'PP-order-known' ? bookingId : null;
+          },
+          async handleProviderPaymentEvent(event) {
+            events.push(event);
+            return {
+              merchant_order_id: event.merchantOrderId,
+              booking_id: bookingId,
+              booking_status: 'confirmed',
+              payment_status: 'success',
+            };
+          },
+        },
+        paymentProvider: {
+          name: 'sandbox',
+          async getPaymentStatus() {
+            return 'COMPLETED';
+          },
+        },
+      }));
+    },
+  });
+
+  // No Authorization header — the verify endpoint is public by design.
+  const verified = await request(app)
+    .get('/api/v1/payments/verify')
+    .query({ orderId: 'PP-order-known' });
+
+  assert.equal(verified.status, 200);
+  assert.equal(verified.body.data.booking_id, bookingId);
+  assert.equal(verified.body.data.booking_status, 'confirmed');
+  assert.equal(verified.body.data.state, 'COMPLETED');
+  assert.equal(events.length, 1);
+  assert.equal(events[0].payload.source, 'verify');
+
+  const unknown = await request(app)
+    .get('/api/v1/payments/verify')
+    .query({ orderId: 'PP-order-unknown' });
+
+  assert.equal(unknown.status, 404);
+
+  const missing = await request(app)
+    .get('/api/v1/payments/verify');
+
+  assert.equal(missing.status, 400);
+});
+
 test('payment routes reject un-onboarded users on status endpoint', async () => {
   const app = createApp({
     configureRoutes(router) {

@@ -2,6 +2,8 @@
 
 A phased, sequenced plan to execute the modernization. Each phase is independently shippable, lists the issue IDs it closes (from [03](./03-issues-register.md)), the concrete steps, the validation gate that must pass before merge, and the rollback note. Phases are ordered by dependency and risk: **security/correctness hot-fixes first, then the data-layer refactor that everything else builds on, then performance, forms, hardening, and tooling.**
 
+> **Historical plan record.** This is the original phased implementation plan. Its proposed steps and file references are not a substitute for the current architecture documents or implementation status.
+
 **Conventions for the executing engineer:**
 - Work on a feature branch per phase; the repo's default working branch is `dev`, PRs target `main`.
 - Naming per the project standard: **PascalCase** for components/layouts/providers; **camelCase** for hooks/utilities/services/DAL/schemas/config; **kebab-case** only where Next.js dictates (route segments, special files). Do **not** rename documentation files.

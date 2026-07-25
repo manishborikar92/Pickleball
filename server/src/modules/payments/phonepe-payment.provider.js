@@ -27,6 +27,26 @@ const INITIAL_BACKOFF_MS = 1_000;
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 /**
+ * Builds a per-attempt merchant order id: `PP-<booking prefix>-<entropy>`.
+ *
+ * PhonePe requires every merchantOrderId submitted to /checkout/v2/pay to be
+ * globally unique — a retry after a FAILED/cancelled attempt must register a
+ * NEW gateway order (docs §9.2), so each attempt carries fresh 64-bit
+ * cryptographic entropy. The booking-derived prefix keeps ids
+ * eyeball-traceable in dashboards; the authoritative linkage is the payments
+ * ledger row plus metaInfo.udf1.
+ * 34 chars — inside PhonePe's 35-char limit, alphanumeric + hyphen only.
+ *
+ * Concurrent double-initiation is arbitrated by the database, not this id:
+ * the payments_one_initiated_payment_per_booking partial unique index rejects
+ * the losing insert and the service returns the winning attempt instead.
+ */
+export const generateMerchantOrderId = (
+  bookingId,
+  random = () => crypto.randomBytes(8).toString('hex'),
+) => `PP-${bookingId.replace(/-/g, '').slice(0, 14)}-${random()}`;
+
+/**
  * Execute a fetch request with timeout, 5xx retry, and 401 token refresh.
  */
 const phonePeFetch = async ({ url, method, headers, body, auth, correlationId, operation, retryCount = 0 }) => {
@@ -130,7 +150,7 @@ export const createPhonePePaymentProvider = ({
   clientVersion = 1,
   merchantId: _merchantId,
   env = 'SANDBOX',
-  backendBaseUrl = 'http://localhost:5000',
+  frontendBaseUrl = 'http://localhost:3000',
 } = {}) => {
   const pgBaseUrl = PG_BASE_URLS[env] || PG_BASE_URLS.SANDBOX;
 
@@ -155,7 +175,7 @@ export const createPhonePePaymentProvider = ({
      */
     async createPaymentOrder({ booking, amount, currency = 'INR' }) {
       const correlationId = crypto.randomUUID();
-      const merchantOrderId = `PP-${booking.id.replace(/-/g, '').slice(0, 20)}`;
+      const merchantOrderId = generateMerchantOrderId(booking.id);
       const amountInPaisa = Math.round(amount * 100);
 
       const token = await auth.getAccessToken();
@@ -172,7 +192,10 @@ export const createPhonePePaymentProvider = ({
           type: 'PG_CHECKOUT',
           message: `Court booking — ${merchantOrderId}`,
           merchantUrls: {
-            redirectUrl: `${backendBaseUrl}/api/v1/payments/redirect?orderId=${merchantOrderId}`,
+            // The browser returns to the frontend domain — the /booking/redirect
+            // page verifies server-side, keeping the backend origin out of the
+            // customer's address bar (domain isolation).
+            redirectUrl: `${frontendBaseUrl}/booking/redirect?orderId=${merchantOrderId}`,
           },
           paymentModeConfig: {
             enabledPaymentModes: [

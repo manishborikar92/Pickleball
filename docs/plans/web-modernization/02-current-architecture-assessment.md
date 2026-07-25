@@ -1,5 +1,7 @@
 # 02 — Current Architecture Assessment
 
+> **Historical plan record.** This assessment describes the pre-implementation baseline and is retained for traceability. See `docs/ai/01-IMPLEMENTATION-OVERVIEW.md` and `docs/ai/02-CODEBASE-MAP.md` for the implemented state.
+
 An objective, layer-by-layer description of how `web/` is built today, with an honest verdict on each layer. The goal is to separate what is already modern and correct (and must be preserved) from what is not.
 
 Stack (verified against installed `node_modules`):

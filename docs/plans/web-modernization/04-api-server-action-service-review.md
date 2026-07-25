@@ -4,6 +4,8 @@ This is the dedicated review the brief requires. It (1) explains the current arc
 
 ---
 
+> **Historical plan record.** This review captures the pre-implementation architecture and recommendations. See `docs/ai/01-IMPLEMENTATION-OVERVIEW.md` and `docs/ai/02-CODEBASE-MAP.md` for the implemented state.
+
 ## 1. The current architecture
 
 ### 1.1 The layers as they exist today

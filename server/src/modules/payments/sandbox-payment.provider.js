@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { assertPaymentProvider } from './payment-provider.js';
 
 export const createSandboxPaymentProvider = ({
-  baseUrl = 'http://localhost:5000',
+  frontendBaseUrl = 'http://localhost:3000',
   randomId = () => crypto.randomUUID(),
 } = {}) => assertPaymentProvider({
   name: 'sandbox',
@@ -17,7 +17,9 @@ export const createSandboxPaymentProvider = ({
       provider: 'sandbox',
       gateway: 'sandbox',
       merchant_order_id: merchantOrderId,
-      redirect_url: `${baseUrl}/api/v1/payments/redirect?orderId=${merchantOrderId}`,
+      // The sandbox has no hosted pay page: "paying" navigates straight to the
+      // post-payment return, mirroring the PhonePe merchantUrls.redirectUrl.
+      redirect_url: `${frontendBaseUrl}/booking/redirect?orderId=${merchantOrderId}`,
       amount,
       currency,
     };

@@ -353,9 +353,11 @@ export function BookingClient({
                 setCheckoutError("Payment was cancelled — your slots are still reserved. You can try again.");
                 setCheckoutLoading(false);
               } else {
-                // CONCLUDED — redirect to backend for verification.
+                // CONCLUDED — verify on the same-origin redirect landing (the
+                // merchantUrls.redirectUrl target); the backend origin never
+                // appears in the browser.
                 window.location.assign(
-                  `${process.env.NEXT_PUBLIC_API_BASE_URL || ""}/api/v1/payments/redirect?orderId=${result.merchantOrderId}`,
+                  `/booking/redirect?orderId=${encodeURIComponent(result.merchantOrderId)}`,
                 );
               }
             },

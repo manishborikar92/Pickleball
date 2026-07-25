@@ -13,10 +13,12 @@ import { createPhonePePaymentProvider } from './phonepe-payment.provider.js';
  * (for refundPayment), eliminating the previous dual-instantiation.
  */
 export const createPaymentProviderFromEnv = (config = {}) => {
+  // Post-payment browser returns land on the frontend /booking/redirect page
+  // for every provider — the backend origin never reaches the customer.
+  const frontendBaseUrl = config.frontendBaseUrl || 'http://localhost:3000';
+
   if (config.env === 'test' || config.isTest) {
-    return createSandboxPaymentProvider({
-      baseUrl: `http://localhost:${config.app?.port || 5000}`,
-    });
+    return createSandboxPaymentProvider({ frontendBaseUrl });
   }
 
   return createPhonePePaymentProvider({
@@ -25,6 +27,6 @@ export const createPaymentProviderFromEnv = (config = {}) => {
     clientVersion: config.phonepe?.clientVersion || 1,
     merchantId: config.phonepe?.merchantId,
     env: config.phonepe?.env || 'SANDBOX',
-    backendBaseUrl: config.backendBaseUrl || `http://localhost:${config.app?.port || 5000}`,
+    frontendBaseUrl,
   });
 };

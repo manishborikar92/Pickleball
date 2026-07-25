@@ -32,7 +32,7 @@ All admin API queries are filtered to the venue(s) the requesting user has a rol
 
 ### 1.4 Session Security
 
-- Access tokens are short-lived JWTs.
+- Access tokens are short-lived JWTs delivered to the web application in secure HTTP-only cookies.
 - Refresh tokens are opaque random values stored only as hashes in PostgreSQL and delivered to browsers through HTTP-only cookies.
 - Refresh tokens rotate on every successful refresh.
 - Logout revokes the current auth session and active refresh token. Logout-all revokes every active session for the user.
@@ -81,12 +81,14 @@ PATH B — Returning user (name already set):
     → JWT issued → next_step: "resume_booking"
   → Slot hold → Waiver → Payment
 
-PATH C — Already authenticated (valid JWT in client storage):
+PATH C — Already authenticated (valid session cookie):
   GET /users/me confirms name IS NOT NULL → skip auth gate entirely
   → Slot hold → Waiver → Payment
 ```
 
 **Onboarding completeness** is derived from `users.name IS NOT NULL`. `onboarding_completed_at` is a timestamp for analytics only.
+
+> **Implemented browser-session behavior.** The frontend never reads a JWT from `localStorage` or other browser storage. Auth server actions write secure HTTP-only access and refresh cookies; proxy refresh is optimistic, while server pages and DAL operations verify the session with the backend.
 
 ### 2.2 OTP Verification — User Record Lifecycle
 
@@ -167,7 +169,7 @@ Admin navigates to /admin/login
          If pass: reset failed_login_attempts = 0, update last_login_at + last_login_ip
       5. If force_password_change = true: JWT issued but next_step = "force_password_change"
          Otherwise: JWT issued, next_step = "admin_dashboard"
-  → JWT stored in httpOnly cookie or localStorage (admin panel decision)
+  → Access and refresh credentials are stored only in secure HTTP-only cookies.
   → Redirect to /admin
 ```
 
@@ -258,7 +260,7 @@ requireOnboarding:
 
 | Route | requireAuth | requireOnboarding | requirePermission | Notes |
 |---|:---:|:---:|:---:|---|
-| Landing page, `/book`, availability API | | | | Fully public |
+| Landing page, `/venues/[slug]/book`, availability API | | | | Fully public |
 | `POST /auth/otp/*` | | | | Customer OTP |
 | `POST /auth/admin/login` | | | | Admin credential endpoint |
 | `POST /auth/admin/activate`, `reset-password/*` | | | | Token-based only |
@@ -267,12 +269,14 @@ requireOnboarding:
 | `GET /users/me`, `POST /auth/onboarding` | ✓ | | | Auth but not onboarding required |
 | `POST /auth/admin/change-password` | ✓ | | | Accessible even when `force_password_change` blocks other routes |
 | `POST /bookings/hold`, waiver, payment | ✓ | ✓ | | Core booking actions |
-| `/bookings`, `/wallet`, `/rewards` pages | ✓ | ✓ | | Protected customer pages |
+| `/dashboard/bookings`, `/dashboard/wallet`, `/dashboard/rewards` pages | ✓ | ✓ | | Protected customer pages |
 | `/review/[id]` | ✓ | ✓ | | Booking owner also verified |
 | `/admin/login` page | | | | Redirects away if already admin-authenticated |
 | All `/admin/*` routes | ✓ | ✓ | ✓ | Admin only |
 
 ### 2.8 Edge Cases
+
+> **Implemented route correction.** The public checkout page is `/venues/[slug]/book`; customer account pages live under `/dashboard/{bookings,wallet,rewards}`. The older short route labels in the preceding reference table are historical product-plan terminology.
 
 **Interrupted customer onboarding (OTP verified, name never submitted):**
 JWT is valid. On return, `GET /users/me` returns `name: null` → frontend shows name collection. Same JWT works for `/auth/onboarding`. No re-OTP required within the 24h window.
@@ -399,7 +403,7 @@ Step 1 — Browse & Select (no auth required)
   No database writes. No lock held.
 
 Step 2 — "Confirm & Pay" clicked
-  Frontend checks for a valid JWT in local storage.
+  Frontend relies on the HTTP-only cookie session; it never reads a JWT from browser storage.
 
   IF valid JWT found:
     → Call GET /users/me to confirm token is live and name IS NOT NULL.
@@ -688,6 +692,10 @@ The submitted state is intentionally identical for a fresh submission and a retu
 
 ## 12. Reward Engine
 
+> **Implemented reward model (authoritative).** A confirmed booking can issue a pending reward instance whose precomputed prize type is `no_prize` or `voucher`. Vouchers are external venue offers: reveal atomically issues a unique `RWD-XXXXXXXX` code and validity window, and authorized staff record redemption. Rewards never change wallet credits, create coupons, or produce free-booking fulfillment. The customer UI is the scratch-card overlay; the backend keeps dormant `spinner` mechanism support for a future UI. See ADR-010 and `docs/specs/01-DATABASE-SCHEMA.md` Domain F.
+
+> **Historical design notes below.** The original wallet-credit, coupon, free-booking, and standalone spinner-screen details are retained for traceability only and are superseded by the voucher-only model above.
+
 > **Design principle:** The reward system is a pluggable engine decoupled from any specific experience (scratch card, spinner, etc.). No points currency exists. Each confirmed booking directly triggers the active mechanism(s). Switching experiences, running multiple simultaneously, or disabling them entirely is an admin configuration action — not a code change.
 
 ### 12.1 Core Concepts
@@ -784,4 +792,3 @@ The `instance_expiry_days` is configured per mechanism (default: 7 days). A shor
 | View a user's reward instance history | `manage_bookings` |
 | Manually expire an instance | `manage_bookings` |
 | Fulfill pending `free_booking` prizes | `manage_bookings` |
-

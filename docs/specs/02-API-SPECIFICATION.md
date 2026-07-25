@@ -874,27 +874,47 @@ The frontend uses this response on app load to decide whether to show the name c
 
 ## 8. Payment & Refund Endpoints
 
-These endpoints support payment callbacks, status checks, and manager-initiated refunds.
+These endpoints support payment verification, status checks, and manager-initiated refunds.
 
-### `GET /payments/redirect`
+### `GET /payments/verify`
 
-*Public.* Called by PhonePe's hosted pay page after the transaction reaches a terminal state (redirect back). Verifies payment status via Order Status API, confirms or fails the booking, then redirects the browser to the Next.js success or failure page.
+*Public.* PhonePe's "Verify Payment Response" step, backing the frontend `/booking/redirect` page (the target of `merchantUrls.redirectUrl`). PhonePe shares no transaction status client-side, so the frontend calls this endpoint **server-side** (Next.js server → Express, no CORS) to fetch the authoritative state via the Order Status API and reconcile the payment, then routes the customer to the unified booking page. Public because the gateway redirect carries no auth context; it reveals nothing beyond the booking reference — `/booking/:bookingId` itself enforces session + ownership.
 
-**Query params:** `orderId` (PhonePe's `merchantOrderId`)
+**Query params:** `orderId` (the gateway `merchantOrderId`) — required, 6–255 chars.
 
 **Behaviour:**
-1. Call PhonePe Order Status API with `orderId`.
-2. `COMPLETED` → confirm booking (idempotent) → redirect to `/booking/:bookingId`
-3. `FAILED` → rollback wallet credits → redirect to `/booking/:bookingId`
-4. `PENDING` → redirect to `/booking/:bookingId` (webhook will deliver terminal state)
+1. Resolve the payment from the database — `404` for unknown `orderId` (no provider call is spent on garbage input).
+2. Call PhonePe Order Status API with `orderId`.
+3. `COMPLETED` / `FAILED` → process the event idempotently (same pipeline as the webhook).
+4. `PENDING` / `CREATED` → return the booking reference without processing.
+5. Provider unreachable → return `state: "UNKNOWN"` with the booking reference (webhook remains the primary confirmation).
 
-**Response:** `302 Redirect` — never returns a JSON body.
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Success",
+  "data": {
+    "merchant_order_id": "PP-abc123",
+    "booking_id": "<uuid>",
+    "booking_status": "confirmed",
+    "payment_status": "success",
+    "state": "COMPLETED"
+  }
+}
+```
+
+**`state` values:** `COMPLETED`, `FAILED`, `PENDING`, `CREATED`, `UNKNOWN`. For `PENDING`/`CREATED`/`UNKNOWN`, `booking_status` and `payment_status` are omitted.
+
+**Errors:**
+- `400 Bad Request` — missing or malformed `orderId`.
+- `404 Not Found` — no payment exists for the given `orderId`.
 
 ---
 
 ### `GET /payments/status/:merchantOrderId`
 
-*Protected.* Polls the backend for the current payment state. Used by the frontend during the PENDING polling loop (max 5 polls, 5-second interval) and after the iFrame `CONCLUDED` callback.
+*Protected.* Polls the backend for the current payment state. Available to the frontend for PENDING polling; the iFrame `CONCLUDED` callback itself navigates to `/booking/redirect`, which verifies via `GET /payments/verify`.
 
 **Response `200`:**
 ```json
@@ -916,7 +936,7 @@ These endpoints support payment callbacks, status checks, and manager-initiated 
 
 ### `POST /webhooks/phonepe`
 
-*Public (verified by PhonePe SHA256 auth header).* Receives server-to-server payment event callbacks. This is the **primary** confirmation mechanism — the redirect handler is the secondary. Both are idempotent.
+*Public (verified by PhonePe SHA256 auth header).* Receives server-to-server payment event callbacks (webhooks). This is the **primary** confirmation mechanism — the `GET /payments/verify` endpoint (run on the post-payment redirect) is the secondary. Both are idempotent.
 
 **Headers:** `Authorization: SHA256(username:password)` — verified against `PHONEPE_WEBHOOK_USERNAME:PHONEPE_WEBHOOK_PASSWORD` before any processing.
 

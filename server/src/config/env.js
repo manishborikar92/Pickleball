@@ -47,9 +47,8 @@ const envSchema = Joi.object({
   PHONEPE_WEBHOOK_USERNAME: Joi.string().allow('').default(''),
   PHONEPE_WEBHOOK_PASSWORD: Joi.string().allow('').default(''),
 
-  // Base URLs for payment redirect and webhook routing.
+  // Browser return target for PhonePe payment redirects.
   FRONTEND_BASE_URL: Joi.string().uri().default('http://localhost:3000'),
-  BACKEND_BASE_URL: Joi.string().uri().default('http://localhost:5000'),
   BOOKING_TAX_RATE: Joi.number().min(0).default(0.00),
 
   // Background scheduler — in-process periodic job runner.
@@ -197,7 +196,6 @@ export const buildConfig = (overrides = {}) => {
       disabled: value.DISABLE_INTERNAL_SCHEDULER,
     },
     frontendBaseUrl: value.FRONTEND_BASE_URL,
-    backendBaseUrl: value.BACKEND_BASE_URL,
   };
 
   return deepMerge(config, overrides);

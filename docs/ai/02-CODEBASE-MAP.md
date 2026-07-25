@@ -31,7 +31,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── bookings/          # Selection, holds, waivers, and pricing
 │   │       ├── health/            # Liveness/Readiness endpoints
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
-│   │       ├── payments/          # Gateway logic: PhonePe provider, webhook, redirect, reconciliation
+│   │       ├── payments/          # Gateway logic: PhonePe provider, JSON verification, webhook, reconciliation
 │   │       ├── reviews/           # Venue reviews: submission, public listing, and moderation
 │   │       ├── rewards/           # Reward engine: issuance, reveal, vouchers, mechanisms, moderation
 │   │       ├── users/             # User profile, wallet, and history
@@ -75,7 +75,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **Server Actions (`web/src/lib/actions/`)**: Route-independent mutation entry points (auth, booking, review) — validate (Zod) → authorize → call backend → revalidate. Imported by both components and route files; nothing under `components/`/`lib/`/`hooks/` imports from `@/app/` (ADR-W009, lint-enforced). *Owner: Core Developer*.
 - **Cookie Management (`web/src/lib/cookies.js`)**: Centralized cookie operations (set, clear, extract). *Owner: Core Developer*.
 - **Marketing Pages (`web/src/app/(marketing)/`)**: Static/cached pages with shared Header + Footer layout. *Owner: Frontend Engineer*.
-- **Booking Flow (`web/src/app/(booking)/`)**: Dynamic booking; the checkout transaction runs server-side via `checkoutBookingAction`. *Owner: Frontend Engineer*.
+- **Booking Flow (`web/src/app/(booking)/`)**: Dynamic booking; the checkout transaction runs server-side via `checkoutBookingAction`. `/booking/redirect` is the PhonePe return landing and uses `verifyPaymentAction` before replacing itself with the booking page. *Owner: Frontend Engineer*.
 - **Customer Dashboard (`web/src/app/(dashboard)/`)**: Renders bookings list, wallet balance with Suspense streaming. *Owner: Frontend Engineer*.
 - **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, rewards (redemption desk, mechanism editor, instance table), courts, users. *Owner: Frontend Engineer*.
 - **Shared Portal (`web/src/components/shared/Portal.js`)**: SSR-safe `createPortal` wrapper that projects overlay content under `document.body`. Any `position: fixed` dialog rendered deep in the tree must go through it — ancestor CSS containment contexts (transform/overflow/contain on layout wrappers) otherwise re-scope fixed positioning and clip the overlay (first hit: the reward scratch overlay). *Owner: Frontend Engineer*.
@@ -111,7 +111,7 @@ This matrix establishes bidirectional mapping between product specifications and
 | **Admin Auth** | `docs/product/02-BUSINESS-LOGIC.md` | `AdminCredential` | `server/src/modules/auth` | `web/src/app/(auth)/admin/login` |
 | **Scheduling Engine** | `docs/product/02-BUSINESS-LOGIC.md` | `Schedule`, `ScheduleException` | `server/src/modules/venues` | `web/src/components/features/booking` |
 | **Slot Locking** | `docs/product/02-BUSINESS-LOGIC.md` | `BookingSlot`, `Booking` | `server/src/modules/bookings` | `web/src/app/(booking)/venues/[slug]/book` |
-| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(dashboard)/dashboard` |
+| **PhonePe Payments**| `docs/integrations/02-PAYMENT-INTEGRATION.md`| `Payment` | `server/src/modules/payments` | `web/src/app/(booking)/booking/redirect` |
 | **Wallet Credits** | `docs/product/02-BUSINESS-LOGIC.md` | `WalletTransaction` | `server/src/modules/users` | `web/src/app/(dashboard)/dashboard/wallet` |
 | **Review Rating** | `docs/product/01-PROJECT-OVERVIEW.md` | `Review` | `server/src/modules/reviews` | `web/src/components/features/review` |
 | **Rewards Engine** | `docs/adrs/ADR-010-rewards-module.md` | `RewardMechanism`, `RewardInstance` | `server/src/modules/rewards` | `web/src/components/features/rewards` |

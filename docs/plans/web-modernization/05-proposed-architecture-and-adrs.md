@@ -2,6 +2,8 @@
 
 The target architecture, dimension by dimension, followed by Architecture Decision Records (ADRs) in the repo's existing ADR style (`docs/adrs/`). Each major recommendation states the current implementation, alignment with best practice, alternatives, justification, trade-offs, and a priority.
 
+> **Historical plan record.** The proposed target below was written before implementation and is retained for traceability. The accepted and implemented decisions are recorded in `docs/adrs/` and the AI context documents.
+
 The guiding principle: **keep the folder structure and the good parts; fix the data, auth, and cache mechanics.**
 
 ---

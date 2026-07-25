@@ -1,9 +1,9 @@
 import { Header, Footer } from "@/components/layout";
 import { BookingErrorView } from "@/components/features/booking";
 
-// This route is the terminal sink the payment redirect controller falls back to
-// when it cannot resolve a bookingId (missing/unknown orderId, gateway unreachable).
-// `type` is the only contract the backend sends — whitelist it and never reflect a
+// This route is the terminal sink the /booking/redirect landing falls back to
+// when it cannot resolve a bookingId (missing/unknown orderId, backend unreachable).
+// `type` is the only contract callers send — whitelist it and never reflect a
 // free-form `message` from the URL, so this official-looking page can't be used to
 // surface attacker-supplied text.
 const KNOWN_ERROR_TYPES = new Set([

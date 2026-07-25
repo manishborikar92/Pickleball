@@ -42,12 +42,12 @@
       }
     },
     {
-      "name": "PhonePe payment redirect handler",
+      "name": "Verify payment (PhonePe Verify Payment Response step)",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/payments/redirect",
+          "raw": "{{baseUrl}}/api/v1/payments/verify",
           "host": [
             "{{baseUrl}}"
           ],
@@ -55,7 +55,7 @@
             "api",
             "v1",
             "payments",
-            "redirect"
+            "verify"
           ]
         }
       }

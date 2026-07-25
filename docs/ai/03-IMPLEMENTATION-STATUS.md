@@ -58,10 +58,10 @@ We classify codebase features using the following lifecycle states:
 ### 2.4 Payments & Webhooks (Built)
 - [x] **Neutral Payment Provider Abstraction**: Isolated 3-method interface (`createPaymentOrder`, `getPaymentStatus`, `refundPayment`) under `server/src/modules/payments/payment-provider.js`.
 - [x] **Sandbox Payment Gateway**: Test-only provider facilitating mock checkouts. Only used when `NODE_ENV=test`.
-- [x] **PhonePe PG v2 Provider**: Production payment provider (`phonepe-payment.provider.js`) using raw `fetch` with OAuth token management, 5xx retry, and 401 token refresh.
+- [x] **PhonePe PG v2 Provider**: Production payment provider (`phonepe-payment.provider.js`) using raw `fetch` with OAuth token management, 5xx retry, and 401 token refresh. Each gateway attempt receives a fresh 34-character merchant order ID with 64 bits of cryptographic entropy, so retries never reuse a PhonePe order.
 - [x] **Shared Provider Factory**: Single `provider-factory.js` creates provider once, shared between bookings (initiation) and payments (reconciliation) modules.
 - [x] **PhonePe Webhook Handler**: S2S callback controller with SHA256 auth verification, immediate 200 response, and async event processing.
-- [x] **PhonePe Redirect Handler**: Post-payment browser redirect with Order Status API verification and idempotent processing.
+- [x] **Frontend Redirect Landing + Verification**: PhonePe and sandbox return to `/booking/redirect`; its themed interstitial uses a Server Action to call the public JSON `GET /payments/verify` endpoint server-to-server. The endpoint resolves the exact payment-ledger ID before calling PhonePe, processes terminal states idempotently, and falls back to the booking page with `UNKNOWN` when the gateway is unavailable. No backend-hosted browser-redirect route is exposed.
 - [x] **Background Reconciliation Job**: `scripts/reconcile-stale-payments.mjs` recovers missing webhooks for payments stuck >15 minutes.
 
 ### 2.5 Wallet & Cancellations (Built)
@@ -105,7 +105,7 @@ We classify codebase features using the following lifecycle states:
 
 ## 3. Specification-to-Code Divergences
 
-Divergences represent technical modifications made during implementation to solve security, scaling, or routing challenges:
+Divergences represent technical modifications made during implementation to solve security, scaling, or routing challenges. Entries 4–5 are historical implementation notes: on 2026-07-21 the product documents were reconciled to the voucher-only, overlay-first implementation and now classify their former prize and standalone-route proposals as historical design records.
 
 1. **Query-String Destination Redirects**:
    - *Specification*: `03-UI-UX-SPECIFICATION.md` does not specify redirection behaviors for users returning to the checkout booking process from onboarding screens.

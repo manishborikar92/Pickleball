@@ -223,6 +223,23 @@ export function normalizePaymentInitiationResponse(payload = {}) {
   };
 }
 
+/**
+ * Normalizes the payment verification response (`GET /payments/verify`)
+ * into camelCase (ME-2). `state` is the provider's order state (COMPLETED |
+ * FAILED | PENDING | CREATED | UNKNOWN); redirect routing only needs
+ * `bookingId` — the unified booking page derives its view from the ledger.
+ * @param {object} payload
+ */
+export function normalizePaymentVerifyResponse(payload = {}) {
+  return {
+    merchantOrderId: payload.merchant_order_id ?? "",
+    bookingId: payload.booking_id ?? "",
+    bookingStatus: payload.booking_status ?? "",
+    paymentStatus: payload.payment_status ?? "",
+    state: payload.state ?? "UNKNOWN",
+  };
+}
+
 export function normalizeWalletResponse(payload = {}) {
   return {
     balance: Number(payload.balance || 0),

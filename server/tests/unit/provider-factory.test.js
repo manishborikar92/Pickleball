@@ -27,7 +27,6 @@ test('provider factory returns phonepe provider when env is not test', () => {
       merchantId: 'M123',
       env: 'SANDBOX',
     },
-    backendBaseUrl: 'http://localhost:5000',
   });
 
   assert.equal(provider.name, 'phonepe');

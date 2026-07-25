@@ -4,6 +4,13 @@ import test from 'node:test';
 import { buildConfig } from '../../src/config/env.js';
 import { createOtpProvider } from '../../src/modules/auth/otp.provider.js';
 
+test('buildConfig exposes only the frontend origin for browser payment returns', () => {
+  const config = buildConfig();
+
+  assert.equal(config.frontendBaseUrl, process.env.FRONTEND_BASE_URL || 'http://localhost:3000');
+  assert.equal(Object.hasOwn(config, 'backendBaseUrl'), false);
+});
+
 test('buildConfig requires WhatsApp template settings for production OTP mode', () => {
   const originalEnv = { ...process.env };
   process.env = {

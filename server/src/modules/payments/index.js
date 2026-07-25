@@ -36,7 +36,7 @@ export const createDefaultPaymentsRouter = ({ bookingsService, config, authServi
     authService,
     paymentProvider,
   });
-  const router = createPaymentsRouter({ paymentsService, paymentProvider, bookingsService, config });
+  const router = createPaymentsRouter({ paymentsService, paymentProvider, bookingsService });
   return { router, paymentsService, reconciliationService, repository };
 };
 

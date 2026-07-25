@@ -34,8 +34,10 @@ import {
   normalizeBookingDetailResponse,
   normalizeHoldResponse,
   normalizePaymentInitiationResponse,
+  normalizePaymentVerifyResponse,
 } from "../src/lib/normalizers.js";
 import { createBookingHold, confirmHeldBooking, runCheckout } from "../src/lib/services/checkout.js";
+import { isLikelyMerchantOrderId, resolvePaymentRedirectPath } from "../src/lib/services/paymentRedirect.js";
 
 test("role permissions are permission-key based and expandable", () => {
   assert.equal(hasPermission("manager", "edit_pricing"), true);
@@ -1043,4 +1045,81 @@ test("formatCountdown renders m:ss with zero-padded seconds", () => {
   assert.equal(formatCountdown(0), "0:00");
   assert.equal(formatCountdown(-5), "0:00");
   assert.equal(formatCountdown(NaN), "0:00");
+});
+
+test("isLikelyMerchantOrderId accepts provider-shaped ids and rejects junk", () => {
+  // Real provider shapes: PhonePe (PP-<hex>) and sandbox (SANDBOX-<uuid>).
+  assert.equal(isLikelyMerchantOrderId("PP-44444444444444444444"), true);
+  assert.equal(isLikelyMerchantOrderId("SANDBOX-44444444-4444-4444-8444-444444444444"), true);
+  // Too short, empty, wrong type, or unsafe characters.
+  assert.equal(isLikelyMerchantOrderId("PP-1"), false);
+  assert.equal(isLikelyMerchantOrderId(""), false);
+  assert.equal(isLikelyMerchantOrderId(null), false);
+  assert.equal(isLikelyMerchantOrderId(undefined), false);
+  assert.equal(isLikelyMerchantOrderId(42), false);
+  assert.equal(isLikelyMerchantOrderId("PP-abc?def=ghi"), false);
+  assert.equal(isLikelyMerchantOrderId("../../../etc/passwd"), false);
+  assert.equal(isLikelyMerchantOrderId(`PP-${"a".repeat(300)}`), false);
+});
+
+test("resolvePaymentRedirectPath lands every verified order on the unified booking page", () => {
+  // COMPLETED, FAILED, and PENDING all resolve to /booking/[bookingId] — the
+  // unified page renders confirmation, failure + retry, or polling itself.
+  for (const state of ["COMPLETED", "FAILED", "PENDING", "UNKNOWN"]) {
+    const path = resolvePaymentRedirectPath({ ok: true, data: { bookingId: "booking-1", state } });
+    assert.equal(path, "/booking/booking-1");
+  }
+});
+
+test("resolvePaymentRedirectPath maps failures to whitelisted error destinations", () => {
+  assert.equal(
+    resolvePaymentRedirectPath({ ok: false, error: { code: "bad_request" } }),
+    "/booking/error?type=missing_order_id",
+  );
+  assert.equal(
+    resolvePaymentRedirectPath({ ok: false, error: { code: "not_found" } }),
+    "/booking/error?type=notFound",
+  );
+  assert.equal(
+    resolvePaymentRedirectPath({ ok: false, error: { code: "server_error" } }),
+    "/booking/error?type=api_failure",
+  );
+  // Defensive: a success without a bookingId can't be routed to a booking.
+  assert.equal(
+    resolvePaymentRedirectPath({ ok: true, data: { bookingId: "" } }),
+    "/booking/error?type=api_failure",
+  );
+  assert.equal(resolvePaymentRedirectPath(null), "/booking/error?type=api_failure");
+});
+
+test("resolvePaymentRedirectPath never reflects unsafe booking ids into the path", () => {
+  // The bookingId comes from our own backend, but encode defensively anyway.
+  const path = resolvePaymentRedirectPath({ ok: true, data: { bookingId: "a/b?c" } });
+  assert.equal(path, "/booking/a%2Fb%3Fc");
+});
+
+test("normalizePaymentVerifyResponse maps the verify payload to camelCase", () => {
+  const normalized = normalizePaymentVerifyResponse({
+    merchant_order_id: "PP-abc123",
+    booking_id: "booking-9",
+    booking_status: "confirmed",
+    payment_status: "success",
+    state: "COMPLETED",
+  });
+  assert.deepEqual(normalized, {
+    merchantOrderId: "PP-abc123",
+    bookingId: "booking-9",
+    bookingStatus: "confirmed",
+    paymentStatus: "success",
+    state: "COMPLETED",
+  });
+
+  // PENDING responses omit statuses; UNKNOWN is the defensive default state.
+  assert.deepEqual(normalizePaymentVerifyResponse({}), {
+    merchantOrderId: "",
+    bookingId: "",
+    bookingStatus: "",
+    paymentStatus: "",
+    state: "UNKNOWN",
+  });
 });

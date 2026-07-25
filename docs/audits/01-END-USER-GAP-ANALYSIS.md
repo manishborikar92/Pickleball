@@ -9,7 +9,7 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 ### Shared Court Selection Slot Intersection Highlighting
 * **Current Status:** ✅ Implemented 2026-07-19
 * **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.2 ("Section 4 — Select Time Slots")
-* **Description:** 
+* **Description:**
   The UI/UX Specification states: "When both courts are selected, the slot grids must show the intersection of available slots highlighted — slots that are available on at least one court show normally."
 * **Delivered:**
   * `getSharedAvailableSlotTimes()` in `bookingEngine.js` computes the start times available on every court; `useBookingSelection.js` exposes the set to the grids.
@@ -56,15 +56,29 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 * **Dependencies:** None.
 
 ### Payment Redirect Backend Exposure
-* **Current Status:** Proposed Refinement
-* **Documented in:** [02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md) Section 2.2 ("Environment URLs"), Section 6 ("Browser Redirection & Status Check")
-* **Description:** 
-  During checkout, the PhonePe payment provider configures a direct backend callback URL (`http://localhost:5000/api/v1/payments/redirect?orderId=${merchantOrderId}`). After completing the payment, PhonePe redirects the customer's browser directly to this backend API URL. The browser URL bar briefly exposes the backend domain/port, displaying raw backend-level redirections (HTTP 302) before routing the client back to the frontend (`http://localhost:3000/booking/${bookingId}`). This compromises domain isolation, leaks private API server details to the client browser, and triggers cross-origin routing complexities.
-* **Proposed Solution:**
-  Establish a dedicated frontend **Payment Callback & Verification Route** (`/booking/callback?orderId=...`). Configure PhonePe to redirect users back to the frontend domain at `${frontendBaseUrl}/booking/callback?orderId=${merchantOrderId}`. On page load, show a themed spinner and reassuring confirmation loading state, while making an asynchronous fetch to the backend `/payments/redirect` endpoint to process and reconcile the payment status, and then smoothly redirect the user to `/booking/${bookingId}` (success) or `/booking/error` (failure).
+* **Current Status:** ✅ Implemented 2026-07-19
+* **Documented in:** [02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md) Section 1.2 ("System Architecture") and Section 3.3 Steps 7–8, [02-API-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/02-API-SPECIFICATION.md) Section 8
+* **Description:**
+  During checkout, the PhonePe payment provider formerly sent the customer's browser through a direct backend callback. That exposed the backend domain and port in the URL bar, showed a raw HTTP redirect, and created cross-origin routing complexity.
+* **Delivered:**
+  * PhonePe (and the sandbox provider) now configure `merchantUrls.redirectUrl` as `${FRONTEND_BASE_URL}/booking/redirect?orderId=${merchantOrderId}` — the customer's browser only ever sees the frontend domain (`phonepe-payment.provider.js`, `sandbox-payment.provider.js`). The iFrame `CONCLUDED` callback in `BookingClient` likewise navigates to the same-origin `/booking/redirect` route instead of the backend.
+  * The new `/booking/redirect` route (named for its role as the `redirectUrl` target, per official PhonePe terminology — "callback" is reserved for the S2S webhook) renders a themed "Confirming Your Payment" interstitial (`PaymentRedirectView`, fully prerendered static shell — the spinner paints instantly) and verifies the order through `verifyPaymentAction`. Verification runs Next-server-to-Express — an improvement over the proposed browser-side fetch: no CORS at all, and the backend origin never appears even in the browser's network log.
+  * A new public backend endpoint `GET /api/v1/payments/verify?orderId=...` (PhonePe's "Verify Payment Response" step) verifies with the PhonePe Order Status API and processes terminal states idempotently through the same pipeline as the webhook, returning JSON. It resolves the order against the database before any provider call (404 for junk input) and degrades to `state: "UNKNOWN"` with the booking reference when the gateway is unreachable, so the customer still lands on their booking.
+  * All verified orders — COMPLETED, FAILED, and PENDING — land on the unified `/booking/[bookingId]` page (confirmation, failure + retry, or polling from the payment ledger); `/booking/error?type=...` is reserved for unresolvable orders. The backend-hosted browser-redirect handler has been removed entirely — the verify endpoint is the only post-payment verification surface.
 * **User Impact:** High (Aesthetic discontinuity, security risk of leaking internal backend ports, and CORS verification friction).
 * **Dependencies:** None.
-* **Note:** The proposed solution is a recommended approach to achieve the best possible end-user experience. If, during subsequent design stages or further technical analysis, an even better architectural solution is identified, it should be proposed instead. The overriding priority is always to implement the best overall solution, even if it differs from the proposed implementation route documented here.
+
+### Unique `merchantOrderId` Generation on Payment Retry
+* **Current Status:** ✅ Implemented 2026-07-21
+* **Documented in:** [02-PAYMENT-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/02-PAYMENT-INTEGRATION.md) Section 9.2 ("Retry Logic")
+* **Description:**
+  When a gateway payment fails or is cancelled, the payment record transitions to `failed` in the database while the underlying booking hold remains active (`pending_payment` state) for the duration of its 10-minute TTL. Clicking "Try Again" on the failure screen or resuming payment from the booking page invokes `POST /api/v1/bookings/:id/initiate-payment` to create a new gateway checkout order. The former booking-only ID would have made every retry use the same gateway order and PhonePe would reject it with HTTP 400.
+* **Delivered:**
+  * `generateMerchantOrderId` now produces `PP-<14-char-booking-prefix>-<16-hex-char-crypto-suffix>` (34 characters). The fresh 64-bit cryptographic suffix makes each gateway attempt distinct while remaining below PhonePe's 35-character maximum.
+  * The generated value is persisted in the unique `payments.merchant_order_id` column before it is returned to the client. `getPaymentWithBooking` resolves that exact ledger value for verification, webhooks, protected status polling, and reconciliation, so retry attempts cannot be confused.
+  * Unit coverage proves retry values differ, retain the traceable booking prefix, use PhonePe-safe characters, and fit the length limit.
+* **User Impact:** High (Prevents users from retrying payment when a gateway attempt fails or is cancelled).
+* **Dependencies:** None.
 
 ---
 
@@ -199,6 +213,8 @@ graph TD
    * *Rationale:* Essential to prevent users from attempting checkout on expired/taken slots, and coordinates client-server timing. Delivered as a hold-first checkout with a live countdown, sessionStorage-backed payment resume, and graceful expiry handling.
 2. **Support Form Submission Delivery**
    * *Rationale:* Submitting contact details currently returns an explicit failure notice to the end user.
+3. **Unique `merchantOrderId` Generation on Payment Retry**
+   * *Rationale:* Prevents PhonePe API HTTP 400 rejection on payment retries by appending a unique attempt counter suffix to `merchantOrderId`.
 
 ---
 
@@ -209,8 +225,8 @@ graph TD
    * *Rationale:* Greatly improves multi-court selection workflow efficiency. Delivered as an accent-border highlight (with legend and accessible labels) on slots open across all courts.
 2. **Prevention of Asymmetric Multi-Court Selections in UI** — ✅ Implemented 2026-07-19
    * *Rationale:* Prevents validation alerts on checkout submit by locking inputs earlier. Delivered via the mirrored session-range selection reducer with jump-fill and proactive session caps.
-3. **Payment Redirect Backend Exposure**
-   * *Rationale:* Prevents exposing the direct backend API domain and port in the browser address bar and logs.
+3. **Payment Redirect Backend Exposure** â€” ✅ Implemented 2026-07-19
+   * *Rationale:* PhonePe now returns to the frontend `/booking/redirect` interstitial, which verifies server-to-server and never exposes the backend origin in the browser.
 
 ---
 

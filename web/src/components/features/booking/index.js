@@ -9,3 +9,4 @@ export { BookingDetailView } from "./BookingDetailView";
 export { BookingFailedView } from "./BookingFailedView";
 export { BookingPendingView } from "./BookingPendingView";
 export { BookingErrorView } from "./BookingErrorView";
+export { PaymentRedirectCard, PaymentRedirectView } from "./PaymentRedirectView";

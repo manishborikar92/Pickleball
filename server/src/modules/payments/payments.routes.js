@@ -4,8 +4,9 @@ import { authenticate } from '../../middleware/authenticate.middleware.js';
 import { validate } from '../../middleware/validate.middleware.js';
 import { requireOnboarding } from '../../middleware/require-onboarding.middleware.js';
 import { createPaymentsController } from './payments.controller.js';
-import { createRedirectController } from './redirect.controller.js';
+import { createVerifyController } from './verify.controller.js';
 import {
+  paymentVerifyQuerySchema,
   paymentIdParamsSchema,
   paymentOrderParamsSchema,
   refundBodySchema,
@@ -15,7 +16,6 @@ export const createPaymentsRouter = ({
   paymentsService,
   paymentProvider,
   bookingsService,
-  config,
   authMiddleware = authenticate(),
   onboardingMiddleware = requireOnboarding(),
 } = {}) => {
@@ -28,10 +28,13 @@ export const createPaymentsRouter = ({
 
   router.get('/status/:merchantOrderId', authMiddleware, onboardingMiddleware, validate(paymentOrderParamsSchema, 'params'), controller.getPaymentStatus);
 
-  // PhonePe post-payment browser redirect (public — no auth).
+  // PhonePe "Verify Payment Response" step (public — the gateway redirect
+  // carries no auth). The frontend /booking/redirect page — the target of
+  // merchantUrls.redirectUrl — calls this JSON endpoint server-side, so the
+  // backend origin never reaches the customer's browser.
   if (paymentProvider && bookingsService) {
-    const redirectController = createRedirectController({ bookingsService, paymentProvider, config });
-    router.get('/redirect', redirectController.handleRedirect);
+    const verifyController = createVerifyController({ bookingsService, paymentProvider });
+    router.get('/verify', validate(paymentVerifyQuerySchema, 'query'), verifyController.handleVerify);
   }
 
   router.post('/:paymentId/refund', authMiddleware, validate(paymentIdParamsSchema, 'params'), validate(refundBodySchema, 'body'), controller.refundPayment);

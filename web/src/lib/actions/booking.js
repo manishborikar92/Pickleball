@@ -15,6 +15,7 @@
  */
 
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 import { apiRequest } from "@/lib/dal/httpClient";
 import { getAvailability } from "@/lib/dal/availability";
@@ -26,7 +27,9 @@ import {
   normalizePricePreviewResponse,
   normalizeHoldResponse,
   normalizePaymentInitiationResponse,
+  normalizePaymentVerifyResponse,
 } from "@/lib/normalizers";
+import { isLikelyMerchantOrderId } from "@/lib/services/paymentRedirect";
 import { bookingSelectionSchema } from "@/lib/schemas";
 import { ok, fail } from "@/lib/actions/result";
 import { COOKIE_NAMES } from "@/config/auth.config";
@@ -235,6 +238,56 @@ export async function confirmHeldBookingAction(bookingId, { useWalletCredits = t
       return { kind: "error", code: "hold_expired", message: "Your booking hold expired before payment. Please reselect your slots." };
     }
     return { kind: "error", code: error?.code || "api_error", message: error?.message || "Could not complete booking." };
+  }
+}
+
+/**
+ * Verifies a payment for the `/booking/redirect` page (PhonePe's "Verify
+ * Payment Response" step, run when the gateway redirects the browser back).
+ *
+ * Calls the public backend verify endpoint server-side (the backend origin
+ * never reaches the browser), which checks the order with the gateway's
+ * Order Status API and processes terminal states idempotently. Deliberately
+ * session-free: the gateway redirect must resolve even if the session lapsed
+ * mid-payment, and the endpoint reveals nothing beyond the booking reference —
+ * `/booking/[bookingId]` itself enforces session + ownership.
+ *
+ * Retries once on transport/5xx failures: the backend already degrades
+ * gracefully (state UNKNOWN with the booking reference), so only an unreachable
+ * backend surfaces here, and a deploy blip shouldn't strand a paying customer.
+ *
+ * @param {string} orderId - The gateway `merchantOrderId` from the redirect URL.
+ * @returns {Promise<{ ok: true, data: { bookingId: string } } | { ok: false, error: object }>}
+ */
+export async function verifyPaymentAction(orderId) {
+  const merchantOrderId = typeof orderId === "string" ? orderId.trim() : "";
+  if (!isLikelyMerchantOrderId(merchantOrderId)) {
+    return fail(null, { code: "bad_request", status: 400, message: "Missing or invalid payment reference." });
+  }
+
+  const verify = async () => {
+    const { payload } = await apiRequest(
+      `/api/v1/payments/verify?orderId=${encodeURIComponent(merchantOrderId)}`,
+    );
+    const data = normalizePaymentVerifyResponse(payload.data);
+    if (data.bookingId) {
+      revalidatePath(`/booking/${data.bookingId}`);
+    }
+    return ok(data);
+  };
+
+  try {
+    return await verify();
+  } catch (error) {
+    const retriable = !error?.status || error.status >= 500;
+    if (retriable) {
+      try {
+        return await verify();
+      } catch (retryError) {
+        return fail(retryError, { message: "Could not verify the payment right now." });
+      }
+    }
+    return fail(error, { message: "Could not verify the payment right now." });
   }
 }
 

@@ -67,7 +67,7 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 
 ### 2.2 Booking / Checkout Page
 
-**Route:** `/book` or `/venues/[slug]/book`
+**Route:** `/venues/[slug]/book`
 
 **Purpose:** The primary booking interface. Users select a date, one or both courts, one or more consecutive time slots, review the live price, and initiate the auth + payment flow.
 
@@ -117,19 +117,19 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 The auth gate appears as a bottom-sheet modal overlay on the booking page. It is used exclusively when the user is in an active booking flow — preserving their court and slot selection in React state without any page navigation.
 
 **When the modal is used:**
-- User clicks "Confirm & Pay" on `/book` while unauthenticated.
+- User clicks "Confirm & Pay" on `/venues/[slug]/book` while unauthenticated.
 - User's JWT expires mid-session while reviewing the checkout summary.
 - Any in-context flow where leaving the current page would destroy the selection state.
 
 **When the dedicated `/login` page is used instead:**
 - User navigates directly to `/login` with no booking in progress.
-- Route guard redirects from a protected page (e.g., `/bookings`, `/wallet`).
+- Route guard redirects from a protected page (e.g., `/dashboard/bookings`, `/dashboard/wallet`).
 - Shared or external links to the platform.
 - Authentication recovery (expired session, device change).
 
 **The booking page never navigates away during auth.** The modal is always used in a booking context. This guarantees the user's court and time slot selection, accumulated in React state, is never lost.
 
-Both the modal and the `/login` page use the same `useAuth` hook and identical step components. See Section 2A for the shared frontend architecture.
+Both the checkout gate and `/login` use the server-side auth actions and cookie session contract described in Section 2A. They do not keep bearer tokens in browser storage.
 
 **Path determination on "Confirm & Pay" click:**
 
@@ -296,13 +296,15 @@ Protected routes are guarded in two layers: an optimistic edge pass in the proxy
 |---|---|---|
 | `/login` | Unauthenticated only | `next` (or `/dashboard/overview`) if already authenticated |
 | `/onboarding` | JWT only (name may be null) | `/login?next=[target]` if no JWT |
-| `/book` | Public (auth triggered mid-flow via modal) | — |
-| `/bookings`, `/wallet`, `/rewards` | JWT + onboarding complete | `/login?next=[current path]` |
+| `/venues/[slug]/book` | Public (auth triggered mid-flow via modal) | — |
+| `/dashboard/bookings`, `/dashboard/wallet`, `/dashboard/rewards` | JWT + onboarding complete | `/login?next=[current path]` |
 | `/review/[id]` | JWT + booking owner | In-page sign-in gate linking to `/login?next=[current path]` |
 | `/admin/*` | JWT + non-customer role | `/admin/login?next=[current path]` |
 | `/admin/login` | Unauthenticated (or non-admin JWT) | `next` (or `/admin/overview`) if already authenticated as an admin |
 
 **The optimistic proxy (`web/src/proxy.js`) handles:**
+
+> **Implemented route correction.** The booking surface is `/venues/[slug]/book`; protected customer pages are `/dashboard/bookings`, `/dashboard/wallet`, and `/dashboard/rewards`. The older short route labels in the table are retained only as pre-implementation product-plan terminology.
 - No JWT present on `/dashboard/*` or `/admin/*` → redirect to `/login` / `/admin/login` carrying `?next=[current path]`.
 - Expired access token with a valid refresh token → proactive refresh, forwarding fresh cookies to the render.
 - Authenticated users landing on `/login` / `/onboarding` → bounced to `next` (or the dashboard overview).
@@ -348,7 +350,9 @@ Protected routes are guarded in two layers: an optimistic edge pass in the proxy
 
 ## 2A. Frontend Authentication Architecture
 
-This section defines the shared architecture that powers both the modal and page authentication surfaces. Business logic, API calls, state management, and validation live here exactly once.
+The implemented web application keeps authentication at the server boundary. `web/src/lib/actions/auth.js` owns login and onboarding mutations and writes secure HTTP-only cookies; the checkout gate calls those actions directly. `web/src/lib/dal/session.js` verifies a cookie session with the backend for server-rendered access decisions, and `web/src/proxy.js` performs only optimistic cookie-presence routing and refreshes an expiring access cookie.
+
+There is no client `AuthProvider`, `AuthContext`, `useAuth`, `useOnboarding`, `useAdminAuth`, or browser `localStorage` token store. The detailed hook-and-client-state proposal in Sections 2A.1–2A.8 below is retained as a historical design record and is not an implementation contract.
 
 ### 2A.1 The `useAuth` Hook
 
@@ -447,6 +451,8 @@ The `NameStep` component in the auth flow is powered by this hook through `useAu
 
 ### 2A.6 Session Restoration on App Load
 
+> **Implemented behavior.** Browser credentials are secure HTTP-only cookies. The proxy attempts a refresh before render when necessary; server pages and DAL functions call `verifySession()` to authenticate against the backend. A missing, invalid, or unrefreshable cookie session is treated as unauthenticated. No client-side token decoding, token clearing, or global client auth state is used.
+
 On every app load or page navigation, a top-level `AuthProvider` component (wrapping the Next.js layout) checks session state:
 
 ```
@@ -464,6 +470,8 @@ On every app load or page navigation, a top-level `AuthProvider` component (wrap
 
 ### 2A.7 Booking Context Preservation
 
+> **Implemented behavior.** `/venues/[slug]/book` keeps an uncommitted selection in React state. When the customer commits checkout, the ten-minute hold and a checkout snapshot are persisted in `sessionStorage`; that lets the same tab resume a gateway return, refresh, or cancelled payment while the hold remains valid. Before a hold exists, selection is intentionally not persisted. The historical paragraph below predates this recovery behavior.
+
 The booking page (`/book`) holds the user's court and slot selection entirely in React state (no server-side draft, no local storage persistence). This is intentional:
 
 - The modal never causes a page navigation → selection is preserved.
@@ -472,6 +480,8 @@ The booking page (`/book`) holds the user's court and slot selection entirely in
 - If the user's JWT expires exactly as they click "Confirm & Pay", the modal opens (they re-authenticate in ~30 seconds), and the selection remains intact.
 
 ### 2A.8 Admin Auth Architecture
+
+> **Implemented behavior.** Admin and customer authentication use the same cookie-session transport and server-action/DAL boundaries, with backend role and permission checks deciding access. There is no separate client token store or `useAdminAuth` implementation.
 
 Admin auth (`/admin/login`, activation, reset) uses an entirely separate `useAdminAuth` hook that calls the `/auth/admin/*` endpoints. It does not share state or components with `useAuth`. Admin-side logic does not bleed into the customer auth flow.
 
@@ -503,7 +513,11 @@ Lists all reward instances for the user, grouped by: **Pending** (unrevealed, no
 
 ---
 
-### 3.4 Scratch Card Screen
+### 3.4 Reward Reveal Overlay
+
+**Implemented interaction (authoritative):** Rewards are revealed in the `RewardExperience` overlay, not at a standalone route. On a booking-confirmation page, a pending reward can auto-present after a short delay; if dismissed, a foil teaser card reopens the same overlay. The same experience is available on `/dashboard/rewards`. The overlay is a bottom sheet on mobile and a centered dialog on desktop, with an explicit keyboard/assistive-technology reveal button as well as the cosmetic scratch gesture.
+
+> **Historical standalone-screen notes below.** The routed `/rewards/[instanceId]` screen and its wallet-credit/coupon/free-booking outcomes were superseded by the overlay-first, voucher-only implementation documented in ADR-010 and `docs/specs/01-DATABASE-SCHEMA.md`.
 
 **Route:** `/rewards/[instanceId]`
 
@@ -658,4 +672,3 @@ The admin dashboard is a separate authenticated web application (accessible via 
 | **Admin Account Management** | Launch | Provision new admin accounts, manage status (activate/suspend/unlock), resend activation, force password reset |
 | **Settings** | Launch | Venue-level settings (rollover time, advance window, tax rate) |
 | **Reward Engine** | **Deferred** | Create/edit/activate reward mechanisms; edit prize pool config; view instances — activate when reward engine is enabled |
-

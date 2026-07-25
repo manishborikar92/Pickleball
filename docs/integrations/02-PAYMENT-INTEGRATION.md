@@ -14,7 +14,7 @@ This document covers the complete payment and checkout lifecycle for the web pla
 |---|---|---|
 | Pay page presentation | Native SDK `startTransaction()` | Redirect or iFrame via JS bundle |
 | Payment result delivery | SDK callback (`SUCCESS`/`FAILURE`/`INTERRUPTED`) | Browser redirect back to `redirectUrl` |
-| Verification trigger | App calls backend after SDK callback | Backend redirect handler + webhook |
+| Verification trigger | App calls backend after SDK callback | Frontend redirect landing → backend verify + webhook |
 | `INTERRUPTED` state | Possible (app backgrounded) | Not applicable |
 
 ### 1.2 System Architecture
@@ -34,16 +34,23 @@ Next.js Frontend                Express.js Backend              PhonePe PG
       │  PhonePeCheckout.transact()      │                           │
       │────────────── iFrame / Redirect ────────────────────────────►│
       │                                  │                           │  User pays
-      │◄──────────── Redirect to redirectUrl ────────────────────────│
+      │◄─────── Redirect to /booking/redirect?orderId=... ───────────│
       │                                  │                           │
-      │── GET /api/v1/payments/redirect ─►│                           │
-      │                                  │── GET /checkout/v2/order ►│
+      │  [Spinner: "Confirming Your     │                           │
+      │   Payment" — /booking/redirect] │                           │
+      │── GET /api/v1/payments/verify ──►│                           │
+      │   (server-side, no CORS)         │── GET /checkout/v2/order ►│
       │                                  │◄── { state: COMPLETED } ──│
       │                                  │  [Confirm booking]        │
-      │◄── Redirect to /booking/[id] ────│                           │
+      │◄── { booking_id, state } ────────│                           │
+      │  router.replace(/booking/[id])   │                           │
       │                                  │◄── Webhook (S2S) ─────────│
       │                                  │  [Idempotent confirm]     │
 ```
+
+> **Domain isolation:** PhonePe's `merchantUrls.redirectUrl` points only at the frontend domain (`/booking/redirect`). The frontend verifies the order through the backend `GET /api/v1/payments/verify` endpoint **server-side** (Next.js server → Express), so the backend origin never appears in the customer's address bar or network log, and no cross-origin browser request is involved.
+
+> **Terminology (official PhonePe usage):** *redirect* = the post-payment browser return to `merchantUrls.redirectUrl`; *webhook* (a.k.a. *S2S callback*) = the server-to-server notification at `/webhooks/phonepe`; *verify* = the "Verify Payment Response" step via the Order Status API. "Callback" always means the webhook, never the browser redirect.
 
 ### 1.3 Payment Modes — UPI Only
 
@@ -112,7 +119,6 @@ PHONEPE_ENV=SANDBOX              # SANDBOX | PRODUCTION
 PHONEPE_WEBHOOK_USERNAME=
 PHONEPE_WEBHOOK_PASSWORD=
 FRONTEND_BASE_URL=https://besanagpur.com
-BACKEND_BASE_URL=https://api.besanagpur.com
 ```
 
 ---
@@ -177,7 +183,11 @@ POST /api/payment/initiate
 If `phonepe_amount > 0`:
 
 ```javascript
-const merchantOrderId = `PP-${bookingId.replace(/-/g,'').slice(0,20)}`;
+// 34 chars: a traceable booking prefix plus a fresh 64-bit cryptographic
+// suffix. Generate this for every gateway attempt; never reuse an ID after a
+// failed, cancelled, or abandoned checkout.
+const bookingPrefix = bookingId.replace(/-/g, '').slice(0, 14);
+const merchantOrderId = `PP-${bookingPrefix}-${crypto.randomBytes(8).toString('hex')}`;
 
 const payload = {
   merchantOrderId,
@@ -191,7 +201,9 @@ const payload = {
     type: 'PG_CHECKOUT',
     message: `Court booking — ${court_name} ${slot_date} ${slot_start_time}`,
     merchantUrls: {
-      redirectUrl: `${BACKEND_BASE_URL}/api/v1/payments/redirect?orderId=${merchantOrderId}`,
+      // The browser returns to the FRONTEND domain — the /booking/redirect page
+      // verifies server-side, keeping the backend origin out of the browser.
+      redirectUrl: `${FRONTEND_BASE_URL}/booking/redirect?orderId=${merchantOrderId}`,
     },
     paymentModeConfig: {
       enabledPaymentModes: [
@@ -206,10 +218,11 @@ const payload = {
 
 Save to `payments` table:
 ```
-gateway_order_id = merchantOrderId
+merchant_order_id = merchantOrderId  // unique, exact reconciliation key
+gateway_order_id = PhonePe's orderId (when the gateway returns one)
 status = 'initiated'
 amount = phonepe_amount
-idempotency_key = merchantOrderId
+idempotency_key = `phonepe:${merchantOrderId}`
 ```
 
 Also record the `credits_applied` amount and lock it (deduct from `users.wallet_credits` optimistically, to be rolled back on failure).
@@ -270,37 +283,31 @@ PhonePe's hosted page handles all UPI logic: intent (opens installed UPI apps), 
 
 **Step 7 — PhonePe: Browser Redirect Back**
 
-After the transaction reaches a terminal state, PhonePe redirects the browser to the `redirectUrl` specified in the Create Payment request:
+After the transaction reaches a terminal state, PhonePe redirects the browser to the `redirectUrl` specified in the Create Payment request — the **frontend** redirect landing:
 
 ```
-GET https://api.besanagpur.com/api/v1/payments/redirect?orderId=PP-abc123
+GET https://besanagpur.com/booking/redirect?orderId=PP-abc123
 ```
 
-> The redirect is informational only. Never confirm the booking based on this redirect alone. Always verify via Order Status API.
+> The redirect is informational only — PhonePe shares no transaction status client-side. Never confirm the booking based on this redirect alone. Always verify via Order Status API.
 
-**Step 8 — Backend: Redirect Handler**
+**Step 8 — Frontend Redirect Landing + Backend Verification**
 
-```javascript
-// GET /api/v1/payments/redirect
-router.get('/redirect', async (req, res) => {
-  const { orderId } = req.query;
+The `/booking/redirect` page renders a themed "Confirming Your Payment" interstitial (spinner, reassurance copy, order id) and runs PhonePe's "Verify Payment Response" step through a Server Action — the call to the backend happens Next-server-to-Express, so no CORS and no backend exposure:
 
-  const status = await verifyOrderStatus(orderId);
-
-  if (status === 'COMPLETED') {
-    // Confirm booking (idempotent)
-    const { booking_id } = await confirmBooking(orderId);
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/${booking_id}`);
-  } else if (status === 'FAILED') {
-    const { booking_id } = await handlePaymentFailure(orderId);
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/${booking_id}`);
-  } else {
-    // PENDING — payment still processing; show unified pending status page
-    const bookingId = await getBookingIdByOrderId(orderId);
-    return res.redirect(`${FRONTEND_BASE_URL}/booking/${bookingId}`);
-  }
-});
 ```
+GET /api/v1/payments/verify?orderId=PP-abc123   (public, JSON)
+```
+
+The backend endpoint:
+
+1. Resolves the payment from the database (`404` for unknown orderIds — no provider call is spent on garbage input).
+2. Calls the PhonePe Order Status API.
+3. `COMPLETED` / `FAILED` → processes the event idempotently (same pipeline as the webhook) and returns `{ merchant_order_id, booking_id, booking_status, payment_status, state }`.
+4. `PENDING` / `CREATED` → returns the booking reference without processing.
+5. Provider unreachable → returns `state: "UNKNOWN"` with the booking reference (the webhook remains the primary confirmation).
+
+The redirect landing then `router.replace()`s to the unified `/booking/[bookingId]` page — which renders confirmation, failure + retry, or the polling pending view from the payment ledger — or to `/booking/error?type=...` when no booking can be resolved (`missing_order_id`, `notFound`, `api_failure`).
 
 **Step 9 — Webhook (Primary Confirmation)**
 
@@ -388,7 +395,7 @@ async function verifyOrderStatus(merchantOrderId) {
 
 ## 6. Webhook Handling
 
-Webhooks are the **primary** confirmation mechanism. The redirect handler is the secondary. Both must process booking confirmation idempotently.
+Webhooks are the **primary** confirmation mechanism. The verify endpoint (run on the post-payment redirect) is the secondary. Both must process booking confirmation idempotently.
 
 ### 6.1 Webhook Setup
 
@@ -517,7 +524,7 @@ async function handlePaymentSuccess(merchantOrderId, payload) {
     const bookingId = payload.metaInfo?.udf1;
     const booking = await trx.bookings.findOne({ id: bookingId });
 
-    if (booking.status === 'confirmed') return; // Already confirmed via redirect handler
+    if (booking.status === 'confirmed') return; // Already confirmed via verify endpoint
 
     await trx.bookings.update(
       { id: bookingId },
@@ -695,7 +702,7 @@ async function rollbackWalletCredits(bookingId) {
 
 ### 9.1 Payment Failure Flow
 
-When `state === 'FAILED'` is received (via redirect handler or webhook):
+When `state === 'FAILED'` is received (via verify endpoint or webhook):
 
 1. Call `rollbackWalletCredits(bookingId)` to restore the held credits.
 2. Update `payments.status = 'failed'`.
@@ -708,8 +715,10 @@ When `state === 'FAILED'` is received (via redirect handler or webhook):
 
 When the user clicks "Try Again":
 - Check that the booking `expires_at` has not passed.
-- If still valid: create a **new** `merchantOrderId` (never reuse the failed order ID). Insert a new `payments` record linked to the same `booking_id`. Call Create Payment API again.
+- If still valid: create a **new** `merchantOrderId` (never reuse the failed order ID). PhonePe IDs use the fixed 34-character format `PP-<14-char-booking-prefix>-<16-hex-char-crypto-suffix>`: the suffix carries 64 bits of fresh cryptographic entropy while the prefix remains dashboard-traceable. Insert a new `payments` record linked to the same `booking_id`, then call Create Payment API again.
 - If `expires_at` has passed: inform the user the slot hold expired, redirect them back to the booking page.
+
+The payment ledger's unique `merchant_order_id` is the authoritative correlation key for the verify endpoint, webhook controller, protected status polling, and reconciliation. This exact-value lookup keeps independent retry attempts isolated; no database migration is required.
 
 **Max retries:** The platform does not limit payment retries as long as the slot hold is valid (within 10 minutes).
 
@@ -817,6 +826,8 @@ for (const payment of stalePayments) {
 | `merchantOrderId` uniqueness | UUID-based; stored with a `UNIQUE` constraint in `payments.idempotency_key` |
 | No-referrer-policy | Ensure the checkout page does not have a `no-referrer-policy` meta tag; PhonePe requires a referrer to be present |
 | HTTPS only | Both `redirectUrl` and webhook URL must be HTTPS in production |
+| Backend domain isolation | PhonePe's `redirectUrl` points at the frontend `/booking/redirect` route; verification runs Next-server-to-Express, so the backend origin never reaches the customer's browser |
+| Verify endpoint exposure | `GET /payments/verify` is public (the gateway redirect carries no auth) but validates the orderId shape, resolves it against the database before any provider call, is idempotent, and reveals nothing beyond `booking_id` and coarse statuses — the booking page itself enforces session + ownership |
 | Idempotent webhook processing | Check `payments.status` before confirming; skip if already `success` |
 | Wallet deduction atomicity | Wallet balance changes and booking confirmation are always in a single database transaction |
 
@@ -831,7 +842,7 @@ src/features/payment/
 ├── payment.service.js       ← Business logic (initiate, confirm, refund, rollback)
 ├── wallet.service.js        ← Credit issuance, redemption, rollback
 ├── routes/
-│   ├── payments.routes.js   ← /redirect, /status/:merchantOrderId, /:paymentId/refund, /:paymentId/refund/retry
+│   ├── payments.routes.js   ← /verify (Order Status verification, JSON), /status/:merchantOrderId, /:paymentId/refund, /:paymentId/refund/retry
 │   └── webhook.routes.js    ← POST /webhooks/phonepe (GET for health check)
 └── reconciliation.job.js    ← Nightly settlement reconciliation
 ```

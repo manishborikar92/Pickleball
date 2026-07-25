@@ -776,16 +776,17 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`/payments/redirect`]: {
+      [`/payments/verify`]: {
         get: {
           tags: ['Payments'],
-          summary: 'PhonePe payment redirect handler',
-          description: 'Handles browser redirect from PhonePe payment gateway, verifies payment state, and redirects the browser to the appropriate frontend page.',
+          summary: 'Verify payment (PhonePe Verify Payment Response step)',
+          description: 'Backs the frontend /booking/redirect page — the target of PhonePe merchantUrls.redirectUrl. Verifies the payment with the gateway Order Status API, processes terminal states idempotently, and returns the booking reference as JSON. Returns state UNKNOWN (with the booking reference) when the gateway is unreachable so the frontend can land on the unified booking page.',
           parameters: [
             { name: 'orderId', in: 'query', required: true, schema: { type: 'string', example: 'PP-booking123' } },
           ],
           responses: {
-            302: { description: 'Redirects to /booking/:bookingId page on frontend' },
+            200: { description: 'Payment verified; booking reference and statuses returned', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            404: { description: 'No payment found for the given orderId', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
           },
         },
       },

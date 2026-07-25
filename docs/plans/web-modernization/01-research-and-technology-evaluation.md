@@ -1,5 +1,7 @@
 # 01 — Research Findings & Technology Evaluation
 
+> **Historical plan record.** This is the pre-implementation research that informed the modernization work; it is not a description of the current architecture. See `docs/ai/01-IMPLEMENTATION-OVERVIEW.md` and `docs/ai/02-CODEBASE-MAP.md` for the implemented state.
+
 This document summarizes the current (June 2026) official guidance and evaluates each candidate technology **against this project specifically**. Two project constraints shape every recommendation:
 
 1. **JavaScript is a hard standard** (per the brief). TypeScript migration is therefore **out of scope**, even where the broader ecosystem leans TS-first. We achieve type-safety with JSDoc + `checkJs` instead.
