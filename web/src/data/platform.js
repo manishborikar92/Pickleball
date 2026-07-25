@@ -11,7 +11,7 @@ export const venue = {
   advanceBookingDays: 7,
   phone: "+91 99704 09410",
   secondaryPhone: "+91 90960 30362",
-  email: "hello@baselinearena.in",
+  email: "support@baselinearena.in",
   hours: "Mon-Sun: 7 AM to 12 AM",
   googleMapsLink: "https://maps.app.goo.gl/18jsuTs2SrhpvGnz8",
   location: {
