@@ -57,7 +57,7 @@ export async function submitReview(bookingId, reviewData) {
 
     const venueId = payload.data?.venue_id;
     if (venueId) {
-      revalidateTag(reviewsTag(venueId));
+      revalidateTag(reviewsTag(venueId), "max");
     }
 
     return ok(normalizeReviewResponse(payload.data));
