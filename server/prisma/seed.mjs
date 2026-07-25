@@ -106,7 +106,7 @@ async function seedVenue() {
       advanceBookingDays: 7,
       phone: '+919970409410',
       secondaryPhone: '+919096030362',
-      email: 'hello@baselinearena.in',
+      email: 'support@baselinearena.in',
       isActive: true,
     },
     create: {
@@ -120,7 +120,7 @@ async function seedVenue() {
       advanceBookingDays: 7,
       phone: '+919970409410',
       secondaryPhone: '+919096030362',
-      email: 'hello@baselinearena.in',
+      email: 'support@baselinearena.in',
     },
   });
 

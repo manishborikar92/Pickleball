@@ -111,8 +111,8 @@ export default function PrivacyPage() {
           </h2>
           <p className="leading-relaxed text-muted-foreground">
             If you wish to review, update, export, or delete your account records (including phone number and booking records) from our system, please contact us at{" "}
-            <a href="mailto:hello@baselinearena.in" className="text-accent hover:underline font-semibold">
-              hello@baselinearena.in
+            <a href="mailto:support@baselinearena.in" className="text-accent hover:underline font-semibold">
+              support@baselinearena.in
             </a>
             . We will process and respond to verified requests within 30 business days.
           </p>

@@ -27,7 +27,7 @@ const orgSchema = {
     "@type": "ContactPoint",
     "telephone": "+91-99704-09410",
     "contactType": "customer service",
-    "email": "hello@baselinearena.in",
+    "email": "support@baselinearena.in",
     "areaServed": "IN",
   },
 };
@@ -44,7 +44,7 @@ const locationSchema = {
   ],
   "priceRange": "₹₹",
   "telephone": "+91-99704-09410",
-  "email": "hello@baselinearena.in",
+  "email": "support@baselinearena.in",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "Baseline Arena, Plot No. 78, Sanskriti Society, Behind Puma Outlet, Besa-Manish Nagar Road",
