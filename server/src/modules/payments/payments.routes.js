@@ -5,6 +5,7 @@ import { validate } from '../../middleware/validate.middleware.js';
 import { requireOnboarding } from '../../middleware/require-onboarding.middleware.js';
 import { createPaymentsController } from './payments.controller.js';
 import { createVerifyController } from './verify.controller.js';
+import { createPaymentsWebhookRouter } from './webhook.routes.js';
 import {
   paymentVerifyQuerySchema,
   paymentIdParamsSchema,
@@ -16,6 +17,8 @@ export const createPaymentsRouter = ({
   paymentsService,
   paymentProvider,
   bookingsService,
+  reconciliationService,
+  config,
   authMiddleware = authenticate(),
   onboardingMiddleware = requireOnboarding(),
 } = {}) => {
@@ -35,6 +38,11 @@ export const createPaymentsRouter = ({
   if (paymentProvider && bookingsService) {
     const verifyController = createVerifyController({ bookingsService, paymentProvider });
     router.get('/verify', validate(paymentVerifyQuerySchema, 'query'), verifyController.handleVerify);
+  }
+
+  // Webhook receiver endpoint: POST /payments/webhooks/phonepe (public S2S callback)
+  if (reconciliationService) {
+    router.use('/webhooks', createPaymentsWebhookRouter({ bookingsService, reconciliationService, config }));
   }
 
   router.post('/:paymentId/refund', authMiddleware, validate(paymentIdParamsSchema, 'params'), validate(refundBodySchema, 'body'), controller.refundPayment);

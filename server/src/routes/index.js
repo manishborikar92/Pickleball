@@ -9,7 +9,6 @@ import { createBookingsRouter } from '../modules/bookings/bookings.routes.js';
 import { createDefaultPaymentsRouter } from '../modules/payments/index.js';
 import { createDefaultVenuesRouter, createDefaultVenuesService } from '../modules/venues/index.js';
 import { createPaymentProviderFromEnv } from '../modules/payments/provider-factory.js';
-import { createWebhookRouter } from '../modules/payments/webhook.routes.js';
 import { createDefaultReviewsService, createReviewsRouter } from '../modules/reviews/index.js';
 import { createDefaultRewardsService, createRewardsRouter } from '../modules/rewards/index.js';
 import { createRequireVenuePermission } from '../middleware/authorize.middleware.js';
@@ -49,7 +48,6 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   router.use('/venues', createDefaultVenuesRouter({ venueService }));
   router.use('/bookings', createBookingsRouter({ bookingsService }));
   router.use('/payments', paymentsRouter);
-  router.use('/webhooks', createWebhookRouter({ bookingsService, reconciliationService, config }));
   router.use('/reviews', createReviewsRouter({ reviewsService, requireVenuePermission }));
   router.use('/rewards', createRewardsRouter({ rewardsService, requireVenuePermission }));
   router.use('/docs', createOpenApiRouter({ config }));

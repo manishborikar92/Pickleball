@@ -62,7 +62,7 @@ Follow the browser prompt to link your Hookdeck account.
 ## 3. Start the Webhook Tunnel
 
 ```bash
-hookdeck listen 5000 phonepe-source --path /api/v1/webhooks/phonepe
+hookdeck listen 5000 phonepe-source --path /api/v1/payments/webhooks/phonepe
 ```
 
 | Parameter | Value |
@@ -95,7 +95,7 @@ Hookdeck will print a public URL, e.g.:
 ## 5. Verify End-to-End
 
 1. Start your server: `npm run dev`
-2. Start the tunnel: `hookdeck listen 5000 phonepe-source --path /api/v1/webhooks/phonepe`
+2. Start the tunnel: `hookdeck listen 5000 phonepe-source --path /api/v1/payments/webhooks/phonepe`
 3. Trigger a test payment through the frontend checkout flow
 4. Observe:
    - Hookdeck dashboard: incoming webhook event and delivery status
@@ -124,7 +124,7 @@ Access at: [dashboard.hookdeck.com](https://dashboard.hookdeck.com)
 | Webhook shows 401 | Auth hash mismatch | Verify `PHONEPE_WEBHOOK_USERNAME` and `PHONEPE_WEBHOOK_PASSWORD` match PhonePe dashboard config |
 | No webhooks arriving | Tunnel not running | Ensure `hookdeck listen` is active and URL matches PhonePe config |
 | Payment stuck in `initiated` | Webhook processing error | Check server logs for `[PhonePe Webhook]` errors |
-| Hookdeck shows 404 | Wrong path | Ensure `--path /api/v1/webhooks/phonepe` matches route mount |
+| Hookdeck shows 404 | Wrong path | Ensure `--path /api/v1/payments/webhooks/phonepe` matches route mount |
 
 ---
 
@@ -150,7 +150,7 @@ In production, Hookdeck is **not needed** — PhonePe webhooks are sent directly
 to your server's public URL. The webhook endpoint is:
 
 ```
-POST https://your-domain.com/api/v1/webhooks/phonepe
+POST https://your-domain.com/api/v1/payments/webhooks/phonepe
 ```
 
 Configure this URL in the PhonePe production dashboard with the same username/password

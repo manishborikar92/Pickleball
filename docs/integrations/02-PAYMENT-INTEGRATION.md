@@ -50,7 +50,7 @@ Next.js Frontend                Express.js Backend              PhonePe PG
 
 > **Domain isolation:** PhonePe's `merchantUrls.redirectUrl` points only at the frontend domain (`/booking/redirect`). The frontend verifies the order through the backend `GET /api/v1/payments/verify` endpoint **server-side** (Next.js server → Express), so the backend origin never appears in the customer's address bar or network log, and no cross-origin browser request is involved.
 
-> **Terminology (official PhonePe usage):** *redirect* = the post-payment browser return to `merchantUrls.redirectUrl`; *webhook* (a.k.a. *S2S callback*) = the server-to-server notification at `/webhooks/phonepe`; *verify* = the "Verify Payment Response" step via the Order Status API. "Callback" always means the webhook, never the browser redirect.
+> **Terminology (official PhonePe usage):** *redirect* = the post-payment browser return to `merchantUrls.redirectUrl`; *webhook* (a.k.a. *S2S callback*) = the server-to-server notification at `/payments/webhooks/phonepe`; *verify* = the "Verify Payment Response" step via the Order Status API. "Callback" always means the webhook, never the browser redirect.
 
 ### 1.3 Payment Modes — UPI Only
 
@@ -400,7 +400,7 @@ Webhooks are the **primary** confirmation mechanism. The verify endpoint (run on
 ### 6.1 Webhook Setup
 
 In `business.phonepe.com → Developer Settings → Webhook`:
-- **Webhook URL:** `https://api.besanagpur.com/api/webhooks/phonepe`
+- **Webhook URL:** `https://api.besanagpur.com/api/v1/payments/webhooks/phonepe`
 - **Username / Password:** Values used in SHA256 auth header verification.
 - **Subscribe to events:** `checkout.order.completed`, `checkout.order.failed`, `pg.refund.accepted`, `pg.refund.completed`, `pg.refund.failed`.
 
@@ -843,7 +843,7 @@ src/features/payment/
 ├── wallet.service.js        ← Credit issuance, redemption, rollback
 ├── routes/
 │   ├── payments.routes.js   ← /verify (Order Status verification, JSON), /status/:merchantOrderId, /:paymentId/refund, /:paymentId/refund/retry
-│   └── webhook.routes.js    ← POST /webhooks/phonepe (GET for health check)
+│   └── webhook.routes.js    ← POST /payments/webhooks/phonepe (GET for health check)
 └── reconciliation.job.js    ← Nightly settlement reconciliation
 ```
 

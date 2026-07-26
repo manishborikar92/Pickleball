@@ -34,8 +34,8 @@ export const createWebhookController = ({ bookingsService, reconciliationService
   };
 
   /**
-   * POST /webhooks/phonepe
-   *
+   * POST /payments/webhooks/phonepe
+   * S2S Webhook from PhonePe — uses SHA256 auth header verification.
    * Responds 200 immediately, then processes the event asynchronously.
    * PhonePe retries on delayed or non-200 responses.
    */

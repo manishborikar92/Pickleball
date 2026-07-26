@@ -72,13 +72,14 @@
           }
         ],
         "url": {
-          "raw": "{{baseUrl}}/api/v1/webhooks/phonepe",
+          "raw": "{{baseUrl}}/api/v1/payments/webhooks/phonepe",
           "host": [
             "{{baseUrl}}"
           ],
           "path": [
             "api",
             "v1",
+            "payments",
             "webhooks",
             "phonepe"
           ]

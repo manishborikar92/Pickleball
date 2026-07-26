@@ -934,7 +934,7 @@ These endpoints support payment verification, status checks, and manager-initiat
 
 ---
 
-### `POST /webhooks/phonepe`
+### `POST /payments/webhooks/phonepe`
 
 *Public (verified by PhonePe SHA256 auth header).* Receives server-to-server payment event callbacks (webhooks). This is the **primary** confirmation mechanism — the `GET /payments/verify` endpoint (run on the post-payment redirect) is the secondary. Both are idempotent.
 

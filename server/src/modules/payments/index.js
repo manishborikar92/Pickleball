@@ -2,6 +2,7 @@ import { createPaymentsRepository } from './payments.repository.js';
 import { createPaymentsRouter } from './payments.routes.js';
 import { createPaymentsService } from './payments.service.js';
 import { createReconciliationService } from './reconciliation.service.js';
+import { createPaymentsWebhookRouter } from './webhook.routes.js';
 
 export const createDefaultPaymentsService = ({ bookingsService, config: _config, authService, paymentProvider } = {}) => {
   const repository = createPaymentsRepository();
@@ -36,7 +37,19 @@ export const createDefaultPaymentsRouter = ({ bookingsService, config, authServi
     authService,
     paymentProvider,
   });
-  const router = createPaymentsRouter({ paymentsService, paymentProvider, bookingsService });
+  const router = createPaymentsRouter({
+    paymentsService,
+    paymentProvider,
+    bookingsService,
+    reconciliationService,
+    config,
+  });
   return { router, paymentsService, reconciliationService, repository };
 };
 
+export {
+  createPaymentsRepository,
+  createPaymentsService,
+  createPaymentsRouter,
+  createPaymentsWebhookRouter,
+};

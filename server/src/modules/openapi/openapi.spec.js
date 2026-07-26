@@ -790,7 +790,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           },
         },
       },
-      [`/webhooks/phonepe`]: {
+      [`/payments/webhooks/phonepe`]: {
         post: {
           tags: ['Payments'],
           summary: 'PhonePe webhook callback receiver',
