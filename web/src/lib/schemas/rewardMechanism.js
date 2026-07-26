@@ -51,8 +51,7 @@ export const rewardMechanismSchema = z
       (value) => collapseSpaces(value),
       z.string().min(1, "Give the mechanism a name.").max(255),
     ),
-    // The web app only exposes the scratch-card experience; other backend
-    // mechanism types stay server-side until they ship a UI.
+    // Configures the reward experience.
     type: z.enum(["scratch_card"]),
     instance_expiry_days: z.coerce
       .number()

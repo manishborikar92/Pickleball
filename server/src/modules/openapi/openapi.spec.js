@@ -129,7 +129,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
           properties: {
             venue_id: { type: 'string', format: 'uuid' },
             name: { type: 'string', example: 'Post-Booking Scratch Card' },
-            type: { type: 'string', enum: ['scratch_card', 'spinner'] },
+            type: { type: 'string', enum: ['scratch_card'] },
             trigger_event: { type: 'string', enum: ['booking_confirmed'], default: 'booking_confirmed' },
             instance_expiry_days: { type: 'integer', minimum: 1, maximum: 365, default: 7 },
             is_active: { type: 'boolean', default: false },

@@ -542,7 +542,7 @@ Lists all reward instances for the user, grouped by: **Pending** (unrevealed, no
 - If `expires_at` has passed when the user opens the screen, show an "Expired" state with no scratch interaction.
 - The screen is not accessible for `revealed` instances — redirect to My Rewards.
 
-**The `mechanism_type` field drives which frontend component renders.** If the mechanism type is `spinner`, the same route would render a spinner wheel instead. The backend response shape is identical; only the UI component changes.
+**The `mechanism_type` field drives which frontend component renders.** The backend response shape is standardized; the frontend renders the corresponding active mechanism component.
 
 ---
 

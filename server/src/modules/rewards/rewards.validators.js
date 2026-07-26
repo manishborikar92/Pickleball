@@ -4,10 +4,8 @@ import { PROBABILITY_SUM_TOLERANCE } from './rewards.constants.js';
 
 const id = Joi.string().guid({ version: ['uuidv4'] }).required();
 
-// Enum values mirror prisma/schema.prisma. Launch supports the scratch_card and
-// spinner experiences end-to-end; coupon_drop/points are reserved enum values
-// with no frontend component yet, so mechanism creation rejects them.
-const SUPPORTED_MECHANISM_TYPES = ['scratch_card', 'spinner'];
+// Enum values mirror prisma/schema.prisma. System supports scratch_card as the sole mechanism type.
+const SUPPORTED_MECHANISM_TYPES = ['scratch_card'];
 const TRIGGER_EVENTS = ['booking_confirmed'];
 const INSTANCE_STATUSES = ['pending', 'revealed', 'expired'];
 const PRIZE_TYPES = ['no_prize', 'voucher'];

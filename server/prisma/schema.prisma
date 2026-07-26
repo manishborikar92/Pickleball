@@ -88,9 +88,6 @@ enum WalletTransactionType {
 
 enum RewardMechanismType {
   scratch_card
-  spinner
-  coupon_drop
-  points
 }
 
 enum RewardTriggerEvent {

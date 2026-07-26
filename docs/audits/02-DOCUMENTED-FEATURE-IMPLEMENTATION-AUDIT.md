@@ -40,8 +40,8 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
     - [Item 7.1: Nightly Settlement Reconciliation Job](#item-71-nightly-settlement-reconciliation-job)
   - [2.8 Media Storage & Photo Uploads](#28-media-storage--photo-uploads)
     - [Item 8.1: Cloudflare R2 Integration for Court & Review Photos](#item-81-cloudflare-r2-integration-for-court--review-photos)
-  - [2.9 Rewards & Gamification (Spinner Wheel)](#29-rewards--gamification-spinner-wheel)
-    - [Item 9.1: Spinner Wheel Frontend Component](#item-91-spinner-wheel-frontend-component)
+  - [2.9 Rewards & Gamification (Scratch Cards)](#29-rewards--gamification-scratch-cards)
+    - [Item 9.1: Reward Engine Mechanism](#item-91-reward-engine-mechanism)
   - [2.10 Developer & Testing Infrastructure](#210-developer--testing-infrastructure)
     - [Item 10.1: Web Modernization Tooling & Testing Scaffolding (Phases 6–7)](#item-101-web-modernization-tooling--testing-scaffolding-phases-67)
 - [3. Final Verification](#3-final-verification)
@@ -74,7 +74,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 | 20 | **Admin Operations** | Admin Force-Cancellation & Credit Issuance Endpoint | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 21 | **Payments & Settlement** | Nightly Settlement Reconciliation Job | **Missing** | `docs/integrations/02-PAYMENT-INTEGRATION.md` §11.2 |
 | 22 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
-| 23 | **Rewards & Gamification** | Spinner Wheel UI Component | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §12.7, `docs/adrs/ADR-010-rewards-module.md` |
+| 23 | **Rewards & Gamification** | Reward Engine (Scratch Cards) | **Implemented** | `docs/adrs/ADR-010-rewards-module.md` |
 | 24 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
 
 ---
@@ -413,19 +413,20 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 
 ---
 
-### 2.9 Rewards & Gamification (Spinner Wheel)
+### 2.9 Rewards & Gamification (Scratch Cards)
 
-#### Item 9.1: Spinner Wheel Frontend Component
+#### Item 9.1: Reward Engine Mechanism
 * **Source Documentation Reference(s):**
-  * `docs/product/02-BUSINESS-LOGIC.md` Section 12.7 ("Switch to spinner")
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 12
   * `docs/adrs/ADR-010-rewards-module.md`
-  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.7 ("Spinner Wheel UI — Deferred")
-* **Current Implementation Status:** Missing / Deferred
-* **Brief Description of Documentation Specification:** Backend fully supports `type: "spinner"` mechanisms end-to-end; UI specification allows spinner wheel experiences.
-* **Brief Description of Codebase Reality:** `server/src/modules/rewards/` supports both `scratch_card` and `spinner` mechanism types. However, `web/src/components/features/rewards/` exclusively implements `scratch_card` (`RewardExperience.js`, `RewardReveal.js`). No spinner wheel canvas/animation component exists.
-* **The Exact Gap That Remains:** Missing frontend interactive Spinner Wheel UI component in `web/src/components/features/rewards/`.
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.7
+* **Current Implementation Status:** Fully Implemented
+* **Brief Description of Documentation Specification:** Backend supports `type: "scratch_card"` reward mechanisms end-to-end; customer frontend renders scratch-card overlays (`RewardExperience.js`, `RewardReveal.js`) and admin panel manages scratch-card prize pools (`/admin/rewards`).
+* **Brief Description of Codebase Reality:** Fully implemented.
+* **The Exact Gap That Remains:** None.
 * **Dependent Files / Modules / Areas:**
-  * Frontend: `web/src/components/features/rewards/`
+  * Backend: `server/src/modules/rewards/`
+  * Frontend: `web/src/components/features/rewards/`, `web/src/app/(admin)/admin/rewards/`
 
 ---
 

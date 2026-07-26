@@ -151,10 +151,9 @@ test("rewardMechanismSchema accepts a valid mechanism and coerces numeric string
   assert.equal(parsed.data.prizes[0].probability, 0.7);
 });
 
-test("rewardMechanismSchema only accepts the scratch_card experience on the web", () => {
-  // The backend also supports other mechanism types (e.g. spinner) but the
-  // web app must not create what it cannot render.
-  const parsed = rewardMechanismSchema.safeParse({ ...validMechanismInput, type: "spinner" });
+test("rewardMechanismSchema rejects invalid mechanism types", () => {
+  // Only scratch_card is supported as a valid mechanism type.
+  const parsed = rewardMechanismSchema.safeParse({ ...validMechanismInput, type: "unsupported_type" });
   assert.equal(parsed.success, false);
 });
 
