@@ -1,0 +1,348 @@
+# Documented Feature Implementation Audit & Gap Analysis
+
+This document presents a comprehensive, evidence-based review across all specifications in `docs/`, `server/`, and `web/`. Every item reported below is traceable directly to one or more project `.md` or `.txt` specification files and cross-referenced against the actual implementation in `server/` and `web/`.
+
+Fully implemented features (such as PostgreSQL/Prisma migration, slot lock concurrency engine, PhonePe PG v2 payment integration with fresh entropy retries, S2S webhook processing, customer OTP auth with edge session rotation, reviews with moderation, and voucher-based scratch card reward engine) have been validated and excluded from the gap inventory per strict audit guidelines.
+
+---
+
+## Table of Contents
+
+- [1. Executive Summary & Audit Matrix](#1-executive-summary--audit-matrix)
+- [2. Detailed Gap Breakdown by Subsystem](#2-detailed-gap-breakdown-by-subsystem)
+  - [2.1 Admin Authentication & Account Lifecycle](#21-admin-authentication--account-lifecycle)
+    - [Item 1.1: Admin Account Provisioning (Invite-Only Flow)](#item-11-admin-account-provisioning-invite-only-flow)
+    - [Item 1.2: Admin Account Activation & Password Setup Flow](#item-12-admin-account-activation--password-setup-flow)
+    - [Item 1.3: Admin Password Reset Request & Confirmation Flow](#item-13-admin-password-reset-request--confirmation-flow)
+    - [Item 1.4: Admin Forced Password Change Flow](#item-14-admin-forced-password-change-flow)
+  - [2.2 Booking & Court Access Control](#22-booking--court-access-control)
+    - [Item 2.1: Court Access PIN Generation & Display](#item-21-court-access-pin-generation--display)
+  - [2.3 Notifications & Messaging (WhatsApp)](#23-notifications--messaging-whatsapp)
+    - [Item 3.1: Scheduled WhatsApp Booking Reminders (T-24h / T-2h)](#item-31-scheduled-whatsapp-booking-reminders-t-24h--t-2h)
+    - [Item 3.2: Post-Session WhatsApp Review Requests](#item-32-post-session-whatsapp-review-requests)
+    - [Item 3.3: Production WhatsApp Cloud API Credentials & Template Setup](#item-33-production-whatsapp-cloud-api-credentials--template-setup)
+  - [2.4 Promotions, Coupons & Discounting](#24-promotions-coupons--discounting)
+    - [Item 4.1: Admin Coupon Management REST API & Frontend UI](#item-41-admin-coupon-management-rest-api--frontend-ui)
+    - [Item 4.2: Coupon Usage Tracking & Limit Enforcement (coupon_usages)](#item-42-coupon-usage-tracking--limit-enforcement-coupon_usages)
+  - [2.5 Support & Contact Infrastructure](#25-support--contact-infrastructure)
+    - [Item 5.1: Support Form Submission Delivery Endpoint](#item-51-support-form-submission-delivery-endpoint)
+  - [2.6 Admin Dashboard Operational Screens (APIs & UI)](#26-admin-dashboard-operational-screens-apis--ui)
+    - [Item 6.1: Admin Overview Dashboard Real Data API](#item-61-admin-overview-dashboard-real-data-api)
+    - [Item 6.2: Admin User Lookup & Customer Booking History API](#item-62-admin-user-lookup--customer-booking-history-api)
+    - [Item 6.3: Admin Venue Settings Manager](#item-63-admin-venue-settings-manager)
+    - [Item 6.4: Admin Force-Cancellation & Credit Issuance Endpoint](#item-64-admin-force-cancellation--credit-issuance-endpoint)
+  - [2.7 Media Storage & Photo Uploads](#27-media-storage--photo-uploads)
+    - [Item 7.1: Cloudflare R2 Integration for Court & Review Photos](#item-71-cloudflare-r2-integration-for-court--review-photos)
+  - [2.8 Rewards & Gamification (Spinner Wheel)](#28-rewards--gamification-spinner-wheel)
+    - [Item 8.1: Spinner Wheel Frontend Component](#item-81-spinner-wheel-frontend-component)
+  - [2.9 Developer & Testing Infrastructure](#29-developer--testing-infrastructure)
+    - [Item 9.1: Web Modernization Tooling & Testing Scaffolding (Phases 6–7)](#item-91-web-modernization-tooling--testing-scaffolding-phases-67)
+
+---
+
+## 1. Executive Summary & Audit Matrix
+
+| # | Subsystem / Area | Feature / Requirement | Status | Source Reference |
+|---|---|---|---|---|
+| 1 | **Admin Auth & Lifecycle** | Admin Account Provisioning (Invite-Only) | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §2, `docs/product/02-BUSINESS-LOGIC.md` §1.4 |
+| 2 | **Admin Auth & Lifecycle** | Admin Account Activation & Password Setup Flow | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §1.4, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 3 | **Admin Auth & Lifecycle** | Admin Password Reset Request & Confirmation | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §2, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 4 | **Admin Auth & Lifecycle** | Admin Forced Password Change Flow | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §6.5, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 5 | **Booking & Access Control** | Court Access PIN Generation & Display | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §5.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain A |
+| 6 | **Notifications & Messaging** | Scheduled WhatsApp Booking Reminders (T-24h / T-2h) | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §1–3 |
+| 7 | **Notifications & Messaging** | Post-Session WhatsApp Review Requests | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §1–3 |
+| 8 | **Notifications & Messaging** | Production WhatsApp Credentials & Template Setup | **Unclear** | `docs/product/04-FUTURE-WORK.md` §2, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §2 |
+| 9 | **Promotions & Coupons** | Admin Coupon Management API & Frontend UI | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 10 | **Promotions & Coupons** | Coupon Usage Tracking & Limit Enforcement | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain C |
+| 11 | **Help & Support** | Support Form Submission Delivery Endpoint | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §2.8, `docs/audits/01-END-USER-GAP-ANALYSIS.md` §4 |
+| 12 | **Admin Operations** | Admin Overview Dashboard Real Data API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/plans/web-modernization/03-issues-register.md` ME-3 |
+| 13 | **Admin Operations** | Admin Customer Lookup & Booking History API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 14 | **Admin Operations** | Admin Venue Settings Manager | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 15 | **Admin Operations** | Admin Force-Cancellation & Credit Issuance Endpoint | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 16 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
+| 17 | **Rewards & Gamification** | Spinner Wheel UI Component | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §12.7, `docs/adrs/ADR-010-rewards-module.md` |
+| 18 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
+
+---
+
+## 2. Detailed Gap Breakdown by Subsystem
+
+### 2.1 Admin Authentication & Account Lifecycle
+
+#### Item 1.1: Admin Account Provisioning (Invite-Only Flow)
+* **Source Documentation Reference(s):**
+  * `docs/product/01-PROJECT-OVERVIEW.md` Section 2 ("Built at Launch — Admin credential-based auth")
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 1.4 ("Admin Account Lifecycle")
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Admin Account Management")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /admin/users` / `POST /auth/admin/provision`)
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.2 ("Provisioning Engine — Planned")
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** Admin accounts are created strictly via invitation by a `super_admin`. The system generates an invitation token, sets the account status to `invited`, and sends an email invitation containing a 72-hour activation link.
+* **Brief Description of Codebase Reality:** `server/src/modules/auth/auth.routes.js` only exposes `POST /auth/admin/login`, `POST /auth/refresh`, `POST /auth/logout`, and `POST /auth/logout-all`. The seed script (`server/prisma/seed.mjs`) creates an initial admin account only when seed environment variables are supplied. No HTTP endpoint exists for inviting or provisioning admin accounts.
+* **The Exact Gap That Remains:** Missing backend endpoint (`POST /admin/users` or `POST /auth/admin/provision`), invitation token generator, transactional email dispatch service, and frontend UI action in the admin dashboard.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.service.js`
+  * Frontend: `web/src/app/(admin)/admin/users/`
+
+---
+
+#### Item 1.2: Admin Account Activation & Password Setup Flow
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 1.4 ("Activation window (72 hours)")
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 6.1–6.2 ("Admin Activation Screen")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /auth/admin/activate`)
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** An invited admin receives a token link (`/admin/activate?token=...`), enters a new password, and submits to `POST /auth/admin/activate`. If the 72-hour window has passed, the server responds with HTTP `400 INVALID_ACTIVATION_TOKEN`.
+* **Brief Description of Codebase Reality:** No activation route or controller exists in `server/src/modules/auth/`, and no `/admin/activate` page component exists under `web/src/app/(auth)/`.
+* **The Exact Gap That Remains:** Missing `POST /auth/admin/activate` backend route/service logic and missing `/admin/activate` frontend page component.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.controller.js`
+  * Frontend: `web/src/app/(auth)/`
+
+---
+
+#### Item 1.3: Admin Password Reset Request & Confirmation Flow
+* **Source Documentation Reference(s):**
+  * `docs/product/01-PROJECT-OVERVIEW.md` Section 2
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 6.3–6.4 ("Forgot Password & Reset Password Screens")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /auth/admin/forgot-password`, `POST /auth/admin/reset-password`)
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.2 ("Reset Flows — Planned")
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** Admins can request a password reset (`POST /auth/admin/forgot-password`), which sends a 1-hour reset token via email. The admin navigates to `/admin/reset-password?token=...` and submits a new password (`POST /auth/admin/reset-password`).
+* **Brief Description of Codebase Reality:** Neither endpoint exists in `server/src/modules/auth/auth.routes.js`. No reset UI forms exist in `web/src/app/(auth)/`.
+* **The Exact Gap That Remains:** Missing `POST /auth/admin/forgot-password` and `POST /auth/admin/reset-password` backend APIs, email dispatch handler, and frontend reset request/confirm screens.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.service.js`
+  * Frontend: `web/src/app/(auth)/`
+
+---
+
+#### Item 1.4: Admin Forced Password Change Flow
+* **Source Documentation Reference(s):**
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 6.5 ("Force Password Change Screen")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /auth/admin/change-password`)
+  * `docs/product/04-FUTURE-WORK.md` Section 3
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** When `next_step: "force_password_change"` is returned upon admin login, all admin routes redirect to `/admin/change-password`. The screen submits current password, new password, and confirmation to `POST /auth/admin/change-password`. On success, the flag is cleared and the admin is redirected to `/admin`.
+* **Brief Description of Codebase Reality:** `POST /auth/admin/change-password` is not registered in `server/src/modules/auth/auth.routes.js`.
+* **The Exact Gap That Remains:** Missing `POST /auth/admin/change-password` API endpoint and password change route guard/screen on the frontend.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.controller.js`
+  * Frontend: `web/src/app/(admin)/`
+
+---
+
+### 2.2 Booking & Court Access Control
+
+#### Item 2.1: Court Access PIN Generation & Display
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 5.2 (Step 6)
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 2.5 ("Booking Confirmation Screen")
+  * `docs/specs/01-DATABASE-SCHEMA.md` Domain A (`access_pin` column)
+  * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 2 ("Court Access PIN Display")
+* **Current Implementation Status:** Partial
+* **Brief Description of Documentation Specification:** The system generates a random 4-digit PIN upon booking payment confirmation and stores it in `bookings.access_pin`. The booking confirmation card and booking detail screens display the court access PIN.
+* **Brief Description of Codebase Reality:** The database schema in `server/prisma/schema.prisma` includes `accessPin String? @map("access_pin") @db.Char(4)`. However, `server/src/modules/bookings/bookings.service.js` does not generate a 4-digit PIN during booking confirmation, and `web/src/components/features/booking/BookingDetailView.js` does not render the PIN field.
+* **The Exact Gap That Remains:** Random 4-digit PIN generation in `bookings.service.js` upon confirmation and display rendering in `BookingDetailView.js`.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/bookings/bookings.service.js`
+  * Frontend: `web/src/components/features/booking/BookingDetailView.js`
+
+---
+
+### 2.3 Notifications & Messaging (WhatsApp)
+
+#### Item 3.1: Scheduled WhatsApp Booking Reminders (T-24h / T-2h)
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 8 ("Automated Notification Matrix")
+  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Sections 1–3
+  * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 3 ("Scheduled WhatsApp Reminders")
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** Automated WhatsApp utility reminders are scheduled to be sent 24 hours and 2 hours prior to the player's scheduled play time upon booking confirmation. An admin toggle enables/disables sending.
+* **Brief Description of Codebase Reality:** `server/src/modules/auth/otp.provider.js` handles WhatsApp OTP sending, but no background task scheduler (e.g. BullMQ / pg-boss) or reminder dispatch service exists under `server/src/modules/notifications/` or `server/src/server.js`.
+* **The Exact Gap That Remains:** Missing background job scheduler, T-24h/T-2h job queuing during booking confirmation, WhatsApp reminder template delivery handler, and admin toggle logic.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/notifications/`, `server/src/modules/bookings/`, `server/src/server.js`
+
+---
+
+#### Item 3.2: Post-Session WhatsApp Review Requests
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 8 ("Automated Notification Matrix")
+  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Sections 1–3
+  * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 3 ("Post-Session WhatsApp Review Requests")
+* **Current Implementation Status:** Missing
+* **Brief Description of Documentation Specification:** After a booking session ends, the system automatically dispatches a WhatsApp notification requesting the player to review their session, containing a direct link (`/review/{bookingId}`).
+* **Brief Description of Codebase Reality:** No post-session review request scheduler job or template dispatch handler exists in the codebase.
+* **The Exact Gap That Remains:** Missing post-session scheduler job trigger, review request WhatsApp template delivery handler, and admin toggle.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/notifications/`, `server/src/modules/bookings/`
+
+---
+
+#### Item 3.3: Production WhatsApp Cloud API Credentials & Template Setup
+* **Source Documentation Reference(s):**
+  * `docs/product/04-FUTURE-WORK.md` Section 2 ("Pending External Setup — WhatsApp Business API")
+  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Section 2.1–2.2
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.1
+* **Current Implementation Status:** Unclear / Pending External Credentials
+* **Brief Description of Documentation Specification:** Requires Meta Business Account verification, WABA ID, Phone Number ID, Permanent Access Token, and approved Meta templates (`otp_verification`, `booking_confirmation`, `booking_reminder`, `review_request`).
+* **Brief Description of Codebase Reality:** `server/src/modules/auth/otp.provider.js` contains a basic Meta Graph API fetch for OTP in `production` mode. However, non-OTP template dispatchers do not exist in `server/src/modules/notifications/`. Whether Meta production credentials have been provisioned in the live deployment environment cannot be verified from the codebase alone.
+* **The Exact Gap That Remains:** Environment variable population in production deploy environment and creation of template dispatch services for booking confirmation, reminders, and review requests.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/auth/otp.provider.js`, `server/src/modules/notifications/`
+
+---
+
+### 2.4 Promotions, Coupons & Discounting
+
+#### Item 4.1: Admin Coupon Management REST API & Frontend UI
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 6 ("Coupons & Dynamic Pricing")
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Pricing Manager — Manage coupons")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /venues/:id/coupons`, `GET /venues/:id/coupons`, `PATCH /coupons/:id`)
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.8 ("Admin Coupon Management API — Planned")
+* **Current Implementation Status:** Partial
+* **Brief Description of Documentation Specification:** Full HTTP REST endpoints allow admins with `edit_pricing` permission to create, list, edit, and deactivate coupons. The admin pricing panel (`/admin/pricing`) provides UI controls to manage promo codes.
+* **Brief Description of Codebase Reality:** Discount evaluation logic exists (`booking-pricing.service.js`), and a CLI script exists (`server/scripts/create-promo-code.mjs`). However, no REST API endpoints for coupon CRUD exist in `server/src/modules/venues/` or elsewhere, and no coupon management interface exists in `web/src/app/(admin)/admin/pricing/`.
+* **The Exact Gap That Remains:** Missing HTTP REST endpoints (`POST/GET /venues/:id/coupons`, `PATCH /coupons/:id`) and missing frontend coupon management panel in `/admin/pricing`.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/venues/`
+  * Frontend: `web/src/app/(admin)/admin/pricing/`
+
+---
+
+#### Item 4.2: Coupon Usage Tracking & Limit Enforcement (`coupon_usages`)
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 6.2 ("Usage Limits")
+  * `docs/specs/01-DATABASE-SCHEMA.md` Domain C (`coupon_usages` table)
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.8 ("Usage Enforcement — Planned")
+* **Current Implementation Status:** Partial
+* **Brief Description of Documentation Specification:** System records every coupon redemption in `coupon_usages` (`coupon_id, phone, booking_id, used_at`) upon booking confirmation, and enforces `max_uses_total` and `max_uses_per_phone` caps.
+* **Brief Description of Codebase Reality:** The `coupon_usages` table is defined in `server/prisma/schema.prisma`. However, `booking-pricing.service.js` only checks active status and date validity windows. It does NOT record entries in `coupon_usages` during booking confirmation, nor does it check `coupon_usages` counts against `max_uses_total` or `max_uses_per_phone`.
+* **The Exact Gap That Remains:** Recording rows in `coupon_usages` inside booking confirmation transactions and checking usage counts during quote calculation.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/bookings/`, `server/src/modules/venues/`
+
+---
+
+### 2.5 Support & Contact Infrastructure
+
+#### Item 5.1: Support Form Submission Delivery Endpoint
+* **Source Documentation Reference(s):**
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 2.8 ("Contact Form")
+  * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 4 ("Support Form Submission Delivery")
+* **Current Implementation Status:** Partial / Mock Only
+* **Brief Description of Documentation Specification:** The support page `/support` provides a contact form for name, email, and message. Submitting transmits data to a backend endpoint or email delivery service.
+* **Brief Description of Codebase Reality:** `web/src/components/features/support/SupportClient.js` exists, but line 66 invokes a mock handler returning `"Support form delivery is not configured yet. Please use the listed phone or email contact."` No support ticket endpoint or mailer integration exists in `server/`.
+* **The Exact Gap That Remains:** Missing backend support ticket endpoint (or mailer integration) and frontend wiring to submit to the backend API.
+* **Dependent Files / Modules / Areas:**
+  * Frontend: `web/src/components/features/support/SupportClient.js`
+  * Backend: `server/src/modules/`
+
+---
+
+### 2.6 Admin Dashboard Operational Screens (APIs & UI)
+
+#### Item 6.1: Admin Overview Dashboard Real Data API
+* **Source Documentation Reference(s):**
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Overview / Home")
+  * `docs/plans/web-modernization/03-issues-register.md` ME-3 ("`getAdminOverview` is hardcoded mock data")
+  * `docs/plans/web-modernization/04-api-server-action-service-review.md` Section 6
+* **Current Implementation Status:** Partial / Mock
+* **Brief Description of Documentation Specification:** Displays live court slot grid for today, pending bookings count, today's revenue, and operational metrics.
+* **Brief Description of Codebase Reality:** `web/src/app/(admin)/admin/overview/page.js` exists, but imports from `lib/api.js:48-65`, which returns hardcoded mock stats behind a `// TODO`.
+* **The Exact Gap That Remains:** Real backend dashboard overview API endpoint (`GET /admin/overview` or `GET /venues/:id/dashboard`) and wiring frontend to consume real data.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/venues/` (or new admin dashboard service)
+  * Frontend: `web/src/app/(admin)/admin/overview/`
+
+---
+
+#### Item 6.2: Admin User Lookup & Customer Booking History API
+* **Source Documentation Reference(s):**
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Users")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`GET /admin/users`)
+* **Current Implementation Status:** Partial / Missing
+* **Brief Description of Documentation Specification:** Admins can look up customers by phone number, view their booking history, wallet balance, and reward instance history.
+* **Brief Description of Codebase Reality:** `server/src/modules/users/` implements `GET /users/me` for the caller, but no `GET /admin/users` search endpoint exists. The `/admin/users` frontend route lacks backend data integration.
+* **The Exact Gap That Remains:** Backend admin customer search/detail API and frontend admin customer lookup page.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/users/`
+  * Frontend: `web/src/app/(admin)/admin/users/`
+
+---
+
+#### Item 6.3: Admin Venue Settings Manager
+* **Source Documentation Reference(s):**
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Settings")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`PATCH /venues/:id`)
+* **Current Implementation Status:** Partial / Missing
+* **Brief Description of Documentation Specification:** Manage facility settings including rollover time, advance booking window, tax rate, and facility contact info via `PATCH /venues/:id` guarded by `manage_venues` permission.
+* **Brief Description of Codebase Reality:** `venues` table schema contains these fields, but `server/src/modules/venues/venues.routes.js` only exposes GET routes. The frontend `/admin/settings` page cannot persist updates.
+* **The Exact Gap That Remains:** Missing `PATCH /venues/:id` backend route and frontend form update handler.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/venues/`
+  * Frontend: `web/src/app/(admin)/admin/settings/`
+
+---
+
+#### Item 6.4: Admin Force-Cancellation & Credit Issuance Endpoint
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 7 ("Cancellations & Wallet Credits")
+  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 7 ("Bookings — initiate force-cancellation + credit issuance")
+  * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /bookings/:id/cancel`)
+* **Current Implementation Status:** Partial / Missing
+* **Brief Description of Documentation Specification:** Admins with `issue_credits` or `manage_bookings` permission can force-cancel a booking and issue full or partial wallet credits to the user's account.
+* **Brief Description of Codebase Reality:** `users.service.js` has low-level wallet credit adjustment logic, but no `POST /bookings/:id/cancel` admin cancellation endpoint exists in `server/src/modules/bookings/bookings.routes.js`.
+* **The Exact Gap That Remains:** Missing `POST /bookings/:id/cancel` endpoint and admin UI cancellation action button.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/modules/bookings/`
+  * Frontend: `web/src/app/(admin)/admin/bookings/`
+
+---
+
+### 2.7 Media Storage & Photo Uploads
+
+#### Item 7.1: Cloudflare R2 Integration for Court & Review Photos
+* **Source Documentation Reference(s):**
+  * `docs/product/01-PROJECT-OVERVIEW.md` Section 4.4
+  * `docs/product/04-FUTURE-WORK.md` Section 2 ("Cloudflare R2 credentials and storage provider implementation")
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.6 ("Photo Uploads — Deferred")
+* **Current Implementation Status:** Missing / Deferred
+* **Brief Description of Documentation Specification:** Integration with Cloudflare R2 object storage to upload and serve court cover images and review attachment photos (`photo_url`).
+* **Brief Description of Codebase Reality:** The `photo_url` column exists in PostgreSQL schema tables (`reviews` and `courts`). However, no R2 storage client or file upload endpoint exists in `server/`.
+* **The Exact Gap That Remains:** Cloudflare R2 client module in `server/src/lib/` and file upload/presigned URL endpoints.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/src/lib/`, `server/src/modules/reviews/`, `server/src/modules/venues/`
+
+---
+
+### 2.8 Rewards & Gamification (Spinner Wheel)
+
+#### Item 8.1: Spinner Wheel Frontend Component
+* **Source Documentation Reference(s):**
+  * `docs/product/02-BUSINESS-LOGIC.md` Section 12.7 ("Switch to spinner")
+  * `docs/adrs/ADR-010-rewards-module.md`
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.7 ("Spinner Wheel UI — Deferred")
+* **Current Implementation Status:** Missing / Deferred
+* **Brief Description of Documentation Specification:** Backend fully supports `type: "spinner"` mechanisms end-to-end; UI specification allows spinner wheel experiences.
+* **Brief Description of Codebase Reality:** `server/src/modules/rewards/` supports both `scratch_card` and `spinner` mechanism types. However, `web/src/components/features/rewards/` exclusively implements `scratch_card` (`RewardExperience.js`, `RewardReveal.js`). No spinner wheel canvas/animation component exists.
+* **The Exact Gap That Remains:** Missing frontend interactive Spinner Wheel UI component in `web/src/components/features/rewards/`.
+* **Dependent Files / Modules / Areas:**
+  * Frontend: `web/src/components/features/rewards/`
+
+---
+
+### 2.9 Developer & Testing Infrastructure
+
+#### Item 9.1: Web Modernization Tooling & Testing Scaffolding (Phases 6–7)
+* **Source Documentation Reference(s):**
+  * `docs/plans/web-modernization/README.md` Section Status ("Phases 6–7 deferred")
+  * `docs/plans/web-modernization/06-implementation-plan.md` Phases 6–7
+* **Current Implementation Status:** Partial / Deferred
+* **Brief Description of Documentation Specification:** Phases 6–7 of the web modernization plan specify setting up Prettier, Husky, lint-staged, a `tsc --noEmit` type-check gate script, Playwright E2E test suite, and GitHub Actions CI workflow files.
+* **Brief Description of Codebase Reality:** `web/package.json` includes ESLint and native `node:test` unit test scripts. However, no `.prettierrc`, no Husky hooks, no `playwright.config.js`, and no GitHub Actions `.github/workflows/` files exist in the repository.
+* **The Exact Gap That Remains:** Missing Prettier/Husky/lint-staged configuration, Playwright E2E suite, `tsc` typecheck script, and CI pipeline definition.
+* **Dependent Files / Modules / Areas:**
+  * Workspace Root & Web: `web/package.json`, `.github/workflows/`
