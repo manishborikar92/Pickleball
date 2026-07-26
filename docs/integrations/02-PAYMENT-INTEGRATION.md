@@ -464,7 +464,7 @@ Reject with `401` if verification fails.
 ### 6.4 Webhook Handler
 
 ```javascript
-// POST /api/webhooks/phonepe
+// POST /api/v1/payments/webhooks/phonepe
 router.post('/phonepe', express.json(), async (req, res) => {
   // 1. Verify auth header immediately
   if (!verifyWebhookAuth(req.headers['authorization'])) {
