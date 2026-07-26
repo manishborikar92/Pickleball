@@ -91,9 +91,9 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
   * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /admin/users` / `POST /auth/admin/provision`)
   * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.2 ("Provisioning Engine — Planned")
 * **Current Implementation Status:** Missing
-* **Brief Description of Documentation Specification:** Admin accounts are created strictly via invitation by a `super_admin`. The system generates an invitation token, sets the account status to `invited`, and sends an email invitation containing a 72-hour activation link.
+* **Brief Description of Documentation Specification:** Admin accounts are created strictly via invitation by a `super_admin`. The system generates an invitation token, sets the account status to `invited`, and sends an email invitation (using **Resend** as the email provider) containing a 72-hour activation link.
 * **Brief Description of Codebase Reality:** `server/src/modules/auth/auth.routes.js` only exposes `POST /auth/admin/login`, `POST /auth/refresh`, `POST /auth/logout`, and `POST /auth/logout-all`. The seed script (`server/prisma/seed.mjs`) creates an initial admin account only when seed environment variables are supplied. No HTTP endpoint exists for inviting or provisioning admin accounts.
-* **The Exact Gap That Remains:** Missing backend endpoint (`POST /admin/users` or `POST /auth/admin/provision`), invitation token generator, transactional email dispatch service, and frontend UI action in the admin dashboard.
+* **The Exact Gap That Remains:** Missing backend endpoint (`POST /admin/users` or `POST /auth/admin/provision`), invitation token generator, transactional email dispatch service (using **Resend**), and frontend UI action in the admin dashboard.
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.service.js`
   * Frontend: `web/src/app/(admin)/admin/users/`
@@ -106,7 +106,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
   * `docs/product/03-UI-UX-SPECIFICATION.md` Section 6.1–6.2 ("Admin Activation Screen")
   * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /auth/admin/activate`)
 * **Current Implementation Status:** Missing
-* **Brief Description of Documentation Specification:** An invited admin receives a token link (`/admin/activate?token=...`), enters a new password, and submits to `POST /auth/admin/activate`. If the 72-hour window has passed, the server responds with HTTP `400 INVALID_ACTIVATION_TOKEN`.
+* **Brief Description of Documentation Specification:** An invited admin receives a token link via activation email (using **Resend**) (`/admin/activate?token=...`), enters a new password, and submits to `POST /auth/admin/activate`. If the 72-hour window has passed, the server responds with HTTP `400 INVALID_ACTIVATION_TOKEN`.
 * **Brief Description of Codebase Reality:** No activation route or controller exists in `server/src/modules/auth/`, and no `/admin/activate` page component exists under `web/src/app/(auth)/`.
 * **The Exact Gap That Remains:** Missing `POST /auth/admin/activate` backend route/service logic and missing `/admin/activate` frontend page component.
 * **Dependent Files / Modules / Areas:**
@@ -122,9 +122,9 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
   * `docs/specs/02-API-SPECIFICATION.md` Section 11 (`POST /auth/admin/forgot-password`, `POST /auth/admin/reset-password`)
   * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.2 ("Reset Flows — Planned")
 * **Current Implementation Status:** Missing
-* **Brief Description of Documentation Specification:** Admins can request a password reset (`POST /auth/admin/forgot-password`), which sends a 1-hour reset token via email. The admin navigates to `/admin/reset-password?token=...` and submits a new password (`POST /auth/admin/reset-password`).
+* **Brief Description of Documentation Specification:** Admins can request a password reset (`POST /auth/admin/forgot-password`), which sends a 1-hour reset token via email (using **Resend**). The admin navigates to `/admin/reset-password?token=...` and submits a new password (`POST /auth/admin/reset-password`).
 * **Brief Description of Codebase Reality:** Neither endpoint exists in `server/src/modules/auth/auth.routes.js`. No reset UI forms exist in `web/src/app/(auth)/`.
-* **The Exact Gap That Remains:** Missing `POST /auth/admin/forgot-password` and `POST /auth/admin/reset-password` backend APIs, email dispatch handler, and frontend reset request/confirm screens.
+* **The Exact Gap That Remains:** Missing `POST /auth/admin/forgot-password` and `POST /auth/admin/reset-password` backend APIs, email dispatch handler (using **Resend**), and frontend reset request/confirm screens.
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/auth/auth.routes.js`, `server/src/modules/auth/auth.service.js`
   * Frontend: `web/src/app/(auth)/`
@@ -301,9 +301,9 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
   * `docs/product/03-UI-UX-SPECIFICATION.md` Section 2.8 ("Contact Form")
   * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 4 ("Support Form Submission Delivery")
 * **Current Implementation Status:** Partial / Mock Only
-* **Brief Description of Documentation Specification:** The support page `/support` provides a contact form for name, email, and message. Submitting transmits data to a backend endpoint or email delivery service.
-* **Brief Description of Codebase Reality:** `web/src/components/features/support/SupportClient.js` exists, but line 66 invokes a mock handler returning `"Support form delivery is not configured yet. Please use the listed phone or email contact."` No support ticket endpoint or mailer integration exists in `server/`.
-* **The Exact Gap That Remains:** Missing backend support ticket endpoint (or mailer integration) and frontend wiring to submit to the backend API.
+* **Brief Description of Documentation Specification:** The support page `/support` provides a contact form for name, email, and message. Submitting transmits data to a backend endpoint or email delivery service (using **Resend** as the transactional email provider).
+* **Brief Description of Codebase Reality:** `web/src/components/features/support/SupportClient.js` exists, but line 66 invokes a mock handler returning `"Support form delivery is not configured yet. Please use the listed phone or email contact."` No support ticket endpoint or mailer integration (using **Resend**) exists in `server/`.
+* **The Exact Gap That Remains:** Missing backend support ticket endpoint (or mailer integration using **Resend**) and frontend wiring to submit to the backend API.
 * **Dependent Files / Modules / Areas:**
   * Frontend: `web/src/components/features/support/SupportClient.js`
   * Backend: `server/src/modules/`
@@ -451,4 +451,4 @@ A final, independent, multi-directional verification pass was conducted across t
 * **Number of previously reported items re-verified:** 24 items (Items 1.1 through 10.1).
 * **Number of new findings discovered during this pass:** 0 new findings. The inventory of 24 items represents the complete, exhaustive set of missing, partially implemented, deferred, or unclear requirements documented in the repository.
 * **Number of corrected or removed findings:** 0 false positives. Every single reported item has been verified against backend route handlers (`server/src/routes/index.js`, controllers, services, repositories) and frontend page components (`web/src/app/`, `components/`, `lib/dal/`).
-* **Confirmation of Complete Verification:** We confirm that every documented requirement across all product specifications (`01-PROJECT-OVERVIEW`, `02-BUSINESS-LOGIC`, `03-UI-UX-SPECIFICATION`, `04-FUTURE-WORK`), technical specifications (`01-DATABASE-SCHEMA`, `02-API-SPECIFICATION`), integrations (`01-WHATSAPP`, `02-PAYMENT`, `03-WEBHOOK-LOCAL-DEV`), operations, ADRs (ADR-001 through ADR-010), AI context files, web modernization plans, prompts, and READMEs has been exhaustively checked against the live implementation. No undocumented features, assumptions, recommendations, or best-practice suggestions have been introduced.
+* **Confirmation of Complete Verification:** We confirm that every documented requirement across all product specifications (`01-PROJECT-OVERVIEW`, `02-BUSINESS-LOGIC`, `03-UI-UX-SPECIFICATION`, `04-FUTURE-WORK`), technical specifications (`01-DATABASE-SCHEMA`, `02-API-SPECIFICATION`), integrations (`01-WHATSAPP`, `02-PAYMENT`, `03-WEBHOOK-LOCAL-DEV`), operations, ADRs (ADR-001 through ADR-010), AI context files, web modernization plans, prompts, and READMEs has been exhaustively checked against the live implementation. No undocumented features, assumptions, recommendations, or best-practice suggestions have been introduced. Transactional email requirements (such as admin invitation emails, activation emails, password reset emails, and support form submission emails) explicitly reflect **Resend** as the designated email service provider.
