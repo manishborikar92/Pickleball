@@ -23,7 +23,7 @@ export function HeroSection() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-accent" />
             </span>
-            <span className="font-semibold tracking-wide">OPENING SOON</span>
+            <span className="font-semibold tracking-wide">LIVE NOW</span>
           </Badge>
 
           <h1 className="text-balance text-4xl font-black leading-[1.05] tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl">
