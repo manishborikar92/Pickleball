@@ -17,7 +17,7 @@ Below is the structured layout of the documentation in this repository:
   - [01-DATABASE-SCHEMA.md](specs/01-DATABASE-SCHEMA.md) — PostgreSQL table columns, indexes, and Prisma associations.
   - [02-API-SPECIFICATION.md](specs/02-API-SPECIFICATION.md) — JSON payloads, REST routing paths, and authentication.
 - **External Integrations (`docs/integrations/`)**
-  - [01-WHATSAPP-INTEGRATION.md](integrations/01-WHATSAPP-INTEGRATION.md) — Cloud API notification webhooks, templates, and rates.
+  - [01-WHATSAPP-INTEGRATION.md](integrations/01-WHATSAPP-INTEGRATION.md) — Cloud API notification templates, rates, and outbound messaging architecture.
   - [02-PAYMENT-INTEGRATION.md](integrations/02-PAYMENT-INTEGRATION.md) — PhonePe checkout redirects, webhook signatures, and refunds.
 - **Operations & VM Runbooks (`docs/operations/`)**
   - [01-COSTING-ANALYSIS.md](operations/01-COSTING-ANALYSIS.md) — SMS, Meta messages, and payment transaction cost spreadsheets.
@@ -72,6 +72,7 @@ We document major technology selections and designs through ADRs.
 | **ADR-008** | Standardized Domain Error Hierarchy | Approved | 2026-06-19 | [ADR-008 Error Hierarchy](adrs/ADR-008-error-hierarchy.md) |
 | **ADR-009** | Reviews as an Independent Domain Under `/reviews` | Approved | 2026-06-28 | [ADR-009 Reviews Module](adrs/ADR-009-reviews-module.md) |
 | **ADR-010** | Rewards as an Independent Domain Under `/rewards` with Voucher-Only Prizes | Approved | 2026-07-16 | [ADR-010 Rewards Module](adrs/ADR-010-rewards-module.md) |
+| **ADR-011** | Scheduled Notifications as an Independent Module with a PostgreSQL Outbox Scheduler | Approved | 2026-07-28 | [ADR-011 Notifications Module](adrs/ADR-011-notifications-module.md) |
 
 ---
 *For quick startup, see the root [README.md](../README.md).*

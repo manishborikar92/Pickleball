@@ -36,6 +36,15 @@ const envSchema = Joi.object({
   WHATSAPP_PHONE_NUMBER_ID: Joi.string().allow('').default(''),
   WHATSAPP_OTP_TEMPLATE_NAME: Joi.string().allow('').default(''),
   WHATSAPP_OTP_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
+  WHATSAPP_REMINDER_T24_TEMPLATE_NAME: Joi.string().allow('').default(''),
+  WHATSAPP_REMINDER_T2H_TEMPLATE_NAME: Joi.string().allow('').default(''),
+  WHATSAPP_REVIEW_TEMPLATE_NAME: Joi.string().allow('').default(''),
+  WHATSAPP_REMINDER_T24_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
+  WHATSAPP_REMINDER_T2H_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
+  WHATSAPP_REVIEW_TEMPLATE_LANGUAGE: Joi.string().allow('').default('en_US'),
+  NOTIFICATIONS_TRANSPORT_MODE: Joi.string().valid('dry_run', 'live').default('dry_run'),
+  NOTIFICATIONS_MAX_ATTEMPTS: Joi.number().integer().min(1).default(5),
+  NOTIFICATIONS_DISPATCH_LIMIT: Joi.number().integer().min(1).default(100),
   SHUTDOWN_TIMEOUT_MS: Joi.number().integer().positive().default(10000),
 
   // PhonePe Payment Gateway — credentials provided via merchant dashboard.
@@ -116,6 +125,19 @@ export const buildConfig = (overrides = {}) => {
       throw new Error('WhatsApp OTP template settings must be set when OTP_MODE=production');
     }
 
+    // Scheduled notifications are dry-run by default; live delivery requires the
+    // WhatsApp credentials AND the three approved notification templates.
+    if (value.NOTIFICATIONS_TRANSPORT_MODE === 'live') {
+      if (!value.WHATSAPP_ACCESS_TOKEN || !value.WHATSAPP_PHONE_NUMBER_ID) {
+        throw new Error('WhatsApp credentials must be set when NOTIFICATIONS_TRANSPORT_MODE=live');
+      }
+      const notificationTemplates = ['WHATSAPP_REMINDER_T24_TEMPLATE_NAME', 'WHATSAPP_REMINDER_T2H_TEMPLATE_NAME', 'WHATSAPP_REVIEW_TEMPLATE_NAME'];
+      const missingTemplates = notificationTemplates.filter((key) => !value[key]);
+      if (missingTemplates.length > 0) {
+        throw new Error(`WhatsApp notification templates must be set when NOTIFICATIONS_TRANSPORT_MODE=live: ${missingTemplates.join(', ')}`);
+      }
+    }
+
     if (parseCsv(value.ALLOWED_ORIGINS).length === 0) {
       throw new Error('ALLOWED_ORIGINS must contain at least one origin in production');
     }
@@ -194,6 +216,14 @@ export const buildConfig = (overrides = {}) => {
     scheduler: {
       intervalMs: value.SCHEDULER_INTERVAL_MS,
       disabled: value.DISABLE_INTERNAL_SCHEDULER,
+    },
+    notifications: {
+      transportMode: value.NOTIFICATIONS_TRANSPORT_MODE,
+      maxAttempts: value.NOTIFICATIONS_MAX_ATTEMPTS,
+      dispatchLimit: value.NOTIFICATIONS_DISPATCH_LIMIT,
+      reminderT24Template: { name: value.WHATSAPP_REMINDER_T24_TEMPLATE_NAME, language: value.WHATSAPP_REMINDER_T24_TEMPLATE_LANGUAGE },
+      reminderT2hTemplate: { name: value.WHATSAPP_REMINDER_T2H_TEMPLATE_NAME, language: value.WHATSAPP_REMINDER_T2H_TEMPLATE_LANGUAGE },
+      reviewTemplate: { name: value.WHATSAPP_REVIEW_TEMPLATE_NAME, language: value.WHATSAPP_REVIEW_TEMPLATE_LANGUAGE },
     },
     frontendBaseUrl: value.FRONTEND_BASE_URL,
   };

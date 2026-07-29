@@ -22,8 +22,8 @@ Our QA gating requires all tests to pass prior to merging.
 
 ### 2.1 Backend Tests (`server/tests/`)
 - **Framework**: Built using the native Node.js test runner (`node --test`), keeping testing free of third-party package dependencies like Jest.
-- **Pass Metrics**: All 214 native test cases are passing successfully (153 unit tests and 61 integration tests).
-  - Passes: 214
+- **Pass Metrics**: All 258 native test cases are passing successfully (unit, integration, and notifications outbox tests).
+  - Passes: 258
   - Failures: 0
 - **Execution Command**:
   ```bash
@@ -33,9 +33,8 @@ Our QA gating requires all tests to pass prior to merging.
 
 ### 2.2 Frontend Tests (`web/tests/`)
 - **Framework**: Node.js native test runner for pure logic (RBAC, Zod schemas — including the reward
-  mechanism editor's, normalizers, booking engine, the checkout service, and the booking- and
-  review-status resolvers).
-- **Pass Metrics**: All native `node:test` cases pass (Failures: 0).
+  mechanism editor's, normalizers, booking engine, the checkout service, review-status resolvers, and notifications schemas/normalizers).
+- **Pass Metrics**: All native `node:test` cases pass (93 tests passing, Failures: 0).
 - **Execution Command**:
   ```bash
   cd web/

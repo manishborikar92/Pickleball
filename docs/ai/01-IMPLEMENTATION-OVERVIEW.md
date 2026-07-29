@@ -78,7 +78,7 @@ When a customer attempts to secure a court booking, the system coordinates avail
 
 ## 4. Integration Boundaries
 
-- **WhatsApp Cloud API (OTP Delivery)**: Connects to Meta's WhatsApp Business API. The service falls back to sandbox logs in local environments. Rate-limiting rules prevent sending OTPs more than once every 60 seconds.
+- **WhatsApp Cloud API (OTP & Scheduled Notifications)**: Connects directly to Meta's WhatsApp Business API. OTP delivery handles customer authentication. Scheduled notifications (T-24h/T-2h reminders, post-session review requests) use a PostgreSQL-backed outbox driven by the existing in-process scheduler (`dispatch-due-notifications` job) and run in dry-run mode until Meta templates are configured (ADR-011).
 - **PhonePe Checkout Gateway**: Integrates via checkout URL generation. Each payment attempt receives a fresh 34-character, 64-bit-entropy merchant order ID stored in the payment ledger. The browser redirect lands on the frontend and the public JSON verification endpoint reconciles the exact ledger order idempotently; the S2S webhook remains primary and uses custom basic authentication verified by matching the Authorization header with a SHA256 hash of the configured username and password.
 - **Cloudflare R2**: Used for layout maps. Client uploads bypass Express backend using presigned URLs.
 

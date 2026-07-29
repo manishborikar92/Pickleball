@@ -1434,7 +1434,137 @@ Prize `probability` values must sum to exactly 1.0 — validated server-side on 
 
 ---
 
-## 12. Error Response Format
+## 12. Notifications API
+
+All notification endpoints require authentication. Access control is enforced per route based on venue permissions (`manage_venues` for settings configuration, `manage_bookings` for outbox dispatch logs).
+
+---
+
+### `GET /notifications/settings`
+
+Returns the notification toggle configuration for a specific venue.
+
+*Requires authorization (`manage_venues`).*
+
+**Query parameters:**
+- `venue_id` (UUID, required)
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Notification settings retrieved",
+  "data": {
+    "venue_id": "<uuid>",
+    "reminders_enabled": false,
+    "review_requests_enabled": false,
+    "updated_at": "2026-07-28T10:00:00.000Z"
+  }
+}
+```
+
+---
+
+### `PATCH /notifications/settings`
+
+Upserts notification toggle configuration (`reminders_enabled`, `review_requests_enabled`) for a venue.
+
+*Requires authorization (`manage_venues`).*
+
+**Request body:**
+```json
+{
+  "venue_id": "<uuid>",
+  "reminders_enabled": true,
+  "review_requests_enabled": true
+}
+```
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Notification settings updated",
+  "data": {
+    "venue_id": "<uuid>",
+    "reminders_enabled": true,
+    "review_requests_enabled": true,
+    "updated_at": "2026-07-28T10:05:00.000Z"
+  }
+}
+```
+
+---
+
+### `GET /notifications/log`
+
+Returns a paginated list of notification outbox dispatch log records and per-status activity counts for a venue.
+
+*Requires authorization (`manage_bookings`).*
+
+**Query parameters:**
+- `venue_id` (UUID, required)
+- `status` (string, optional — `scheduled`, `sending`, `sent`, `failed`, `cancelled`, `skipped`)
+- `type` (string, optional — `reminder_t24`, `reminder_t2h`, `review_request`)
+- `page` (integer, default 1)
+- `limit` (integer, default 20)
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Notification log retrieved",
+  "data": {
+    "notifications": [
+      {
+        "id": "<uuid>",
+        "booking_id": "<uuid>",
+        "venue_id": "<uuid>",
+        "user_id": "<uuid>",
+        "type": "reminder_t24",
+        "scheduled_for": "2026-07-29T10:00:00.000Z",
+        "status": "sent",
+        "attempts": 1,
+        "next_retry_at": null,
+        "sent_at": "2026-07-29T10:00:05.000Z",
+        "provider": "dry_run",
+        "last_error": null,
+        "created_at": "2026-07-28T10:00:00.000Z",
+        "updated_at": "2026-07-29T10:00:05.000Z",
+        "booking": {
+          "id": "<uuid>",
+          "display_id": "BK-1001",
+          "booking_type": "online",
+          "status": "confirmed"
+        },
+        "user": {
+          "id": "<uuid>",
+          "name": "Alex Player",
+          "phone": "+919876543210"
+        }
+      }
+    ],
+    "summary": {
+      "scheduled": 0,
+      "sending": 0,
+      "sent": 1,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 1,
+      "total_pages": 1
+    }
+  }
+}
+```
+
+---
+
+## 13. Error Response Format
 
 All errors follow a consistent structure:
 
@@ -1496,4 +1626,5 @@ All errors follow a consistent structure:
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
+
 

@@ -12,6 +12,7 @@ import { createDefaultBookingsService } from './modules/bookings/index.js';
 import { createDefaultPaymentsService } from './modules/payments/index.js';
 import { createDefaultVenuesService } from './modules/venues/index.js';
 import { createDefaultRewardsService } from './modules/rewards/index.js';
+import { createDefaultNotificationsService } from './modules/notifications/index.js';
 import { createPaymentProviderFromEnv } from './modules/payments/provider-factory.js';
 
 export const startServer = async () => {
@@ -68,6 +69,7 @@ export const startServer = async () => {
   const paymentProvider = createPaymentProviderFromEnv(config);
   const bookingsService = createDefaultBookingsService({ config, venueService, paymentProvider });
   const rewardsService = createDefaultRewardsService();
+  const notificationsService = createDefaultNotificationsService({ config });
   const { reconciliationService } = createDefaultPaymentsService({
     bookingsService,
     config,
@@ -81,6 +83,7 @@ export const startServer = async () => {
       { name: 'expire-pending-holds', execute: () => bookingsService.expirePendingHolds() },
       { name: 'sweep-completed-bookings', execute: () => bookingsService.sweepCompletedBookings() },
       { name: 'sweep-expired-reward-instances', execute: () => rewardsService.sweepExpiredInstances() },
+      { name: 'dispatch-due-notifications', execute: () => notificationsService.dispatchDueNotifications() },
       { name: 'reconcile-stale-payments', execute: () => reconciliationService.reconcileStalePayments() },
     ],
     intervalMs: config.scheduler.intervalMs,

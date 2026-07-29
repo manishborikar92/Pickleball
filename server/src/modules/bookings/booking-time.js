@@ -78,3 +78,35 @@ export const localDateTimeToUtc = (date, time, venueTimezone) => {
 
   return new Date(localUtc.getTime() - offsetMs);
 };
+
+/**
+ * Resolves the session-start instant of a booking in UTC, from its slot date +
+ * session start time + the venue timezone. Shared by the bookings lifecycle and
+ * the notifications planner (T-24h / T-2h reminder offsets derive from this).
+ */
+export const getBookingStartUtc = (booking, venueTimezone) =>
+  localDateTimeToUtc(booking.slotDate, formatTime(booking.sessionStartTime), venueTimezone);
+
+/**
+ * Resolves the session-end instant of a booking in UTC. Handles the overnight
+ * case where the end time is on or before the start time (session crosses
+ * midnight) by rolling the slot date forward a day. Shared by the bookings
+ * lifecycle (`sweepCompletedBookings`, late-payment detection) and the
+ * notifications planner (post-session review request targets this).
+ */
+export const getBookingEndUtc = (booking, venueTimezone) => {
+  const endTimeStr = formatTime(booking.sessionEndTime);
+  const startTimeStr = formatTime(booking.sessionStartTime);
+
+  const startMins = timeToMinutes(startTimeStr);
+  const endMins = timeToMinutes(endTimeStr);
+
+  let date = booking.slotDate;
+  if (endMins <= startMins) {
+    const nextDay = new Date(booking.slotDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+    date = nextDay;
+  }
+
+  return localDateTimeToUtc(date, endTimeStr, venueTimezone);
+};

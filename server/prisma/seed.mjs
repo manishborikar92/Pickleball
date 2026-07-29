@@ -257,11 +257,29 @@ async function seedRewardMechanism(venue) {
   console.log('Seeded reward mechanism: Post-Booking Scratch Card (active)');
 }
 
+async function seedNotificationSettings(venue) {
+  // Notification toggles default OFF — an admin opts in at /admin/settings.
+  // Delivery is additionally inert until Meta WhatsApp is configured
+  // (NOTIFICATIONS_TRANSPORT_MODE=live) — see docs/adrs/ADR-011.
+  await prisma.notificationSetting.upsert({
+    where: { venueId: venue.id },
+    update: {},
+    create: {
+      venueId: venue.id,
+      remindersEnabled: false,
+      reviewRequestsEnabled: false,
+    },
+  });
+
+  console.log('Seeded notification settings (reminders + review requests off)');
+}
+
 try {
   await seedRolesAndPermissions();
   const venue = await seedVenue();
   await seedAdmin(venue);
   await seedRewardMechanism(venue);
+  await seedNotificationSettings(venue);
 } finally {
   await prisma.$disconnect();
 }

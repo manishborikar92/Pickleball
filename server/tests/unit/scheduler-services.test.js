@@ -3,6 +3,7 @@ import { describe, test, mock } from 'node:test';
 
 import { createAuthService } from '../../src/modules/auth/auth.service.js';
 import { createReconciliationService } from '../../src/modules/payments/reconciliation.service.js';
+import { createNotificationsService } from '../../src/modules/notifications/notifications.service.js';
 
 // ─── Auth purgeExpiredRecords ────────────────────────────────────────────────
 
@@ -287,5 +288,31 @@ describe('reconciliationService.reconcileStalePayments', () => {
     assert.equal(getPaymentStatus.mock.calls.length, 5);
     assert.equal(result.completed, 1);
     assert.equal(result.errors, 4);
+  });
+});
+
+// ─── Notifications dispatchDueNotifications (dispatch-due-notifications job) ──
+
+describe('notificationsService.dispatchDueNotifications', () => {
+  const fixedDate = new Date('2026-08-09T03:30:00.000Z');
+
+  test('exposes a callable dispatchDueNotifications entry point for the scheduler job', async () => {
+    const claimDue = mock.fn(async () => []);
+    const service = createNotificationsService({
+      repository: { claimDue },
+      transport: { send: mock.fn() },
+      config: { frontendBaseUrl: 'https://app.example.test' },
+      clock: () => fixedDate,
+    });
+
+    // The scheduler job calls service.dispatchDueNotifications() with no args —
+    // it must default to the injected clock and return outcome counts.
+    const result = await service.dispatchDueNotifications();
+
+    assert.equal(claimDue.mock.calls.length, 1);
+    const { now } = claimDue.mock.calls[0].arguments[0];
+    assert.equal(now.getTime(), fixedDate.getTime());
+    assert.equal(result.claimed, 0);
+    assert.equal(result.sent, 0);
   });
 });

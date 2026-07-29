@@ -25,7 +25,7 @@ const bookingIncludeForPayment = {
   },
 };
 
-export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
+export const createBookingsRepository = ({ prisma, rewardIssuance, notificationPlanner } = {}) => {
   const db = () => prisma || getPrisma();
 
   // Issue reward instances inside the same transaction that confirms the
@@ -34,6 +34,16 @@ export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
   const issueRewards = async (tx, booking, now) => {
     if (!rewardIssuance) return;
     await rewardIssuance.issueForBooking({ tx, booking, now });
+  };
+
+  // Schedule notification outbox rows inside the same confirm transaction
+  // (ADR-011): a confirmed booking and its scheduled reminders/review request
+  // commit atomically; a rolled-back confirm leaves no orphaned rows. No-op
+  // when the planner is not injected (unit tests). Duplicate confirm signals
+  // are absorbed by the planner's UNIQUE (booking_id, type) guard.
+  const scheduleNotifications = async (tx, booking, now) => {
+    if (!notificationPlanner) return;
+    await notificationPlanner.scheduleForBooking({ tx, booking, now });
   };
 
   const expirePendingHolds = async (tx, now) => {
@@ -300,6 +310,7 @@ export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
         });
 
         await issueRewards(tx, confirmed, now);
+        await scheduleNotifications(tx, confirmed, now);
 
         return { booking: confirmed, payment };
       });
@@ -445,6 +456,7 @@ export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
             });
 
             await issueRewards(tx, updatedBooking, now);
+            await scheduleNotifications(tx, updatedBooking, now);
           }
         }
 
@@ -750,6 +762,7 @@ export const createBookingsRepository = ({ prisma, rewardIssuance } = {}) => {
         });
 
         await issueRewards(tx, confirmed, now);
+        await scheduleNotifications(tx, confirmed, now);
 
         return confirmed;
       });

@@ -28,6 +28,7 @@ We classify codebase features using the following lifecycle states:
 | Wallet Transaction Logic | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
 | Reviews & Moderation | **Built** | `docs/product/01-PROJECT-OVERVIEW.md` | `server/src/modules/reviews` |
 | Reward Engine (Scratch Cards & Vouchers) | **Built** | `docs/adrs/ADR-010-rewards-module.md` | `server/src/modules/rewards` |
+| Scheduled Notifications (Reminders + Review Requests) | **Built** (delivery pending Meta) | `docs/adrs/ADR-011-notifications-module.md` | `server/src/modules/notifications` |
 
 ---
 
@@ -99,6 +100,20 @@ We classify codebase features using the following lifecycle states:
 - [x] **Promo Code Provisioning Tool**: `scripts/create-promo-code.mjs` (`npm run promo:create`) creates a `coupons` record with full input validation, discount-bound and validity-window rules, UPPERCASE normalization, and duplicate/unknown-venue rejection. Self-contained (Prisma-direct), in the style of `prisma/seed.mjs`.
 - [ ] **Admin Coupon Management API**: Create/list/deactivate endpoints. When built, coupon logic should join the pricing domain in the venues module (gated by `edit_pricing`) and the script becomes a thin client. (*Planned*)
 - [ ] **Usage Enforcement**: `coupon_usages` recording and `max_uses_total` / `max_uses_per_phone` cap enforcement at redemption. (*Planned*)
+
+### 2.9 Scheduled Notifications (Built — delivery pending Meta)
+Implements the T-24h/T-2h reminders and post-session review requests of `docs/product/02-BUSINESS-LOGIC.md` §8 (ADR-011).
+- [x] **PostgreSQL Outbox + In-Process Dispatcher**: A `notifications` table (idempotency `UNIQUE(booking_id, type)`, `(status, scheduled_for)` index) is the outbox; the existing `core/scheduler.js` runs a `dispatch-due-notifications` job that claims due rows atomically (`scheduled → sending`), re-checks booking eligibility at dispatch time, retries with backoff, and dead-letters at `maxAttempts`. No BullMQ/pg-boss, no Redis — see ADR-011 for why.
+- [x] **Planner Injected at Confirm**: A `notificationPlanner` service is injected into the bookings repository and runs inside all three confirm transactions (`confirmWalletOnlyPayment`, `confirmProviderPayment`, `confirmBooking`), scheduling reminder (`reminder_t24`, `reminder_t2h` from the session-start UTC) and review (`review_request` at session-end UTC) rows atomically. Phantom/force-expired payments schedule nothing; duplicate confirms are absorbed by the unique constraint.
+- [x] **Eligibility Re-check at Dispatch**: Reminders send while `confirmed|walk_in`, `skipped` if the session already ended, `cancelled` if voided; the review request sends only once `completed` (released back to `scheduled` while the completion sweeper catches up, giving up after a 48h max delay).
+- [x] **Transport Abstraction (Dry-Run by Default)**: `notifications.transport.js` generalizes the OTP-provider pattern — dry-run (log + `provider: 'dry_run'`) until `NOTIFICATIONS_TRANSPORT_MODE=live` and the three approved templates are configured, then POSTs the utility template to the Meta Graph API. Scheduling/business logic never call the transport directly.
+- [x] **Review Link**: The review request carries the absolute link `${FRONTEND_BASE_URL}/review/{bookingId}` (the existing owner-verified review page).
+- [x] **Admin Toggles + API**: `GET/PATCH /notifications/settings` (`manage_venues`) upsert per-venue `reminders_enabled` / `review_requests_enabled` (both default off; a `notification_settings` row is seeded off). `GET /notifications/log` (`manage_bookings`) is the paginated dispatch log + per-status summary.
+- [x] **Admin Settings UI (web)**: `/admin/settings` (previously a read-only stub) renders the two toggles as accessible `role=switch` controls (`SettingsView.js`, via `updateNotificationSettingsAction`) plus a recent-activity panel (manage_bookings), following the rewards admin pattern.
+- [x] **Config + Validation**: `notifications` config section in `env.js` (transport mode, template names/languages, max attempts, dispatch limit); production build validation requires the WhatsApp credentials + all three templates when `NOTIFICATIONS_TRANSPORT_MODE=live`.
+- [x] **Tests**: `tests/unit/notifications-{time,transport,planner,service}.test.js`, `tests/integration/notifications-{routes,booking-confirm}.test.js` (schedules on genuine confirm, not phantom; idempotent; respects toggles), dispatcher wiring in `tests/unit/scheduler-services.test.js`, and `web/tests/notifications.test.js` (normalizers + schemas). OpenAPI + Postman coverage.
+- [ ] **Live Meta WhatsApp Delivery**: Awaits Meta credentials + approved `reminder_t24`/`reminder_t2h`/`review_request` templates + `NOTIFICATIONS_TRANSPORT_MODE=live` + enabling the toggles. (*Deferred — Meta setup, ~30 days*)
+- [ ] **Admin "Retry" for Dead-Lettered Rows**: A failed notification stays queryable in the log; flipping `failed → scheduled` to retry manually is a follow-up, not core scope. (*Follow-up*)
 
 ---
 

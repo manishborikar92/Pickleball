@@ -7,3 +7,4 @@ export { EmptyState } from "./EmptyState";
 export { Loader } from "./Loader";
 export { DataTable } from "./Table";
 export { Portal } from "./Portal";
+export { Switch } from "./Switch";

@@ -21,7 +21,8 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 - Digital waiver and no-cancellation acknowledgment
 - Admin credential-based auth (email + password) with account provisioning, activation, and password reset flows
 - Reviews (stars + text; no photo upload at launch)
-- Reward Engine schema (architecture-ready; not activated until user base is established)
+- Reward Engine (scratch-card overlay auto-presents at confirm; voucher-only prizes with staff redemption — ADR-010)
+- Scheduled Notifications infrastructure (T-24h/T-2h reminders, post-session review requests via PostgreSQL outbox scheduler — ADR-011)
 
 ### Deferred — Architecture-Ready, Not Built at Launch
 
@@ -29,12 +30,11 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 |---|---|---|
 | Redis-backed cache / distributed rate limiting | PostgreSQL-backed sessions provide launch revocation; Redis is not needed until traffic or multi-instance rate limits require it | When API traffic or background jobs justify a shared cache |
 | Real-time slot sync (WebSockets / SSE) | Low concurrency; "slot taken" error on click is acceptable | When concurrent booking contention is noticeable |
-| WhatsApp T−24h / T−2h reminders | Requires reliable job scheduler; low impact at small scale | After launch stabilisation |
+| Live Meta WhatsApp delivery (reminders & reviews) | Infrastructure & outbox scheduler built (ADR-011); delivery pending Meta credentials + template approvals | ~30 days out at Meta activation |
 | WhatsApp inbound support webhook | A contact phone number on the landing page is sufficient | When support volume justifies a structured inbox |
 | SMS fallback for OTP | WhatsApp penetration is very high in India | If OTP delivery failures are reported |
 | Automated settlement reconciliation | Manual review via PhonePe dashboard is sufficient | At ~50+ daily transactions |
 | Multi-venue operational layer | Schema is venue-aware from day one; operational UI waits for a second location | When a second venue is added |
-| Reward Engine (scratch cards) | No customer base to engage yet | When regular player volume warrants retention mechanics |
 | Review photo upload | Column exists in schema; feature is additive | Low-priority post-launch addition |
 
 ---
@@ -48,12 +48,12 @@ This distinction is maintained throughout all documents. Features marked **"Defe
 | Backend | Express.js (JavaScript) | REST API; permission-guarded routes via `requirePermission()` middleware resolving through the RBAC tables |
 | Database | PostgreSQL | ACID compliance, row-level locking, JSONB for flexible pricing rules |
 | Auth | Short-lived JWT access tokens + rotating opaque refresh tokens | Customers: WhatsApp OTP. Admin credential schema is in place for super_admin/manager/staff. Session revocation is backed by `auth_sessions` and `refresh_tokens`; role resolution always comes from `venue_user_roles` |
-| OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP + booking confirmation at launch. T−24h/T−2h reminders and inbound support are deferred |
-| Payments | PhonePe Payment Gateway v2 (UPI only) | Web Standard Checkout — redirect/iFrame. Direct via `pg-sdk-node`. See `08-PAYMENT-INTEGRATION.md` |
+| OTP & Messaging | Meta WhatsApp Cloud API (direct) | OTP + booking confirmation. Scheduled notifications use a PostgreSQL outbox driven by the in-process scheduler (dry-run until Meta templates are set — ADR-011) |
+| Payments | PhonePe Payment Gateway v2 (UPI only) | Web Standard Checkout — redirect landing `/booking/redirect` with JSON verification. See `docs/integrations/02-PAYMENT-INTEGRATION.md` |
 | File Storage | Cloudflare R2 | Court images. Review photo upload is deferred |
-| Background Jobs | Yet to be decided | Slot expiry sweeper (required at launch). Notification scheduler is deferred (options: BullMQ, pg-boss) |
+| Background Jobs | Core Scheduler (`core/scheduler.js`) | In-process sequential interval runner driving slot expiry, holds, payment reconciliation, reward expiry, and outbox notification dispatch |
 | Real-time Sync | **Deferred** | Socket.io or SSE when concurrent contention becomes a real problem |
-| Hosting / Infra | Yet to be decided | |
+| Hosting / Infra | Hetzner + Dokploy + Cloudflare | Dockerized Express/Postgres backend via Dokploy; frontend on Cloudflare Pages |
 
 ---
 

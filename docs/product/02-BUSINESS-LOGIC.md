@@ -582,17 +582,20 @@ The background lifecycle sweeper script (`cleanup-expired-records.mjs`) is the s
 
 ## 8. Automated Notification Matrix
 
-All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. All outbound messages use pre-approved Meta templates. See `07-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
+All notifications are delivered via the **Meta WhatsApp Cloud API (direct integration)**. All outbound messages use pre-approved Meta templates. See `docs/integrations/01-WHATSAPP-INTEGRATION.md` for template category definitions, cost structure, and setup details.
 
 **Built at launch:**
 
-| Trigger | Recipient | WhatsApp Template Category | Charged? |
-|---|---|---|---|
-| OTP Request | User | **Authentication** | Yes, ~₹0.115–0.145 |
-| Booking Confirmed (T=0) | User | **Utility** | Free if within CSW; else ~₹0.16 |
-| Force Majeure Cancellation | User | **Utility** | Free if within CSW; else ~₹0.16 |
-| Phantom Booking Apology | User | **Utility** | Free if within CSW; else ~₹0.16 |
-| Wallet Credit Issued | User | **Utility** | Free if within CSW; else ~₹0.16 |
+| Trigger | Recipient | WhatsApp Template Category | Charged? | Notes |
+|---|---|---|---|---|
+| OTP Request | User | **Authentication** | Yes, ~₹0.115–0.145 | Live via `otp.provider.js` |
+| Booking Confirmed (T=0) | User | **Utility** | Free if within CSW; else ~₹0.16 | Sent on confirmation |
+| Force Majeure Cancellation | User | **Utility** | Free if within CSW; else ~₹0.16 | Account status update |
+| Phantom Booking Apology | User | **Utility** | Free if within CSW; else ~₹0.16 | Account status update |
+| Wallet Credit Issued | User | **Utility** | Free if within CSW; else ~₹0.16 | Account balance update |
+| Reminder (T−24 hours) | User | **Utility** | Free if within CSW; else ~₹0.16 | Scheduled in PostgreSQL outbox at confirm; dispatched by core scheduler (ADR-011) |
+| Reminder (T−2 hours) | User | **Utility** | Free if within CSW; else ~₹0.16 | Scheduled in PostgreSQL outbox at confirm; dispatched by core scheduler (ADR-011) |
+| Review Request (post-session) | User | **Utility** | Free if within CSW; else ~₹0.16 | Scheduled targeting session-end UTC; dispatched when booking completes (ADR-011) |
 
 > **18% GST** applies on top of all WhatsApp template message charges billed in India.
 
@@ -600,13 +603,10 @@ All notifications are delivered via the **Meta WhatsApp Cloud API (direct integr
 
 | Trigger | Status | Notes |
 |---|---|---|
-| Reminder (T−24 hours) | **Deferred** | Requires a reliable job scheduler with per-booking scheduled jobs |
-| Reminder (T−2 hours) | **Deferred** | Same dependency as T−24h |
-| Review Request (post-session) | **Deferred** | Triggered after slot end time; same scheduler dependency |
-| Inbound support messages | **Deferred** | Webhook handler and support inbox not built at launch |
-| Flash Sale / Loyalty Promo | **Deferred** | No active reward engine or marketing campaigns at launch |
+| Inbound support messages | **Deferred** | Not built at launch (no inbound WhatsApp webhook route or support inbox UI exists in codebase) |
+| Flash Sale / Loyalty Promo | **Deferred** | Marketing campaign template dispatcher deferred |
 
-> **Future Enhancement — Scheduled Reminders:** When a job scheduler (BullMQ or pg-boss) is introduced for the slot expiry sweeper's notification needs, T−24h and T−2h reminders are added as the first scheduled notification jobs. No schema changes are needed — `bookings.slot_date` and `bookings.slot_start_time` provide all the timing data required.
+> **Scheduled Notifications Architecture (ADR-011):** The scheduling infrastructure, PostgreSQL outbox table (`notifications`), per-venue toggle configuration (`notification_settings`), and in-process outbox dispatcher sweeper (`dispatch-due-notifications` in `core/scheduler.js`) are fully built. In `dry_run` mode (default), the dispatcher logs messages and marks them sent. Delivery activates automatically when `NOTIFICATIONS_TRANSPORT_MODE=live` is configured with approved Meta templates.
 
 > **Future Enhancement — Inbound Support:** When support volume justifies a structured inbox, the WhatsApp inbound webhook handler is activated and routed to an admin notification channel. The webhook route already exists in the architecture and only needs to be enabled in the Meta dashboard.
 

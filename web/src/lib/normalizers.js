@@ -374,6 +374,45 @@ export function normalizeRevealResponse(payload = {}) {
   });
 }
 
+/**
+ * Normalizes venue notification settings (`GET/PATCH /notifications/settings`)
+ * into camelCase (ME-2). Both toggles default to false when absent.
+ * @param {object} settings
+ */
+export function normalizeNotificationSettings(settings) {
+  if (!settings) return null;
+  return {
+    id: settings.id ?? null,
+    venueId: settings.venue_id,
+    remindersEnabled: Boolean(settings.reminders_enabled),
+    reviewRequestsEnabled: Boolean(settings.review_requests_enabled),
+    updatedAt: settings.updated_at || null,
+  };
+}
+
+/**
+ * Normalizes a notification dispatch-log row (`GET /notifications/log`) into
+ * camelCase (ME-2). The embedded booking/user give the row human context.
+ * @param {object} row
+ */
+export function normalizeNotificationLogRow(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    bookingId: row.booking_id,
+    type: row.type,
+    status: row.status,
+    scheduledFor: row.scheduled_for || null,
+    attempts: Number(row.attempts ?? 0),
+    sentAt: row.sent_at || null,
+    provider: row.provider || null,
+    lastError: row.last_error || null,
+    createdAt: row.created_at || null,
+    customerName: row.booking?.user?.name || "",
+    customerPhone: row.booking?.user?.phone || "",
+  };
+}
+
 export function buildBookingSelectionPayload({
   venueId,
   selectedDate,

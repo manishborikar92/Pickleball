@@ -4,7 +4,7 @@ import {
   NotFoundError,
   TooManyRequestsError,
 } from '../../utils/api-error.js';
-import { formatTime, minutesToTimeDate, timeToMinutes, toDateOnly, localDateTimeToUtc } from './booking-time.js';
+import { formatTime, minutesToTimeDate, timeToMinutes, toDateOnly, getBookingEndUtc } from './booking-time.js';
 import { DEFAULT_SWEEP_LIMIT } from './bookings.constants.js';
 
 const DEFAULT_HOLD_TTL_SECONDS = 10 * 60; // 10 minutes
@@ -71,23 +71,6 @@ const serializeBooking = (booking) => ({
     created_at: payment.createdAt,
   })),
 });
-
-const getBookingEndUtc = (booking, venueTimezone) => {
-  const endTimeStr = formatTime(booking.sessionEndTime);
-  const startTimeStr = formatTime(booking.sessionStartTime);
-
-  const startMins = timeToMinutes(startTimeStr);
-  const endMins = timeToMinutes(endTimeStr);
-
-  let date = booking.slotDate;
-  if (endMins <= startMins) {
-    const nextDay = new Date(booking.slotDate);
-    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-    date = nextDay;
-  }
-
-  return localDateTimeToUtc(date, endTimeStr, venueTimezone);
-};
 
 export const createBookingsService = ({
   repository,

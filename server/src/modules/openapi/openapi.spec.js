@@ -138,6 +138,17 @@ export const createOpenApiSpec = ({ config } = {}) => {
             config: { $ref: '#/components/schemas/RewardMechanismConfig' },
           },
         },
+        NotificationSettings: {
+          type: 'object',
+          required: ['venue_id', 'reminders_enabled', 'review_requests_enabled'],
+          properties: {
+            id: { type: 'string', format: 'uuid', nullable: true },
+            venue_id: { type: 'string', format: 'uuid' },
+            reminders_enabled: { type: 'boolean', default: false, description: 'T-24h + T-2h WhatsApp reminders before a session' },
+            review_requests_enabled: { type: 'boolean', default: false, description: 'Post-session WhatsApp review request linking /review/{bookingId}' },
+            updated_at: { type: 'string', format: 'date-time', nullable: true },
+          },
+        },
       },
     },
     paths: {
@@ -1132,6 +1143,67 @@ export const createOpenApiSpec = ({ config } = {}) => {
             200: { description: 'Reward mechanism updated', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
             400: { description: 'Invalid prize configuration', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
             404: { description: 'Mechanism not found or not manageable by the caller', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/notifications/settings`]: {
+        get: {
+          tags: ['Notifications'],
+          summary: 'Get a venue notification toggle settings',
+          description: 'Returns the venue reminders + review-request toggles. Defaults to both off when no row exists yet.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            200: { description: 'Notification settings', content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/ApiSuccess' }, { type: 'object', properties: { data: { $ref: '#/components/schemas/NotificationSettings' } } }] } } } },
+            403: { description: 'Missing manage_venues permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+        patch: {
+          tags: ['Notifications'],
+          summary: 'Update a venue notification toggle settings',
+          description: 'Upserts the venue reminders + review-request toggles. At least one toggle must be provided. Delivery stays dry-run until Meta WhatsApp is configured (NOTIFICATIONS_TRANSPORT_MODE=live).',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['venue_id'],
+                  properties: {
+                    venue_id: { type: 'string', format: 'uuid' },
+                    reminders_enabled: { type: 'boolean', example: true },
+                    review_requests_enabled: { type: 'boolean', example: false },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: { description: 'Notification settings updated', content: { 'application/json': { schema: { allOf: [{ $ref: '#/components/schemas/ApiSuccess' }, { type: 'object', properties: { data: { $ref: '#/components/schemas/NotificationSettings' } } }] } } } },
+            400: { description: 'No toggle provided or invalid payload', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+            403: { description: 'Missing manage_venues permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
+          },
+        },
+      },
+      [`/notifications/log`]: {
+        get: {
+          tags: ['Notifications'],
+          summary: 'Paginated notification dispatch log for a venue',
+          description: 'Observability surface for scheduled notification delivery (sent/failed/cancelled/skipped) with per-status summary counts.',
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            { name: 'venue_id', in: 'query', required: true, schema: { type: 'string', format: 'uuid' } },
+            { name: 'status', in: 'query', required: false, schema: { type: 'string', enum: ['scheduled', 'sending', 'sent', 'failed', 'cancelled', 'skipped'] } },
+            { name: 'type', in: 'query', required: false, schema: { type: 'string', enum: ['reminder_t24', 'reminder_t2h', 'review_request'] } },
+            { name: 'page', in: 'query', required: false, schema: { type: 'integer', minimum: 1, default: 1 } },
+            { name: 'limit', in: 'query', required: false, schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } },
+          ],
+          responses: {
+            200: { description: 'Notification dispatch log with status summary', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiSuccess' } } } },
+            403: { description: 'Missing manage_bookings permission for the venue', content: { 'application/json': { schema: { $ref: '#/components/schemas/ApiError' } } } },
           },
         },
       },

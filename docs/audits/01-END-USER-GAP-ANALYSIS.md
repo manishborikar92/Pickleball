@@ -85,40 +85,46 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 ## 3. Notifications
 
 ### Scheduled WhatsApp Reminders (T-24h / T-2h)
-* **Current Status:** Not Started / Deferred (Implementation Planned)
-* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
+* **Current Status:** ✅ Implemented — infrastructure built 2026-07-28 (delivery pending Meta activation)
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix"), [ADR-011](file:///c:/Users/manis/Projects/Pickleball/docs/adrs/ADR-011-notifications-module.md), [01-DATABASE-SCHEMA.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/01-DATABASE-SCHEMA.md) Domain G
 * **Description:**
-  The notification matrix defines scheduled WhatsApp reminders to be sent before the player's scheduled play time. Reminders should be sent **24 hours** and **2 hours** before the play time. Although WhatsApp Meta integration is currently deferred, the complete scheduling infrastructure, business logic, handlers, and admin management should be implemented now so that only Meta configuration will remain when the integration is activated.
-* **Missing Pieces:**
-  * Integrate a background job scheduler (e.g. BullMQ or pg-boss) into the Express server.
-  * Schedule WhatsApp reminder jobs when a booking is confirmed.
-  * Implement reminder notification dispatch handlers.
-  * Create a notification service abstraction to support future Meta WhatsApp integration.
-  * Admin toggle to enable or disable reminder notifications.
+  The notification matrix defines scheduled WhatsApp reminders to be sent before the player's scheduled play time, **24 hours** and **2 hours** ahead. The complete scheduling infrastructure, business logic, dispatch handlers, transport abstraction, and admin controls are now implemented. Only Meta configuration remains.
+* **Delivered:**
+  * A PostgreSQL-backed notification outbox driven by the existing in-process scheduler (`dispatch-due-notifications` job) — no BullMQ/pg-boss needed, no Redis (ADR-011). Idempotent, retry-with-backoff, dead-letter, fully audited.
+  * A notification **planner** injected into all three booking-confirmation transactions (mirroring the reward-issuance seam) that schedules T-24h + T-2h reminder rows inside the confirm transaction. Phantom/late payments (force-expired bookings) schedule nothing.
+  * A **dispatcher** that claims due rows, re-checks booking eligibility at dispatch time, and sends via a WhatsApp transport that runs in **dry-run mode** until Meta is configured.
+  * A **notification transport** abstraction (`notifications.transport.js`) that can later support Meta WhatsApp delivery with no change to scheduling/business logic.
+  * An admin toggle (`reminders_enabled`) on `/admin/settings`, gated by `manage_venues` (super_admin).
+* **Remaining (Meta-only):** Meta credentials, approved `reminder_t24`/`reminder_t2h` utility templates, `NOTIFICATIONS_TRANSPORT_MODE=live`, enable the toggle.
 * **User Impact:** Medium.
-* **Dependencies:** None.
+* **Dependencies:** None (Meta activation).
 
 ### Post-Session WhatsApp Review Requests
-* **Current Status:** Not Started / Deferred (Implementation Planned)
-* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix")
+* **Current Status:** ✅ Implemented — infrastructure built 2026-07-28 (delivery pending Meta activation)
+* **Documented in:** [02-BUSINESS-LOGIC.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/02-BUSINESS-LOGIC.md) Section 8 ("Automated Notification Matrix"), [ADR-011](file:///c:/Users/manis/Projects/Pickleball/docs/adrs/ADR-011-notifications-module.md), [01-DATABASE-SCHEMA.md](file:///c:/Users/manis/Projects/Pickleball/docs/specs/01-DATABASE-SCHEMA.md) Domain G
 * **Description:**
-  After a booking has ended, the system should automatically schedule a WhatsApp notification requesting the player to review their session. The notification should contain a direct review link (`/review/{bookingId}`). The complete scheduling and notification logic should be implemented now, while actual message delivery will become active after Meta WhatsApp integration is completed.
-* **Missing Pieces:**
-  * Admin toggle to enable or disable review request notifications.
-  * Schedule review request notification jobs when a booking is confirmed, targeting the booking end time.
-  * Build the review request notification handler to send a direct review template link (`/review/{bookingId}`).
+  After a booking has ended, the system automatically schedules a WhatsApp review request containing a direct review link (`/review/{bookingId}`). The complete scheduling and notification logic is implemented; delivery activates after Meta WhatsApp integration.
+* **Delivered:**
+  * Admin toggle (`review_requests_enabled`) on `/admin/settings` (`manage_venues`).
+  * The planner schedules a `review_request` row targeting the booking's session-end UTC inside the confirm transaction.
+  * The dispatcher sends it **only once the booking reaches `completed`** (released back to `scheduled` while the completion sweeper catches up; gives up after a 48h max delay), with the absolute review link `${FRONTEND_BASE_URL}/review/{bookingId}` built into the template parameters.
+* **Remaining (Meta-only):** approved `review_request` utility template + the shared Meta activation steps above.
 * **User Impact:** Medium (reduces organic user review collection until activated).
-* **Dependencies:** Scheduled WhatsApp Reminders infrastructure.
+* **Dependencies:** Scheduled WhatsApp Reminders infrastructure (shared).
 
-**Note:**
-WhatsApp Meta Business Platform setup is intentionally deferred and is not expected to begin for approximately the next **30 days**. During this period, all notification infrastructure, scheduling, business logic, APIs, handlers, admin controls, and documentation should be completed within the codebase. Once the Meta setup is completed, only the required environment variables, Meta credentials, webhook registration, template configuration, and any necessary Meta-specific settings should need to be updated to make the entire notification system operational.
+**How the notification features work together end-to-end:**
+1. Admin enables the toggles at `/admin/settings` (`manage_venues`, super_admin).
+2. When a booking is confirmed (online payment, wallet-only, or admin walk-in), the notification planner runs inside the confirm transaction and inserts the reminder + review-request outbox rows the venue has enabled. A rolled-back confirmation leaves no rows; a duplicate confirm signal is absorbed by `UNIQUE (booking_id, type)`.
+3. The existing scheduler's `dispatch-due-notifications` job claims due rows each cycle, re-checks booking eligibility at dispatch time (cancellations/expiry are honored — no message ever goes out for a voided booking), and sends via the transport. Today that transport is **dry-run**: it logs the would-be message and marks the row `sent` with `provider: 'dry_run'`, so the whole pipeline is exercised and observable with zero real delivery.
+4. Failed deliveries retry with backoff and dead-letter at `maxAttempts`, all visible in `GET /notifications/log` (`manage_bookings`) and the settings page's recent-activity panel.
 
-The documentation should clearly describe:
+**Remaining pending until Meta setup is completed (~30 days out):**
+* Meta credentials + WABA/phone-number ID (`WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`).
+* The three approved utility templates (`WHATSAPP_REMINDER_T24_TEMPLATE_NAME`, `WHATSAPP_REMINDER_T2H_TEMPLATE_NAME`, `WHATSAPP_REVIEW_TEMPLATE_NAME`).
+* `NOTIFICATIONS_TRANSPORT_MODE=live` (config-build validation enforces the credentials + templates in production).
+* Webhook registration + any Meta-specific final settings.
 
-* What has been implemented.
-* What remains pending until Meta setup is completed.
-* How each notification feature works.
-* How all notification features work together end-to-end.
+See [ADR-011](file:///c:/Users/manis/Projects/Pickleball/docs/adrs/ADR-011-notifications-module.md) for the architecture decision and [01-WHATSAPP-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/01-WHATSAPP-INTEGRATION.md) for the template + cost details.
 
 ## 4. Help & Support
 
@@ -172,8 +178,8 @@ graph TD
 
     %% Phase 3: Nice to Have / Post-Launch Enhancements
     subgraph Phase 3 ["Phase 3 — Nice to Have / Post-Launch"]
-        C1["Scheduled WhatsApp Reminders (T-24h/T-2h)"]
-        C2["Post-Session Review Requests"]
+        C1["Scheduled WhatsApp Reminders (T-24h/T-2h) — ✅ INFRA DONE (Meta pending)"]
+        C2["Post-Session Review Requests — ✅ INFRA DONE (Meta pending)"]
         C4["Reward Engine (Scratch Cards) — ✅ DONE"]
         C6["Court Access PIN Display"]
     end
@@ -208,10 +214,10 @@ graph TD
 ## Phase 3 — Nice to Have
 *Enhancements that improve user engagement, retention, or support multi-venue scaling.*
 
-1. **Scheduled WhatsApp Reminders (T-24h / T-2h)**
-   * *Rationale:* Enhances attendance rate and preparedness.
-2. **Post-Session WhatsApp Review Requests**
-   * *Rationale:* Automates review gathering.
+1. **Scheduled WhatsApp Reminders (T-24h / T-2h)** — ✅ Infrastructure implemented 2026-07-28 (delivery pending Meta)
+   * *Rationale:* Enhances attendance rate and preparedness. Delivered as a PostgreSQL outbox + in-process dispatcher with dry-run transport and admin toggles (ADR-011).
+2. **Post-Session WhatsApp Review Requests** — ✅ Infrastructure implemented 2026-07-28 (delivery pending Meta)
+   * *Rationale:* Automates review gathering. Shares the same outbox + dispatcher; sends only once the booking is `completed`, with the direct `/review/{bookingId}` link (ADR-011).
 3. **Reward Engine (Scratch Cards & Voucher Prizes)** — ✅ Implemented 2026-07-16
    * *Rationale:* Promotes engagement via post-booking gamification (scratch cards). Delivered with voucher-only prizes and staff-tracked redemption (ADR-010).
 4. **Court Access PIN Generation & Display**

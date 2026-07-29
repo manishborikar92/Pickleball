@@ -58,10 +58,10 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 | 4 | **Admin Auth & Lifecycle** | Admin Forced Password Change Flow | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §6.5, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 5 | **Booking & Access Control** | Court Access PIN Generation & Display | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §5.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain A |
 | 6 | **Booking & Access Control** | Admin Booking Slots & Schedule Management (Hours, Exceptions, Walk-Ins, Blocks) | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §3–4, `docs/specs/02-API-SPECIFICATION.md` §11 |
-| 7 | **Notifications & Messaging** | Scheduled WhatsApp Booking Reminders (T-24h / T-2h) | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §1–3 |
-| 8 | **Notifications & Messaging** | Post-Session WhatsApp Review Requests | **Missing** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §1–3 |
-| 9 | **Notifications & Messaging** | WhatsApp Webhook Verification Handshake Endpoint | **Missing** | `docs/integrations/01-WHATSAPP-INTEGRATION.md` §2.4, §5.3 |
-| 10 | **Notifications & Messaging** | Production WhatsApp Credentials & Template Setup | **Unclear** | `docs/product/04-FUTURE-WORK.md` §2, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §2 |
+| 7 | **Notifications & Messaging** | Scheduled WhatsApp Booking Reminders (T-24h / T-2h) | **Implemented** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/adrs/ADR-011-notifications-module.md` |
+| 8 | **Notifications & Messaging** | Post-Session WhatsApp Review Requests | **Implemented** | `docs/product/02-BUSINESS-LOGIC.md` §8, `docs/adrs/ADR-011-notifications-module.md` |
+| 9 | **Notifications & Messaging** | WhatsApp Webhook Verification Handshake Endpoint | **Deferred** | `docs/integrations/01-WHATSAPP-INTEGRATION.md` §2.4, §5.3 |
+| 10 | **Notifications & Messaging** | Production WhatsApp Credentials & Template Setup | **Pending Meta Setup** | `docs/product/04-FUTURE-WORK.md` §2, `docs/integrations/01-WHATSAPP-INTEGRATION.md` §2 |
 | 11 | **Promotions & Pricing** | Admin Coupon Management REST API & Frontend UI | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 12 | **Promotions & Pricing** | Admin Dynamic Pricing Rules REST API & Frontend UI | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 13 | **Promotions & Pricing** | Coupon Usage Tracking & Limit Enforcement | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain C |
@@ -184,38 +184,40 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 #### Item 3.1: Scheduled WhatsApp Booking Reminders (T-24h / T-2h)
 * **Source Documentation Reference(s):**
   * `docs/product/02-BUSINESS-LOGIC.md` Section 8 ("Automated Notification Matrix")
-  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Sections 1–3
+  * `docs/adrs/ADR-011-notifications-module.md`
   * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 3 ("Scheduled WhatsApp Reminders")
-* **Current Implementation Status:** Missing
+* **Current Implementation Status:** Implemented (ADR-011)
 * **Brief Description of Documentation Specification:** Automated WhatsApp utility reminders are scheduled to be sent 24 hours and 2 hours prior to the player's scheduled play time upon booking confirmation. An admin toggle enables/disables sending.
-* **Brief Description of Codebase Reality:** `server/src/modules/auth/otp.provider.js` handles WhatsApp OTP sending, but no background task scheduler (e.g. BullMQ / pg-boss) or reminder dispatch service exists under `server/src/modules/notifications/` or `server/src/server.js`.
-* **The Exact Gap That Remains:** Missing background job scheduler, T-24h/T-2h job queuing during booking confirmation, WhatsApp reminder template delivery handler, and admin toggle logic.
+* **Brief Description of Codebase Reality:** The notification planner (`server/src/modules/notifications/notifications.planner.js`) inserts reminder rows into the PostgreSQL `notifications` outbox table inside all 3 booking confirmation transactions. The in-process scheduler (`server/src/server.js`) runs `dispatch-due-notifications` every cycle, re-checking booking eligibility before calling the transport abstraction (dry-run until Meta templates are configured). Per-venue toggles are managed at `/admin/settings`.
+* **The Exact Gap That Remains:** Resolved in codebase (delivery pending Meta credentials + template approval ~30 days out).
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/notifications/`, `server/src/modules/bookings/`, `server/src/server.js`
+  * Frontend: `web/src/app/(admin)/admin/settings/`
 
 ---
 
 #### Item 3.2: Post-Session WhatsApp Review Requests
 * **Source Documentation Reference(s):**
   * `docs/product/02-BUSINESS-LOGIC.md` Section 8 ("Automated Notification Matrix")
-  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Sections 1–3
+  * `docs/adrs/ADR-011-notifications-module.md`
   * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 3 ("Post-Session WhatsApp Review Requests")
-* **Current Implementation Status:** Missing
+* **Current Implementation Status:** Implemented (ADR-011)
 * **Brief Description of Documentation Specification:** After a booking session ends, the system automatically dispatches a WhatsApp notification requesting the player to review their session, containing a direct link (`/review/{bookingId}`).
-* **Brief Description of Codebase Reality:** No post-session review request scheduler job or template dispatch handler exists in the codebase.
-* **The Exact Gap That Remains:** Missing post-session scheduler job trigger, review request WhatsApp template delivery handler, and admin toggle.
+* **Brief Description of Codebase Reality:** The notification planner inserts `review_request` outbox rows targeting session-end UTC into PostgreSQL during confirmation. The dispatcher sends the message only when the booking transitions to `completed` (released back to `scheduled` while the sweeper catches up). Per-venue toggles are managed at `/admin/settings`.
+* **The Exact Gap That Remains:** Resolved in codebase (delivery pending Meta credentials + template approval ~30 days out).
 * **Dependent Files / Modules / Areas:**
-  * Backend: `server/src/modules/notifications/`, `server/src/modules/bookings/`
+  * Backend: `server/src/modules/notifications/`, `server/src/modules/bookings/`, `server/src/server.js`
+  * Frontend: `web/src/app/(admin)/admin/settings/`
 
 ---
 
 #### Item 3.3: WhatsApp Webhook Verification Handshake Endpoint
 * **Source Documentation Reference(s):**
-  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Section 2.4 (#6) & Section 5.3 ("Webhook Verification Handshake")
-* **Current Implementation Status:** Missing
+  * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Section 2.4 (#6) & Section 5.3
+* **Current Implementation Status:** Deferred / Not Implemented
 * **Brief Description of Documentation Specification:** Meta requires registering a Webhook Callback URL (`GET /api/v1/webhooks/whatsapp`) that verifies `hub.challenge` and `hub.verify_token` for initial integration activation.
-* **Brief Description of Codebase Reality:** No WhatsApp webhook route (`GET` or `POST`) is registered in `server/src/routes/index.js`.
-* **The Exact Gap That Remains:** Missing `GET /api/v1/webhooks/whatsapp` verification handshake handler and `WHATSAPP_WEBHOOK_VERIFY_TOKEN` validation.
+* **Brief Description of Codebase Reality:** No WhatsApp webhook verification route (`GET /webhooks/whatsapp` or `POST /webhooks/whatsapp`) exists in `server/src/routes/index.js` or `server/src/modules/notifications/`. The only webhook route in the system is `POST /payments/webhooks/phonepe`.
+* **The Exact Gap That Remains:** Missing WhatsApp webhook router and handshake handler endpoints in backend Express API.
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/routes/index.js`, `server/src/modules/notifications/`
 
@@ -225,11 +227,11 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 * **Source Documentation Reference(s):**
   * `docs/product/04-FUTURE-WORK.md` Section 2 ("Pending External Setup — WhatsApp Business API")
   * `docs/integrations/01-WHATSAPP-INTEGRATION.md` Section 2.1–2.2
-  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.1
-* **Current Implementation Status:** Unclear / Pending External Credentials
-* **Brief Description of Documentation Specification:** Requires Meta Business Account verification, WABA ID, Phone Number ID, Permanent Access Token, and approved Meta templates (`otp_verification`, `booking_confirmation`, `booking_reminder`, `review_request`).
-* **Brief Description of Codebase Reality:** `server/src/modules/auth/otp.provider.js` contains a basic Meta Graph API fetch for OTP in `production` mode. However, non-OTP template dispatchers do not exist in `server/src/modules/notifications/`. Whether Meta production credentials have been provisioned in the live deployment environment cannot be verified from the codebase alone.
-* **The Exact Gap That Remains:** Environment variable population in production deploy environment and creation of template dispatch services for booking confirmation, reminders, and review requests.
+  * `docs/ai/03-IMPLEMENTATION-STATUS.md` Section 2.1 & 2.9
+* **Current Implementation Status:** Pending External Setup (~30 days)
+* **Brief Description of Documentation Specification:** Requires Meta Business Account verification, WABA ID, Phone Number ID, Permanent Access Token, and approved Meta templates (`otp_verification`, `reminder_t24`, `reminder_t2h`, `review_request`).
+* **Brief Description of Codebase Reality:** Backend infrastructure (`otp.provider.js`, `notifications.transport.js`, `notifications.service.js`) and environment configuration (`env.js`) are fully built. The system runs in `dry_run` mode until `NOTIFICATIONS_TRANSPORT_MODE=live` and Meta credentials/templates are set.
+* **The Exact Gap That Remains:** Operational setup at Meta portal (external action item).
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/auth/otp.provider.js`, `server/src/modules/notifications/`
 

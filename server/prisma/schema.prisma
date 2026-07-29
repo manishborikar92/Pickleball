@@ -105,6 +105,21 @@ enum PrizeType {
   voucher
 }
 
+enum NotificationType {
+  reminder_t24
+  reminder_t2h
+  review_request
+}
+
+enum NotificationStatus {
+  scheduled
+  sending
+  sent
+  failed
+  cancelled
+  skipped
+}
+
 model Venue {
   id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name               String              @db.VarChar(255)
@@ -131,6 +146,8 @@ model Venue {
   bookings           Booking[]
   reviews            Review[]
   rewardMechanisms   RewardMechanism[]
+  notificationSetting NotificationSetting?
+  notifications      Notification[]
 
   @@index([isActive])
   @@map("venues")
@@ -182,6 +199,7 @@ model User {
   reviews               Review[]
   rewardInstances       RewardInstance[]
   scheduleExceptions    ScheduleException[] @relation("ScheduleExceptionCreatedBy")
+  notifications         Notification[]
 
   @@index([name])
   @@map("users")
@@ -449,6 +467,7 @@ model Booking {
   couponUsages        CouponUsage[]
   review              Review?
   rewardInstances     RewardInstance[]
+  notifications       Notification[]
 
   @@index([status, expiresAt])
   @@index([userId, status])
@@ -581,4 +600,43 @@ model RewardInstance {
   @@unique([bookingId, mechanismId])
   @@index([userId, status])
   @@map("reward_instances")
+}
+
+model NotificationSetting {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  venueId            String   @unique @map("venue_id") @db.Uuid
+  remindersEnabled   Boolean  @default(false) @map("reminders_enabled")
+  reviewRequestsEnabled Boolean @default(false) @map("review_requests_enabled")
+  updatedBy          String?  @map("updated_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  venue              Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@map("notification_settings")
+}
+
+model Notification {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId     String             @map("booking_id") @db.Uuid
+  venueId       String             @map("venue_id") @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  type          NotificationType
+  scheduledFor  DateTime           @map("scheduled_for") @db.Timestamptz(6)
+  status        NotificationStatus @default(scheduled)
+  attempts      Int                @default(0) @db.SmallInt
+  nextRetryAt   DateTime?          @map("next_retry_at") @db.Timestamptz(6)
+  sentAt        DateTime?          @map("sent_at") @db.Timestamptz(6)
+  provider      String?            @db.VarChar(20)
+  lastError     String?            @map("last_error")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  booking       Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  venue         Venue              @relation(fields: [venueId], references: [id], onDelete: Restrict)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([bookingId, type])
+  @@index([status, scheduledFor])
+  @@index([venueId, createdAt])
+  @@index([bookingId])
+  @@map("notifications")
 }

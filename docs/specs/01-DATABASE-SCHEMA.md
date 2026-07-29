@@ -581,6 +581,49 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 
 ---
 
+## Domain G — Notifications
+
+### `notification_settings`
+
+Per-venue notification toggle configuration. Controls whether automated reminders and post-session review requests are scheduled upon booking confirmation.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK, default gen_random_uuid() | |
+| `venue_id` | UUID | FK → venues.id, UNIQUE, NOT NULL | Per-venue toggle configuration |
+| `reminders_enabled` | BOOLEAN | NOT NULL, default false | Enable T-24h and T-2h scheduled WhatsApp reminders |
+| `review_requests_enabled` | BOOLEAN | NOT NULL, default false | Enable post-session review request WhatsApp messages |
+| `updated_by` | UUID | FK → users.id | User ID of admin who last updated toggles |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+---
+
+### `notifications`
+
+PostgreSQL notification outbox table. Scheduled notification records are created atomically inside booking confirmation transactions and claimed/delivered by the background outbox dispatcher sweeper.
+
+| Column | Type | Constraints | Description |
+|---|---|---|---|
+| `id` | UUID | PK, default gen_random_uuid() | |
+| `booking_id` | UUID | FK → bookings.id, NOT NULL | Associated booking |
+| `venue_id` | UUID | FK → venues.id, NOT NULL | Associated venue |
+| `user_id` | UUID | FK → users.id, NOT NULL | Recipient player |
+| `type` | VARCHAR(30) | NOT NULL | Enum: `reminder_t24`, `reminder_t2h`, `review_request` |
+| `scheduled_for` | TIMESTAMPTZ | NOT NULL | Target delivery time in UTC |
+| `status` | VARCHAR(20) | NOT NULL, default 'scheduled' | Enum: `scheduled`, `sending`, `sent`, `failed`, `cancelled`, `skipped` |
+| `attempts` | SMALLINT | NOT NULL, default 0 | Delivery attempt counter |
+| `next_retry_at` | TIMESTAMPTZ | | Exponential backoff retry timestamp |
+| `sent_at` | TIMESTAMPTZ | | Timestamp when transport acknowledged delivery |
+| `provider` | VARCHAR(20) | | Delivery transport (`dry_run` or `meta`) |
+| `last_error` | TEXT | | Last delivery failure message |
+| `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+| `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |
+
+**Unique constraint:** `(booking_id, type)` — prevents duplicate notification outbox rows per booking per notification type.
+
+---
+
 ## Indexes
 
 | Table | Index | Type | Purpose |
@@ -609,5 +652,10 @@ One row per user per booking per active mechanism at the time of trigger. The pr
 | `reward_instances` | (user_id, status) | B-tree | User's pending/revealed cards |
 | `reward_instances` | (voucher_code) | Unique | Staff voucher lookup at redemption |
 | `reward_instances` | (expires_at) WHERE status = 'pending' | Partial | Expiry sweeper scan |
+| `notification_settings` | (venue_id) | Unique | Fast toggle lookup per venue |
+| `notifications` | (booking_id, type) | Unique | Prevent duplicate notification scheduling per booking |
+| `notifications` | (status, scheduled_for) | B-tree | Outbox dispatcher polling due notifications |
+| `notifications` | (venue_id, created_at) | B-tree | Admin notification activity log query |
+| `notifications` | (booking_id) | B-tree | Notification lookup by booking ID |
 
 > **Venue-Aware Architecture Note:** All core tables include a `venue_id` column. The single active venue is resolved server-side at launch — no multi-venue routing headers or UI are required. When a second venue is added, indexing and query scoping already support it without schema changes.

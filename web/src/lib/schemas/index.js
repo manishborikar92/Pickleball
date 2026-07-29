@@ -15,3 +15,4 @@ export { couponSchema } from "./coupon.js";
 export { reviewSchema } from "./review.js";
 export { rewardMechanismSchema, redemptionNoteSchema } from "./rewardMechanism.js";
 export { bookingSelectionSchema } from "./bookingSelection.js";
+export { notificationSettingsSchema, notificationToggleSchema } from "./notificationSettings.js";

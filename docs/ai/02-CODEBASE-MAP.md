@@ -30,6 +30,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 │   │       ├── auth/              # Customer OTP & admin password logic
 │   │       ├── bookings/          # Selection, holds, waivers, and pricing
 │   │       ├── health/            # Liveness/Readiness endpoints
+│   │       ├── notifications/     # Outbox planner, dispatcher, transport, settings & logs (ADR-011)
 │   │       ├── openapi/           # OpenAPI specs and Postman generation
 │   │       ├── payments/          # Gateway logic: PhonePe provider, JSON verification, webhook, reconciliation
 │   │       ├── reviews/           # Venue reviews: submission, public listing, and moderation
@@ -49,7 +50,7 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
         ├── lib/                   # Inner reusable layers (never import from app/):
         │   ├── dal/               #   Data Access Layer — cacheable reads + httpClient + auth boundary (session.js)
         │   ├── services/          #   Multi-step domain logic (checkout, bookingStatus, reviewStatus)
-        │   ├── actions/           #   Server Actions (auth, booking, review, rewards, rewardsAdmin) + shared result contract (result.js)
+        │   ├── actions/           #   Server Actions (auth, booking, review, rewards, rewardsAdmin, notificationsAdmin) + shared result contract (result.js)
         │   ├── schemas/           #   Shared Zod validation schemas (client + server)
         │   └── …                  #   normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext
         ├── config/                # Application configuration (venue, metadata, map)
@@ -67,17 +68,18 @@ The Pickleball platform uses a monorepo-adjacent layout split into Next.js App R
 - **User Profile & Wallet Module (`server/src/modules/users/`)**: Manages user onboard states, user profile fields, and wallet ledger logs. *Owner: Core Developer*.
 - **Reviews Module (`server/src/modules/reviews/`)**: Owns all `/reviews` routes — submission for completed bookings, public venue listings with rating summaries, the owner's own-review lookup, and permission-gated moderation. Reviews depend one-way on bookings (eligibility gate) and never the reverse. *Owner: Core Developer*.
 - **Rewards Module (`server/src/modules/rewards/`)**: Owns all `/rewards` routes — customer instance listing and atomic reveal, voucher redemption, mechanism management (`edit_pricing`), and moderation (`manage_bookings`). Its issuance service is injected into the bookings repository so instances are created inside the booking-confirmation transaction (ADR-010). *Owner: Core Developer*.
+- **Notifications Module (`server/src/modules/notifications/`)**: Owns all `/notifications` routes (`GET/PATCH /settings`, `GET /log`) and the PostgreSQL outbox dispatcher sweeper job. Its planner service is injected into the bookings repository to insert reminder/review rows inside confirmation transactions (ADR-011). *Owner: Core Developer*.
 - **API Spec & OpenAPI Modules (`server/src/modules/openapi/`)**: Compiles Swagger specs and serves OpenAPI schemas. *Owner: Tech Lead*.
 
 ### 2.2 Frontend Components (`web/src/`)
 - **Optimistic Proxy (`web/proxy.js`)**: Cookie-presence redirects + proactive token refresh at the edge (not the authoritative authz gate). *Owner: Security Engineer*.
-- **Data Access Layer (`web/src/lib/dal/`)**: Cacheable reads + the `verifySession()` authorization boundary (`session.js`) with role/permissions from `/users/me`; `httpClient.js` is the stateless transport with refresh-on-401. *Owner: Security Engineer / Core Developer*.
-- **Server Actions (`web/src/lib/actions/`)**: Route-independent mutation entry points (auth, booking, review) — validate (Zod) → authorize → call backend → revalidate. Imported by both components and route files; nothing under `components/`/`lib/`/`hooks/` imports from `@/app/` (ADR-W009, lint-enforced). *Owner: Core Developer*.
+- **Data Access Layer (`web/src/lib/dal/`)**: Cacheable reads + the `verifySession()` authorization boundary (`session.js`) with role/permissions from `/users/me`; `httpClient.js` is the stateless transport with refresh-on-401; `dal/notifications.js` reads venue toggles and dispatch logs. *Owner: Security Engineer / Core Developer*.
+- **Server Actions (`web/src/lib/actions/`)**: Route-independent mutation entry points (auth, booking, review, rewardsAdmin, notificationsAdmin) — validate (Zod) → authorize → call backend → revalidate. Imported by both components and route files; nothing under `components/`/`lib/`/`hooks/` imports from `@/app/` (ADR-W009, lint-enforced). *Owner: Core Developer*.
 - **Cookie Management (`web/src/lib/cookies.js`)**: Centralized cookie operations (set, clear, extract). *Owner: Core Developer*.
 - **Marketing Pages (`web/src/app/(marketing)/`)**: Static/cached pages with shared Header + Footer layout. *Owner: Frontend Engineer*.
 - **Booking Flow (`web/src/app/(booking)/`)**: Dynamic booking; the checkout transaction runs server-side via `checkoutBookingAction`. `/booking/redirect` is the PhonePe return landing and uses `verifyPaymentAction` before replacing itself with the booking page. *Owner: Frontend Engineer*.
 - **Customer Dashboard (`web/src/app/(dashboard)/`)**: Renders bookings list, wallet balance with Suspense streaming. *Owner: Frontend Engineer*.
-- **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, rewards (redemption desk, mechanism editor, instance table), courts, users. *Owner: Frontend Engineer*.
+- **Admin Panel (`web/src/app/(admin)/`)**: Operator interface for schedules, pricing, rewards (redemption desk, mechanism editor, instance table), notifications toggles + activity log, courts, users. *Owner: Frontend Engineer*.
 - **Shared Portal (`web/src/components/shared/Portal.js`)**: SSR-safe `createPortal` wrapper that projects overlay content under `document.body`. Any `position: fixed` dialog rendered deep in the tree must go through it — ancestor CSS containment contexts (transform/overflow/contain on layout wrappers) otherwise re-scope fixed positioning and clip the overlay (first hit: the reward scratch overlay). *Owner: Frontend Engineer*.
 
 ---

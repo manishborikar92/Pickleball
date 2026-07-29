@@ -11,14 +11,11 @@ The platform integrates **directly** with the Meta WhatsApp Cloud API — no Bus
 ```
 Express.js Backend
   │
-  ├── POST https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages
-  │     ↳ Send OTP, confirmations, reminders, marketing campaigns
-  │
-  └── POST /api/v1/webhooks/whatsapp  (inbound)
-        ↳ Receive user replies, delivery receipts, read receipts
+  └── POST https://graph.facebook.com/{API_VERSION}/{PHONE_NUMBER_ID}/messages
+        ↳ Send OTP (auth) and scheduled notifications (dry_run / live transport)
 ```
 
-All outbound messages are fired from the backend. The frontend never calls the Meta Graph API directly.
+All outbound messages are fired from the backend (`otp.provider.js` for OTP; `notifications.transport.js` for scheduled notifications). The frontend never calls the Meta Graph API directly. Inbound WhatsApp webhooks and support messaging are deferred (not registered in Express router).
 
 ---
 
@@ -53,8 +50,8 @@ All outbound messages are fired from the backend. The frontend never calls the M
 3. In WhatsApp Manager (Business Suite) → Add your phone number → verify via SMS/voice call → receive the **Phone Number ID**. Note both your **WABA ID** and **Phone Number ID** — used in every API call.
 4. Submit the WABA **display name** for approval before attempting to send.
 5. Business Settings → Users → **System Users** → Create a system user → assign it to the app with WhatsApp permissions → **Generate Token**. This is your permanent production token. Store it in your `.env` file. Never embed it in client-side code.
-6. Build your HTTPS webhook endpoint and configure it in the App Dashboard → WhatsApp → Configuration → **Callback URL + Verify Token**. Meta performs a GET verification handshake; your endpoint must respond with `hub.challenge`.
-7. Subscribe to `messages` and `message_status` webhook events.
+6. When activating inbound webhooks in the future: configure the HTTPS Callback URL + Verify Token in App Dashboard → WhatsApp → Configuration.
+7. Subscribe to `messages` and `message_status` webhook events (future).
 8. Create and submit all required templates for approval (see Section 4).
 
 > **Do not use the temporary 24-hour token** from the testing panel in production. It expires and will silently break all outbound messaging.
@@ -124,13 +121,15 @@ All business-initiated messages (outbound) must use **pre-approved templates**. 
 
 **Deferred — not submitted for approval at launch:**
 
-| Template | Category | Depends On |
-|---|---|---|
-| T−24h reminder ("playing tomorrow") | **Utility** | Job scheduler |
-| T−2h reminder (final + rules) | **Utility** | Job scheduler |
-| Review request (post-session) | **Utility** | Job scheduler |
-| Flash sale announcement | **Marketing** | Reward engine + marketing activation |
-| Loyalty reward / scratch card notification | **Marketing** | Reward engine |
+| Template | Category | Depends On | Status |
+|---|---|---|---|
+| T−24h reminder ("playing tomorrow") | **Utility** | Outbox scheduler | ✅ Outbox scheduler built (ADR-011) — submit for approval at Meta setup |
+| T−2h reminder (final + rules) | **Utility** | Outbox scheduler | ✅ Outbox scheduler built (ADR-011) — submit for approval at Meta setup |
+| Review request (post-session) | **Utility** | Outbox scheduler | ✅ Outbox scheduler built (ADR-011) — submit for approval at Meta setup |
+| Flash sale announcement | **Marketing** | Reward engine + marketing activation | Deferred |
+| Loyalty reward / scratch card notification | **Marketing** | Reward engine | Deferred |
+
+> **Scheduled notification infrastructure is built.** The T−24h, T−2h, and review-request workflows are fully implemented (scheduling, dispatch, admin toggles, dry-run transport) via the notifications module — see `docs/adrs/ADR-011-notifications-module.md`. They run in dry-run mode until Meta is configured. Submitting + approving these three **Utility** templates in Meta Business Manager is the only remaining template work.
 
 > Meta's template category guidelines are strict. Utility templates must be clearly transactional. If a template contains promotional language (discounts, offers, upsells) unrelated to an existing transaction, Meta will recategorize it as Marketing, which charges at the higher rate. Do not add promotional copy to utility or authentication templates.
 
@@ -145,7 +144,6 @@ Meta enforces a specific format for authentication templates to qualify for the 
 Example approved format:
 ```
 Your {{1}} verification code is: {{2}}
-
 This code expires in 5 minutes. Do not share it with anyone.
 ```
 
@@ -160,22 +158,16 @@ This code expires in 5 minutes. Do not share it with anyone.
 
 ## 5. Backend Integration — Node.js / Express.js
 
-### 5.1 Module Structure
+### 5.1 Outbound WhatsApp Modules
 
-Isolate all WhatsApp logic under `src/features/whatsapp/`:
+Outbound WhatsApp delivery is handled across two dedicated modules:
 
-```
-src/features/whatsapp/
-├── whatsapp.service.js    ← All outbound API calls
-└── templates/
-    ├── authentication.js  ← OTP template payload builder  [LAUNCH]
-    └── utility.js         ← Booking confirmation, cancellation, credit payloads  [LAUNCH]
-```
+1. **OTP Provider (`server/src/modules/auth/otp.provider.js`)**: Encapsulates OTP template sending via Meta Graph API in production, with fallback to console logging in sandbox/test environments.
+2. **Scheduled Notifications Transport (`server/src/modules/notifications/notifications.transport.js`)**: Encapsulates outbox notification delivery (reminders, review requests). Runs in `dry_run` mode by default until `NOTIFICATIONS_TRANSPORT_MODE=live` and Meta template names are configured.
 
-> **Deferred — Not built at launch:**
-> - `whatsapp.webhook.js` — Inbound support webhook handler. The route is registered but returns 200 and logs only. Activate when support inbox is needed.
-> - `templates/marketing.js` — Flash sale and reward campaign templates. Added when the reward engine and marketing campaigns are activated.
-> - Scheduled reminder templates (T−24h, T−2h, review request) — Added when a job scheduler is in place.
+> **Deferred / Planned for Future Scope:**
+> - Inbound WhatsApp support webhook handler (no inbound route registered in Express server).
+> - Marketing campaign template dispatchers.
 
 ### 5.2 Outbound API Call Structure
 
@@ -240,9 +232,7 @@ Content-Type: application/json
 
 ### 5.3 Inbound Webhook Handler — Deferred
 
-> **Deferred Implementation.** The inbound webhook route (`POST /api/v1/webhooks/whatsapp`) is registered at launch and responds `200 OK` to pass Meta's verification, but does not process inbound messages. When support volume justifies a structured inbox, the handler is activated to extract sender phone and message text, log it, and route it to an admin notification channel. No new routes or schema changes are required at that point — only the handler logic is filled in.
-
-The GET verification handshake (for Meta's initial setup) must still be implemented at launch to register the webhook URL in the Meta dashboard.
+> **Deferred / Not Implemented in Codebase.** Inbound WhatsApp webhook processing and support inbox routing are not implemented in the current repository (no inbound WhatsApp webhook route exists in Express). When customer support volume justifies an inbound messaging flow, a dedicated webhook handler router can be added.
 
 ### 5.4 Environment Variables
 
@@ -254,6 +244,22 @@ WHATSAPP_WEBHOOK_VERIFY_TOKEN=
 WHATSAPP_APP_SECRET=
 GRAPH_API_VERSION=
 ```
+
+**Scheduled notification templates (built — dry-run until set):**
+
+```
+NOTIFICATIONS_TRANSPORT_MODE=live            # default 'dry_run'; set 'live' at Meta activation
+WHATSAPP_REMINDER_T24_TEMPLATE_NAME=
+WHATSAPP_REMINDER_T2H_TEMPLATE_NAME=
+WHATSAPP_REVIEW_TEMPLATE_NAME=
+WHATSAPP_REMINDER_T24_TEMPLATE_LANGUAGE=en_US
+WHATSAPP_REMINDER_T2H_TEMPLATE_LANGUAGE=en_US
+WHATSAPP_REVIEW_TEMPLATE_LANGUAGE=en_US
+NOTIFICATIONS_MAX_ATTEMPTS=5                 # dispatch retry/dead-letter tuning
+NOTIFICATIONS_DISPATCH_LIMIT=100             # per-cycle dispatch cap
+```
+
+> **Meta activation checklist (the only remaining work):** (1) configure the Meta credentials above; (2) submit + approve the three **Utility** templates; (3) set the three `WHATSAPP_*_TEMPLATE_NAME` vars + `NOTIFICATIONS_TRANSPORT_MODE=live` (production config validation enforces all of these before boot); (4) admin enables the reminder/review toggles at `/admin/settings`. New booking confirmations from that point send live. See `docs/adrs/ADR-011-notifications-module.md`.
 
 ### 5.5 SMS Fallback — Deferred
 
