@@ -126,22 +126,9 @@ This report presents a comprehensive, repository-wide audit of all remaining cus
 
 See [ADR-011](file:///c:/Users/manis/Projects/Pickleball/docs/adrs/ADR-011-notifications-module.md) for the architecture decision and [01-WHATSAPP-INTEGRATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/integrations/01-WHATSAPP-INTEGRATION.md) for the template + cost details.
 
-## 4. Help & Support
-
-### Support Form Submission Delivery
-* **Current Status:** Mock Only
-* **Documented in:** [03-UI-UX-SPECIFICATION.md](file:///c:/Users/manis/Projects/Pickleball/docs/product/03-UI-UX-SPECIFICATION.md) Section 2.8 ("Contact Form")
-* **Description:** 
-  The contact page `/support` renders a form for names, emails, and messages. However, submitting the form does not transmit data. It invokes a mock handler that displays the error: `"Support form delivery is not configured yet. Please use the listed phone or email contact."` ([SupportClient.js:66](file:///c:/Users/manis/Projects/Pickleball/web/src/components/features/support/SupportClient.js#L66)).
-* **Missing Pieces:**
-  * Create a support ticket/message endpoint on the backend (or integrate an email delivery service like SendGrid/SES).
-  * Update the frontend form to POST to the support endpoint.
-* **User Impact:** High (Users attempting to contact support via the web form will receive a failure notice and must manually email or call).
-* **Dependencies:** None.
-
 ---
 
-## 5. Other User Features
+## 4. Other User Features
 
 ### Reward Engine (Scratch Cards / Voucher Prizes)
 * **Current Status:** ✅ Implemented (2026-07-16)
@@ -167,7 +154,6 @@ graph TD
     %% Phase 1: Production Launch Blockers
     subgraph Phase 1 ["Phase 1 — Critical Before Production"]
         A3["10-Minute Hold Countdown Timer — ✅ DONE"]
-        A4["Support Form Submission Delivery"]
     end
 
     %% Phase 2: High Priority MVP Features
@@ -192,9 +178,7 @@ graph TD
 
 1. **10-Minute Hold Countdown Timer & Hold Lock Timing** — ✅ Implemented 2026-07-19
    * *Rationale:* Essential to prevent users from attempting checkout on expired/taken slots, and coordinates client-server timing. Delivered as a hold-first checkout with a live countdown, sessionStorage-backed payment resume, and graceful expiry handling.
-2. **Support Form Submission Delivery**
-   * *Rationale:* Submitting contact details currently returns an explicit failure notice to the end user.
-3. **Unique `merchantOrderId` Generation on Payment Retry**
+2. **Unique `merchantOrderId` Generation on Payment Retry** — ✅ Implemented 2026-07-21
    * *Rationale:* Prevents PhonePe API HTTP 400 rejection on payment retries by appending a unique attempt counter suffix to `merchantOrderId`.
 
 ---

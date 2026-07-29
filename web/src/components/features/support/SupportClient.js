@@ -4,8 +4,8 @@ import { useState } from "react";
 import { InfoPageLayout } from "@/components/layout";
 import { VENUE } from "@/config/venue.config";
 import { Map } from "@/components/shared/Map";
-import { Button, Card } from "@/components/shared";
-import { Mail, Phone, Clock, MapPin, Send, ChevronDown } from "lucide-react";
+import { Card } from "@/components/shared";
+import { Mail, Phone, Clock, MapPin, ChevronDown } from "lucide-react";
 
 const FAQS = [
   {
@@ -30,46 +30,17 @@ const FAQS = [
   },
   {
     question: "Can I host a corporate event or private tournament?",
-    answer: "Yes! We support group bookings and private events. Please fill out our contact form below or reach out via email/phone to discuss custom arrangements.",
+    answer: "Yes! We support group bookings and private events. Please reach out via email/phone to discuss custom arrangements.",
   },
 ];
 
 export function SupportClient() {
-  const [formState, setFormState] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    message: "",
-  });
-  const [formError, setFormError] = useState("");
   const [openFAQIndex, setOpenFAQIndex] = useState(null);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
-    setFormError("");
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formState.name.trim() || !formState.email.trim() || !formState.phone.trim() || !formState.message.trim()) {
-      setFormError("All fields are required.");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formState.email.trim())) {
-      setFormError("Please enter a valid email address.");
-      return;
-    }
-
-    setFormError("Support form delivery is not configured yet. Please use the listed phone or email contact.");
-  };
 
   return (
     <InfoPageLayout
-      eyebrow="Help Desk"
-      title="Support & Contact Center"
+      eyebrow="Customer Support"
+      title="Help & Support Center"
       description="Need help with a booking? Have a question about our court rules? Get in touch or browse common questions below."
     >
       <div className="space-y-12">
@@ -113,7 +84,7 @@ export function SupportClient() {
           </div>
         </section>
 
-        {/* Support Grid: Contact Form + Location details */}
+        {/* Location details */}
         <section className="mt-8 border-t border-line/45 pt-8">
           <div className="space-y-6">
             <h2 className="text-xl font-black text-foreground sm:text-2xl">
@@ -184,74 +155,6 @@ export function SupportClient() {
                 name={VENUE.name}
                 address={VENUE.address}
               />
-            </div>
-
-            {/* Contact Form */}
-            <div className="glass-panel mt-6 rounded-2xl p-5 sm:p-8">
-              <h3 className="text-lg font-black text-foreground sm:text-xl">
-                Send a Message
-              </h3>
-              <p className="mt-1.5 text-xs text-muted sm:text-sm">
-                Have a question or request? Complete the form and our team will get back to you within 24 hours.
-              </p>
-              
-              <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-                {formError && (
-                  <p className="text-xs font-bold text-destructive" role="alert">
-                    {formError}
-                  </p>
-                )}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                    Your Name
-                    <input
-                      type="text"
-                      name="name"
-                      value={formState.name}
-                      onChange={handleInputChange}
-                      placeholder="John Doe"
-                      className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                    Email Address
-                    <input
-                      type="email"
-                      name="email"
-                      value={formState.email}
-                      onChange={handleInputChange}
-                      placeholder="john@example.com"
-                      className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
-                    />
-                  </label>
-                </div>
-                <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                  Phone Number
-                  <input
-                    type="text"
-                    name="phone"
-                    value={formState.phone}
-                    onChange={handleInputChange}
-                    placeholder="9876543210"
-                    className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent"
-                  />
-                </label>
-                <label className="grid gap-1.5 text-xs font-bold text-muted uppercase tracking-wider">
-                  Message
-                  <textarea
-                    name="message"
-                    rows="4"
-                    value={formState.message}
-                    onChange={handleInputChange}
-                    placeholder="How can we help you?"
-                    className="rounded-lg border border-line bg-surface/50 p-3 text-sm text-foreground outline-none focus:border-accent resize-none"
-                  />
-                </label>
-                <Button type="submit" className="w-full justify-center">
-                  <Send className="mr-2 h-4 w-4" />
-                  <span>Send Message</span>
-                </Button>
-              </form>
             </div>
           </div>
         </section>

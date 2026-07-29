@@ -58,7 +58,7 @@ const faqSchema = {
       "name": "Can I host a corporate event or private tournament?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes! We support group bookings and private events. Please fill out our contact form below or reach out via email/phone to discuss custom arrangements.",
+        "text": "Yes! We support group bookings and private events. Please reach out via email/phone to discuss custom arrangements.",
       },
     },
   ],

@@ -63,20 +63,20 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Column 3: Help & Support */}
+          {/* Column 3: Help & Information */}
           <div className="flex flex-col gap-4 sm:col-span-1 lg:col-span-1">
             <h3 className="text-xs font-bold uppercase tracking-widest text-foreground">
-              Support &amp; Hub
+              Help &amp; Info
             </h3>
             <ul className="flex flex-col gap-2 text-xs sm:text-sm">
               <li>
                 <Link href="/about" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
-                  About Our Arena
+                  About Us
                 </Link>
               </li>
               <li>
                 <Link href="/support" className="font-medium text-muted outline-none transition-colors hover:text-accent focus-visible:text-accent focus-visible:underline focus-visible:underline-offset-4">
-                  Help &amp; FAQs
+                  Help &amp; Support
                 </Link>
               </li>
             </ul>

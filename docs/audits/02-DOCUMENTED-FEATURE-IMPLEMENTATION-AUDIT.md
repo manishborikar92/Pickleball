@@ -27,9 +27,8 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
     - [Item 4.1: Admin Coupon Management REST API & Frontend UI](#item-41-admin-coupon-management-rest-api--frontend-ui)
     - [Item 4.2: Admin Dynamic Pricing Rules REST API & Frontend UI](#item-42-admin-dynamic-pricing-rules-rest-api--frontend-ui)
     - [Item 4.3: Coupon Usage Tracking & Limit Enforcement (coupon_usages)](#item-43-coupon-usage-tracking--limit-enforcement-coupon_usages)
-  - [2.5 Customer Profile & Support Infrastructure](#25-customer-profile--support-infrastructure)
+  - [2.5 Customer Profile Infrastructure](#25-customer-profile-infrastructure)
     - [Item 5.1: Customer Self-Service Profile Update API (PATCH /users/me)](#item-51-customer-self-service-profile-update-api-patch-usersme)
-    - [Item 5.2: Support Form Submission Delivery Endpoint](#item-52-support-form-submission-delivery-endpoint)
   - [2.6 Admin Dashboard & Operational Screens](#26-admin-dashboard--operational-screens)
     - [Item 6.1: Admin Overview Dashboard Real Data API](#item-61-admin-overview-dashboard-real-data-api)
     - [Item 6.2: Admin User Lookup & Customer Booking History API](#item-62-admin-user-lookup--customer-booking-history-api)
@@ -65,17 +64,16 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 | 11 | **Promotions & Pricing** | Admin Coupon Management REST API & Frontend UI | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 12 | **Promotions & Pricing** | Admin Dynamic Pricing Rules REST API & Frontend UI | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 13 | **Promotions & Pricing** | Coupon Usage Tracking & Limit Enforcement | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain C |
-| 14 | **Customer & Support** | Customer Self-Service Profile Update API (`PATCH /users/me`) | **Missing** | `docs/specs/02-API-SPECIFICATION.md` Section 4 |
-| 15 | **Customer & Support** | Support Form Submission Delivery Endpoint | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §2.8, `docs/audits/01-END-USER-GAP-ANALYSIS.md` §4 |
-| 16 | **Admin Operations** | Admin Overview Dashboard Real Data API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/plans/web-modernization/03-issues-register.md` ME-3 |
-| 17 | **Admin Operations** | Admin User Lookup & Customer Booking History API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
-| 18 | **Admin Operations** | Admin Venue Settings Manager | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
-| 19 | **Admin Operations** | Admin Court Details & Status Management API | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7 |
-| 20 | **Admin Operations** | Admin Force-Cancellation & Credit Issuance Endpoint | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
-| 21 | **Payments & Settlement** | Nightly Settlement Reconciliation Job | **Missing** | `docs/integrations/02-PAYMENT-INTEGRATION.md` §11.2 |
-| 22 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
-| 23 | **Rewards & Gamification** | Reward Engine (Scratch Cards) | **Implemented** | `docs/adrs/ADR-010-rewards-module.md` |
-| 24 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
+| 14 | **Customer Profile** | Customer Self-Service Profile Update API (`PATCH /users/me`) | **Missing** | `docs/specs/02-API-SPECIFICATION.md` Section 4 |
+| 15 | **Admin Operations** | Admin Overview Dashboard Real Data API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/plans/web-modernization/03-issues-register.md` ME-3 |
+| 16 | **Admin Operations** | Admin User Lookup & Customer Booking History API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 17 | **Admin Operations** | Admin Venue Settings Manager | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 18 | **Admin Operations** | Admin Court Details & Status Management API | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7 |
+| 19 | **Admin Operations** | Admin Force-Cancellation & Credit Issuance Endpoint | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
+| 20 | **Payments & Settlement** | Nightly Settlement Reconciliation Job | **Missing** | `docs/integrations/02-PAYMENT-INTEGRATION.md` §11.2 |
+| 21 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
+| 22 | **Rewards & Gamification** | Reward Engine (Scratch Cards) | **Implemented** | `docs/adrs/ADR-010-rewards-module.md` |
+| 23 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
 
 ---
 
@@ -284,7 +282,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 
 ---
 
-### 2.5 Customer Profile & Support Infrastructure
+### 2.5 Customer Profile Infrastructure
 
 #### Item 5.1: Customer Self-Service Profile Update API (`PATCH /users/me`)
 * **Source Documentation Reference(s):**
@@ -295,20 +293,6 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 * **The Exact Gap That Remains:** Missing `PATCH /users/me` backend route, controller, and service logic for updating customer profile details after onboarding.
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/users/users.routes.js`, `server/src/modules/users/users.controller.js`, `server/src/modules/users/users.service.js`
-
----
-
-#### Item 5.2: Support Form Submission Delivery Endpoint
-* **Source Documentation Reference(s):**
-  * `docs/product/03-UI-UX-SPECIFICATION.md` Section 2.8 ("Contact Form")
-  * `docs/audits/01-END-USER-GAP-ANALYSIS.md` Section 4 ("Support Form Submission Delivery")
-* **Current Implementation Status:** Partial / Mock Only
-* **Brief Description of Documentation Specification:** The support page `/support` provides a contact form for name, email, and message. Submitting transmits data to a backend endpoint or email delivery service (using **Resend** as the transactional email provider).
-* **Brief Description of Codebase Reality:** `web/src/components/features/support/SupportClient.js` exists, but line 66 invokes a mock handler returning `"Support form delivery is not configured yet. Please use the listed phone or email contact."` No support ticket endpoint or mailer integration (using **Resend**) exists in `server/`.
-* **The Exact Gap That Remains:** Missing backend support ticket endpoint (or mailer integration using **Resend**) and frontend wiring to submit to the backend API.
-* **Dependent Files / Modules / Areas:**
-  * Frontend: `web/src/components/features/support/SupportClient.js`
-  * Backend: `server/src/modules/`
 
 ---
 
@@ -451,7 +435,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 
 A final, independent, multi-directional verification pass was conducted across the entire codebase (`server/` and `web/`) and all 47 documentation files in `docs/`:
 
-* **Number of previously reported items re-verified:** 24 items (Items 1.1 through 10.1).
-* **Number of new findings discovered during this pass:** 0 new findings. The inventory of 24 items represents the complete, exhaustive set of missing, partially implemented, deferred, or unclear requirements documented in the repository.
+* **Number of previously reported items re-verified:** 23 items (Items 1.1 through 10.1).
+* **Number of new findings discovered during this pass:** 0 new findings. The inventory of 23 items represents the complete, exhaustive set of missing, partially implemented, deferred, or unclear requirements documented in the repository.
 * **Number of corrected or removed findings:** 0 false positives. Every single reported item has been verified against backend route handlers (`server/src/routes/index.js`, controllers, services, repositories) and frontend page components (`web/src/app/`, `components/`, `lib/dal/`).
-* **Confirmation of Complete Verification:** We confirm that every documented requirement across all product specifications (`01-PROJECT-OVERVIEW`, `02-BUSINESS-LOGIC`, `03-UI-UX-SPECIFICATION`, `04-FUTURE-WORK`), technical specifications (`01-DATABASE-SCHEMA`, `02-API-SPECIFICATION`), integrations (`01-WHATSAPP`, `02-PAYMENT`, `03-WEBHOOK-LOCAL-DEV`), operations, ADRs (ADR-001 through ADR-010), AI context files, web modernization plans, prompts, and READMEs has been exhaustively checked against the live implementation. No undocumented features, assumptions, recommendations, or best-practice suggestions have been introduced. Transactional email requirements (such as admin invitation emails, activation emails, password reset emails, and support form submission emails) explicitly reflect **Resend** as the designated email service provider.
+* **Confirmation of Complete Verification:** We confirm that every documented requirement across all product specifications (`01-PROJECT-OVERVIEW`, `02-BUSINESS-LOGIC`, `03-UI-UX-SPECIFICATION`, `04-FUTURE-WORK`), technical specifications (`01-DATABASE-SCHEMA`, `02-API-SPECIFICATION`), integrations (`01-WHATSAPP`, `02-PAYMENT`, `03-WEBHOOK-LOCAL-DEV`), operations, ADRs (ADR-001 through ADR-010), AI context files, web modernization plans, prompts, and READMEs has been exhaustively checked against the live implementation. No undocumented features, assumptions, recommendations, or best-practice suggestions have been introduced. Transactional email requirements (such as admin invitation emails, activation emails, and password reset emails) explicitly reflect **Resend** as the designated email service provider.
