@@ -1,15 +1,27 @@
-import { BookingHeader } from "@/components/features/booking";
 import { Card } from "@/components/shared";
 
 /**
  * venues/[slug]/book/loading.js — Route loading boundary for the venue booking page.
- * Streams structural skeletons matching VenueHero, DatePicker, SlotGrid, and OrderSummary.
+ * Renders a pixel-matched skeleton header and structural skeletons for VenueHero,
+ * DatePicker, SlotGrid, and OrderSummary.
  */
 export default function BookPageLoading() {
   return (
     <main className="min-h-screen bg-background pb-24 text-foreground sm:pb-32" aria-busy="true">
-      {/* Real static header renders instantly with zero layout shift or pulse */}
-      <BookingHeader />
+      {/* BookingHeader Skeleton — matches BookingHeader layout, heights, and flex alignment */}
+      <header className="sticky top-0 z-30 border-b border-line bg-background/90 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6">
+          <div className="flex items-center gap-1.5">
+            <div className="h-4 w-4 rounded animate-pulse bg-surface-panel" />
+            <div className="hidden h-4 w-10 rounded animate-pulse bg-surface-panel sm:inline-block" />
+          </div>
+          <div className="h-6 w-24 rounded-lg animate-pulse bg-surface-panel sm:h-7 sm:w-28" />
+          <div className="flex items-center gap-1.5">
+            <div className="h-5 w-5 rounded-full animate-pulse bg-surface-panel" />
+            <div className="hidden h-4 w-16 rounded animate-pulse bg-surface-panel sm:inline-block" />
+          </div>
+        </div>
+      </header>
 
       <div className="mx-auto grid max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-8 lg:grid-cols-[1fr_400px] xl:grid-cols-[1fr_440px]">
         <div className="min-w-0 space-y-5 sm:space-y-6">
