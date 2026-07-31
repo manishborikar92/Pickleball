@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, UserCircle } from "lucide-react";
+import { formatTime12Hour } from "@/lib/formatters";
 
 /**
  * Shared chrome for every review-page state (form, submitted, gates, errors) so
@@ -55,7 +56,7 @@ export function ReviewSessionBanner({ booking }) {
   const courtLabel = booking?.courtNames?.length ? booking.courtNames.join(", ") : "Court";
   const venueLabel = booking?.venue?.brandName || booking?.venueName || "";
   const sessionTime = booking?.sessionStartTime && booking?.sessionEndTime
-    ? `${booking.sessionStartTime} – ${booking.sessionEndTime}`
+    ? `${formatTime12Hour(booking.sessionStartTime)} – ${formatTime12Hour(booking.sessionEndTime)}`
     : "";
   const sessionLine = [formatSessionDate(booking?.slotDate), sessionTime]
     .filter(Boolean)

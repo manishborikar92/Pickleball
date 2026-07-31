@@ -1,5 +1,6 @@
 import { VENUE } from "../config/venue.config.js";
 import { MAX_SESSION_COURTS, MAX_SESSION_SLOTS } from "./bookingEngine.js";
+import { formatTime12Hour } from "./formatters.js";
 
 const DEFAULT_BRAND = "Baseline Arena";
 
@@ -118,7 +119,7 @@ export function normalizeBooking(booking = {}, { isDetail = false } = {}) {
   // endpoint returns `session_start_time`/`session_end_time`. Read both shapes.
   const startTime = booking.slot_start_time || booking.session_start_time;
   const endTime = booking.slot_end_time || booking.session_end_time;
-  const time = startTime && endTime ? `${startTime} - ${endTime}` : "";
+  const time = startTime && endTime ? `${formatTime12Hour(startTime)} - ${formatTime12Hour(endTime)}` : "";
 
   const base = {
     id: booking.id,

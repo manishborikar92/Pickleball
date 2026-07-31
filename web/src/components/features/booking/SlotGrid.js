@@ -1,5 +1,7 @@
 "use client";
 
+import { formatTime12Hour } from "@/lib/formatters";
+
 const STATUS_STYLES = {
   available:
     "border-line bg-surface-high text-foreground hover:border-accent hover:bg-accent/10 cursor-pointer",
@@ -139,8 +141,8 @@ function CourtSlots({ court, slots, selection, sharedSlotTimes, notice, onSlotSe
         <p className="mt-2 text-xs font-medium text-accent">
           Selected:{" "}
           <strong>
-            {slots[selectedStartIdx]?.startTime} →{" "}
-            {slots[selectedEndIdx]?.endTime}
+            {formatTime12Hour(slots[selectedStartIdx]?.startTime)} →{" "}
+            {formatTime12Hour(slots[selectedEndIdx]?.endTime)}
           </strong>{" "}
           ({selectedEndIdx - selectedStartIdx + 1} slot
           {selectedEndIdx - selectedStartIdx + 1 > 1 ? "s" : ""})
@@ -152,6 +154,8 @@ function CourtSlots({ court, slots, selection, sharedSlotTimes, notice, onSlotSe
 
 function SlotButton({ slot, inRange, isFirst, isLast, isSingle, isShared, onSelect }) {
   const isAvailable = slot.status === "available";
+  const formattedStart = formatTime12Hour(slot.startTime);
+  const formattedEnd = formatTime12Hour(slot.endTime);
 
   let selectedStyle = "";
   if (inRange) {
@@ -185,16 +189,16 @@ function SlotButton({ slot, inRange, isFirst, isLast, isSingle, isShared, onSele
       disabled={!isAvailable}
       onClick={onSelect}
       aria-pressed={inRange}
-      aria-label={`${slot.startTime} to ${slot.endTime}${
+      aria-label={`${formattedStart} to ${formattedEnd}${
         !isAvailable ? ` — ${STATUS_LABELS[slot.status] ?? slot.status}` : ""
       }${inRange ? " (selected)" : ""}`}
       className={`relative flex min-h-[64px] w-full flex-col items-center justify-center border p-2 text-center text-xs font-bold transition-all sm:min-h-[72px] sm:p-3 ${baseStyle}`}
     >
-      <span className="block text-[13px] font-bold sm:text-sm">
-        {slot.startTime}
+      <span className="block text-[12px] font-bold sm:text-xs leading-tight">
+        {formattedStart}
       </span>
-      <span className="mt-0.5 block text-[10px] font-medium opacity-75 sm:text-[11px]">
-        {slot.endTime}
+      <span className="mt-0.5 block text-[10px] font-medium opacity-75 sm:text-[11px] leading-tight">
+        {formattedEnd}
       </span>
       {!isAvailable && (
         <span className="absolute inset-x-0 bottom-1.5 text-[9px] font-black uppercase tracking-wider opacity-60">

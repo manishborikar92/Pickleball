@@ -1,3 +1,5 @@
+import { formatTime12Hour } from "./formatters.js";
+
 const currencyFormatter = new Intl.NumberFormat("en-IN", {
   style: "currency",
   currency: "INR",
@@ -184,8 +186,8 @@ export function reduceSlotClick({ selections, availabilityData, courtId, slot })
         notice: {
           courtId,
           message: blocking.courtId === courtId
-            ? `The ${newRange.startTime}–${newRange.endTime} range includes slots that aren't free on this court.`
-            : `${blocking.courtName} isn't free for ${newRange.startTime}–${newRange.endTime}. All selected courts share the same time range.`,
+            ? `The ${formatTime12Hour(newRange.startTime)}–${formatTime12Hour(newRange.endTime)} range includes slots that aren't free on this court.`
+            : `${blocking.courtName} isn't free for ${formatTime12Hour(newRange.startTime)}–${formatTime12Hour(newRange.endTime)}. All selected courts share the same time range.`,
         },
       };
     }
@@ -215,7 +217,7 @@ export function reduceSlotClick({ selections, availabilityData, courtId, slot })
       selections,
       notice: {
         courtId,
-        message: `This court isn't free for the full ${shared.startTime}–${shared.endTime} range.`,
+        message: `This court isn't free for the full ${formatTime12Hour(shared.startTime)}–${formatTime12Hour(shared.endTime)} range.`,
       },
     };
   }
@@ -224,7 +226,7 @@ export function reduceSlotClick({ selections, availabilityData, courtId, slot })
     selections,
     notice: {
       courtId,
-      message: `All courts share the same time range (${shared.startTime}–${shared.endTime}). Tap inside that range to add this court, or adjust your current selection first.`,
+      message: `All courts share the same time range (${formatTime12Hour(shared.startTime)}–${formatTime12Hour(shared.endTime)}). Tap inside that range to add this court, or adjust your current selection first.`,
     },
   };
 }

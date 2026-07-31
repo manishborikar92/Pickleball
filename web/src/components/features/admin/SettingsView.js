@@ -7,6 +7,7 @@ import { Bell, BellOff } from "lucide-react";
 import { Badge, Card, FormAlert, Switch } from "@/components/shared";
 import { StatusBadge } from "@/components/shared/Table";
 import { updateNotificationSettingsAction } from "@/lib/actions/notificationsAdmin";
+import { formatDateTime } from "@/lib/formatters";
 import { ManagerSurface } from "./ManagerSurface";
 
 /* ── Settings ───────────────────────────────────── */
@@ -200,21 +201,5 @@ function formatType(type) {
       return "Review request";
     default:
       return type || "Notification";
-  }
-}
-
-function formatDateTime(value) {
-  try {
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleString("en-IN", {
-      day: "numeric",
-      month: "short",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return "";
   }
 }

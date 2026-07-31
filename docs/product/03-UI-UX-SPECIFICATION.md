@@ -90,8 +90,8 @@ The platform uses a **dark sports aesthetic**: near-black backgrounds with a sha
 
 **Section 4 — Select Time Slots**
 - One slot grid per selected court, rendered side-by-side on tablet/desktop, stacked on mobile.
-- Slots are displayed as chips: `09:00 – 10:00`.
-- **Multi-select rule:** The user can tap any available slot to start a selection. Tapping another slot on the same court extends the range up to it, auto-filling the slots in between (e.g. 7:00 selected, tap 11:00 → 7:00–12:00); the extension is refused with an inline notice if any slot in the span is unavailable or the session would exceed 12 slots. All selected courts share one time range: tapping a slot inside the range on another court adds that court with the same range (refused with a notice if the court isn't free for the whole range), and range changes apply to every selected court — an asymmetric selection cannot be created.
+- Slots are displayed as chips in 12-hour format with AM/PM (e.g. `7:00 AM`, `9:30 AM`, `12:00 PM`, `1:00 PM`).
+- **Multi-select rule:** The user can tap any available slot to start a selection. Tapping another slot on the same court extends the range up to it, auto-filling the slots in between (e.g. 7:00 AM selected, tap 11:00 AM → 7:00 AM–12:00 PM); the extension is refused with an inline notice if any slot in the span is unavailable or the session would exceed 12 slots. All selected courts share one time range: tapping a slot inside the range on another court adds that court with the same range (refused with a notice if the court isn't free for the whole range), and range changes apply to every selected court — an asymmetric selection cannot be created.
 - Slots that are booked, pending, or blocked are greyed out and non-interactive.
 - When both courts are selected, the slot grids must show the **intersection of available slots** highlighted — slots that are available on at least one court show normally, but the price-preview reflects both courts' pricing.
 - Selected slots are highlighted in accent colour. The range is visualised as a connected bar across the selected chips.

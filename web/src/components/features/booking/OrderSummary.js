@@ -1,5 +1,6 @@
 import { Button, Card } from "@/components/shared";
 import { formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
+import { formatTime12Hour } from "@/lib/formatters";
 import { Tag, Lock, ShieldCheck, CalendarDays, Wallet } from "lucide-react";
 
 /**
@@ -127,7 +128,7 @@ function BookingItems({ selectedCourtsData, selectedDate }) {
                 {courtName}
               </p>
               <p className="mt-0.5 text-xs text-muted">
-                {selectedDate} · {startTime}–{endTime}
+                {selectedDate} · {formatTime12Hour(startTime)}–{formatTime12Hour(endTime)}
               </p>
               <p className="mt-0.5 text-xs text-muted/60">
                 {slotCount} slot{slotCount > 1 ? "s" : ""} · {durationMins} min

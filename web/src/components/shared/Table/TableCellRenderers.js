@@ -2,6 +2,7 @@
 
 import { Badge } from "@/components/shared";
 import { formatCurrency } from "@/lib/bookingEngine";
+import { formatDateTime } from "@/lib/formatters";
 
 /**
  * Renders status value inside standard Badge container with curated tones.
@@ -64,21 +65,7 @@ function formatTransactionType(type) {
 }
 
 function formatTransactionDate(dateStr) {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return dateStr;
-  }
+  return formatDateTime(dateStr);
 }
 
 export function TransactionType({ value }) {

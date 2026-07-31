@@ -8,6 +8,7 @@ import {
   routeAccess,
 } from "../src/lib/rbac.js";
 import { safeNext } from "../src/lib/safeNext.js";
+import { formatTime12Hour } from "../src/lib/formatters.js";
 import {
   nameSchema,
   phoneSchema,
@@ -96,6 +97,22 @@ test("date window respects configured advance booking days", () => {
   assert.equal(days.length, 4);
   assert.equal(days[0].iso, "2026-05-13");
   assert.equal(days[3].iso, "2026-05-16");
+});
+
+test("formatTime12Hour formats 24-hour time strings into 12-hour format with AM/PM", () => {
+  assert.equal(formatTime12Hour("00:00"), "12:00 AM");
+  assert.equal(formatTime12Hour("07:00"), "7:00 AM");
+  assert.equal(formatTime12Hour("09:30"), "9:30 AM");
+  assert.equal(formatTime12Hour("12:00"), "12:00 PM");
+  assert.equal(formatTime12Hour("13:00"), "1:00 PM");
+  assert.equal(formatTime12Hour("15:30"), "3:30 PM");
+  assert.equal(formatTime12Hour("18:00"), "6:00 PM");
+  assert.equal(formatTime12Hour("23:30"), "11:30 PM");
+  assert.equal(formatTime12Hour("24:00"), "12:00 AM");
+  assert.equal(formatTime12Hour("07:30:00"), "7:30 AM");
+  assert.equal(formatTime12Hour("1:00 PM"), "1:00 PM");
+  assert.equal(formatTime12Hour("invalid"), "invalid");
+  assert.equal(formatTime12Hour(null), "");
 });
 
 test("booking API normalization maps server availability and price preview shapes", () => {
@@ -258,7 +275,7 @@ test("normalizeBooking maps summary list fields and formats display values", () 
   assert.deepEqual(normalized.courtNames, ["Court A"]);
   assert.equal(normalized.venueName, "Venue A");
   assert.equal(normalized.date, "2026-06-18");
-  assert.equal(normalized.time, "09:00 - 10:00");
+  assert.equal(normalized.time, "9:00 AM - 10:00 AM");
 });
 
 test("normalizeBookingDetailResponse enriches venue configuration and parses decimals", () => {
@@ -807,7 +824,7 @@ test("reduceSlotClick refuses an extension when another selected court is not fr
   });
   assert.equal(selections, prev);
   assert.equal(notice.courtId, "c1");
-  assert.match(notice.message, /Court 2 isn't free for 10:00–13:00/);
+  assert.match(notice.message, /Court 2 isn't free for 10:00 AM–1:00 PM/);
 });
 
 test("reduceSlotClick joins an unselected court by mirroring the shared range", () => {
@@ -834,7 +851,7 @@ test("reduceSlotClick refuses joining a court that is not free for the whole sha
     slot: slot("10:00", "11:00"),
   });
   assert.equal(selections, prev);
-  assert.match(notice.message, /isn't free for the full 09:00–11:00 range/);
+  assert.match(notice.message, /isn't free for the full 9:00 AM–11:00 AM range/);
 });
 
 test("reduceSlotClick refuses an out-of-range click on an unselected court with guidance", () => {
@@ -846,7 +863,7 @@ test("reduceSlotClick refuses an out-of-range click on an unselected court with 
     slot: slot("12:00", "13:00"),
   });
   assert.equal(selections, prev);
-  assert.match(notice.message, /All courts share the same time range \(10:00–11:00\)/);
+  assert.match(notice.message, /All courts share the same time range \(10:00 AM–11:00 AM\)/);
 });
 
 test("reduceSlotClick removes a court on an in-range click, clearing fully at the last court", () => {

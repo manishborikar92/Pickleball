@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/shared";
 import { formatCountdown, formatCurrency, getCheckoutBreakdown, summarizeCourtSlots } from "@/lib/bookingEngine";
+import { formatTime12Hour } from "@/lib/formatters";
 import { X, Lock, CalendarDays, Clock, Wallet, Tag, TimerReset } from "lucide-react";
 import { CustomerCheckoutAuthGate } from "@/components/features/auth";
 import { useOverlay } from "@/hooks/useOverlay";
@@ -208,7 +209,7 @@ function WaiverStep({
                   <p className="font-semibold text-foreground">{courtName}</p>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-muted">
                     <Clock className="h-3 w-3 shrink-0" />
-                    {startTime}–{endTime} · {durationMins} min
+                    {formatTime12Hour(startTime)}–{formatTime12Hour(endTime)} · {durationMins} min
                   </p>
                 </div>
                 <span className="shrink-0 font-bold text-foreground">

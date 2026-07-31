@@ -1,6 +1,7 @@
 import { Card, Button } from "@/components/shared";
 import { Map } from "@/components/shared/Map";
 import { RewardExperience } from "@/components/features/rewards";
+import { formatTime12Hour } from "@/lib/formatters";
 import {
   Calendar,
   Clock,
@@ -44,7 +45,7 @@ function formatDate(dateStr) {
 export function BookingDetailView({ booking, receipt, rewards = [] }) {
   const { venue } = booking;
   const courtName = booking.courtNames?.join(", ") || "Court";
-  const timeSlot = `${booking.sessionStartTime} - ${booking.sessionEndTime}`;
+  const timeSlot = `${formatTime12Hour(booking.sessionStartTime)} - ${formatTime12Hour(booking.sessionEndTime)}`;
 
   return (
     <section className="w-full max-w-7xl px-4 py-8 sm:py-12 sm:px-6">
