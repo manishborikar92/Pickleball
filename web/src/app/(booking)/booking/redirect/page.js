@@ -1,6 +1,4 @@
 import { Suspense } from "react";
-
-import { Header, Footer } from "@/components/layout";
 import { PaymentRedirectCard, PaymentRedirectView } from "@/components/features/booking";
 
 // Post-payment redirect landing — the target of PhonePe's merchantUrls.redirectUrl.
@@ -13,14 +11,8 @@ import { PaymentRedirectCard, PaymentRedirectView } from "@/components/features/
 // interstitial card, so the spinner paints with the prerendered shell.
 export default function PaymentRedirectPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-background">
-      <Header />
-      <main className="flex-1 flex items-center justify-center">
-        <Suspense fallback={<PaymentRedirectCard />}>
-          <PaymentRedirectView />
-        </Suspense>
-      </main>
-      <Footer />
-    </div>
+    <Suspense fallback={<PaymentRedirectCard />}>
+      <PaymentRedirectView />
+    </Suspense>
   );
 }
