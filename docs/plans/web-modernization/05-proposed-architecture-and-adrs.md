@@ -39,7 +39,7 @@ Keep Server Components as the default. Decompose `BookingClient` so that only th
 Migrate all forms to `<form action>` + `useActionState` + `useFormStatus`, removing hand-rolled `useState`/`isSubmitting`/`error`. Field-level errors come from `error.flatten().fieldErrors`. `FormField` auto-wires `id`/`htmlFor`/`aria-describedby`/`aria-invalid`.
 
 ### 1.8 Error handling — *one contract + boundaries*
-One typed result shape across DAL/services/actions ([04 §5.3](./04-api-server-action-service-review.md)). Add `(booking)/loading.js` and `app/global-error.js`. The resolver branches on `status`/`code`, not message strings.
+One typed result shape across DAL/services/actions ([04 §5.3](./04-api-server-action-service-review.md)). Add `(booking)/venues/[slug]/book/loading.js` and `app/global-error.js`. The resolver branches on `status`/`code`, not message strings.
 
 ### 1.9 SEO & accessibility — *close the gaps*
 Standardize indoor/outdoor copy; PNG OG logo; one JSON-LD venue node; encode OG query; `viewport`/`themeColor`; finish form-field a11y wiring; verify focus order and the `useOverlay` focus trap on every modal; ensure a skip link in the root layout.

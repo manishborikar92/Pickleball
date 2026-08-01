@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { connection } from "next/server";
 import Script from "next/script";
 import { BookingClient } from "@/components/features/booking";
@@ -7,7 +8,7 @@ import { getWallet } from "@/lib/dal/wallet";
 import { verifySession } from "@/lib/dal/session";
 import { JsonLd } from "@/components/seo";
 import { getPageMetadata } from "@/config/metadata.config";
-import { getTodayDateString } from "@/lib/bookingEngine";
+import { getTodayDateString, buildDateWindow } from "@/lib/bookingEngine";
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
@@ -23,13 +24,27 @@ export async function generateMetadata({ params }) {
   });
 }
 
-export default async function BookPage({ params }) {
+export default async function BookPage({ params, searchParams }) {
   await connection();
   const { slug } = await params;
+  const { date: paramDate } = (await searchParams) || {};
   const [venue, session] = await Promise.all([getVenue(slug), verifySession()]);
-  const initialDate = getTodayDateString(venue.timezone);
+  const todayDate = getTodayDateString(venue.timezone);
+
+  // Validate paramDate against venue's advance booking days window
+  let requestedDate = todayDate;
+  if (paramDate && typeof paramDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(paramDate)) {
+    const dates = buildDateWindow({
+      startDate: todayDate,
+      advanceBookingDays: venue.advanceBookingDays,
+    });
+    if (dates.some((d) => d.iso === paramDate)) {
+      requestedDate = paramDate;
+    }
+  }
+
   const [availability, wallet] = await Promise.all([
-    getAvailability({ venueId: venue.id, date: initialDate }),
+    getAvailability({ venueId: venue.id, date: requestedDate }),
     // Wallet credits are applied at checkout; fetch the balance for signed-in
     // customers so the summary can show the UPI-vs-wallet split up front. Anonymous
     // users (or a failed read) simply get no wallet line. verifySession() is
@@ -90,14 +105,17 @@ export default async function BookPage({ params }) {
   return (
     <>
       <JsonLd data={locationSchema} />
-      <BookingClient
-        venue={venue}
-        courts={venue.courts}
-        availability={availability}
-        initialDate={initialDate}
-        session={session}
-        walletBalance={walletBalance}
-      />
+      <Suspense fallback={null}>
+        <BookingClient
+          venue={venue}
+          courts={venue.courts}
+          availability={availability}
+          initialDate={requestedDate}
+          todayDate={todayDate}
+          session={session}
+          walletBalance={walletBalance}
+        />
+      </Suspense>
       <Script src={phonePeSrc} strategy="lazyOnload" />
     </>
   );

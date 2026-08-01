@@ -470,14 +470,10 @@ On every app load or page navigation, a top-level `AuthProvider` component (wrap
 
 ### 2A.7 Booking Context Preservation
 
-> **Implemented behavior.** `/venues/[slug]/book` keeps an uncommitted selection in React state. When the customer commits checkout, the ten-minute hold and a checkout snapshot are persisted in `sessionStorage`; that lets the same tab resume a gateway return, refresh, or cancelled payment while the hold remains valid. Before a hold exists, selection is intentionally not persisted. The historical paragraph below predates this recovery behavior.
-
-The booking page (`/book`) holds the user's court and slot selection entirely in React state (no server-side draft, no local storage persistence). This is intentional:
-
-- The modal never causes a page navigation → selection is preserved.
-- If the user closes the tab or browser, the selection is lost — this is expected behaviour.
-- The 10-minute slot hold only starts after auth is complete and `POST /bookings/hold` is called.
-- If the user's JWT expires exactly as they click "Confirm & Pay", the modal opens (they re-authenticate in ~30 seconds), and the selection remains intact.
+> **Implemented behavior.** `/venues/[slug]/book` implements the **Hybrid Persistence Architecture** for complete state preservation across page refreshes (F5) and payment gateway redirects:
+> 1. **URL Date Parameter (`?date=YYYY-MM-DD`)**: Synchronizes calendar date selection to the browser URL for deep-linking and sharing. Next.js 16 Server Components (`BookPage`) read `searchParams` during SSR to pre-fetch date availability on the first HTTP request with zero client waterfalls.
+> 2. **Session Storage Draft Selection (`pb:draft:${venueId}`)**: Persists uncommitted court selections, slot time ranges, and applied coupon codes in `sessionStorage` with schema versioning (`version: 1`), venue isolation, and a 2-hour TTL. Restored selections are intersected with live server availability on mount; if a slot became booked or past, it is deselected gracefully with a user notice.
+> 3. **Session Storage Active Payment Hold (`pb:hold:${venueId}`)**: Persists the active 10-minute server slot reservation snapshot and `bookingId`, allowing seamless payment resumption after gateway returns, full-page reloads, or cancelled payment popups.
 
 ### 2A.8 Admin Auth Architecture
 

@@ -1,22 +1,10 @@
 "use client";
 
+import { Clock, Lock, Ban } from "lucide-react";
 import { formatTime12Hour } from "@/lib/formatters";
 
-const STATUS_STYLES = {
-  available:
-    "border-line bg-surface-high text-foreground hover:border-accent hover:bg-accent/10 cursor-pointer",
-  booked:
-    "border-line/50 bg-surface/30 text-muted/30 cursor-not-allowed line-through",
-  pending:
-    "border-accent/20 bg-accent/5 text-muted/40 cursor-not-allowed",
-  blocked:
-    "border-line/50 bg-surface/30 text-muted/30 cursor-not-allowed",
-  past:
-    "border-line/50 bg-surface/30 text-muted/30 cursor-not-allowed",
-};
-
 const STATUS_LABELS = {
-  booked: "Taken",
+  booked: "Booked",
   pending: "Hold",
   blocked: "Closed",
   past: "Past",
@@ -49,6 +37,7 @@ export function SlotGrid({
   courtSelections,
   sharedSlotTimes,
   selectionNotice,
+  isFetching = false,
   onSlotSelect,
 }) {
   if (!availability || availability.length === 0) {
@@ -60,7 +49,7 @@ export function SlotGrid({
   }
 
   return (
-    <div className="mt-5 space-y-8 border-t border-line pt-5 sm:mt-6 sm:pt-6">
+    <div className={`mt-5 space-y-8 border-t border-line pt-5 sm:mt-6 sm:pt-6 transition-opacity duration-200 ${isFetching ? "opacity-60 pointer-events-none" : "opacity-100"}`}>
       {availability.map((courtAvailability) => {
         const court = courts.find((c) => c.id === courtAvailability.courtId);
         if (!court) return null;
@@ -115,7 +104,8 @@ function CourtSlots({ court, slots, selection, sharedSlotTimes, notice, onSlotSe
         </div>
       )}
 
-      <div className="relative mt-3 grid grid-cols-3 gap-2 min-[400px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-4 lg:grid-cols-5">
+      {/* Grid columns bounded strictly between 3 (min) and 5 (max) */}
+      <div className="relative mt-3 grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-5">
         {slots.map((slot, idx) => {
           const inRange = isInRange(idx);
           const isFirst = idx === selectedStartIdx;
@@ -156,32 +146,48 @@ function SlotButton({ slot, inRange, isFirst, isLast, isSingle, isShared, onSele
   const isAvailable = slot.status === "available";
   const formattedStart = formatTime12Hour(slot.startTime);
   const formattedEnd = formatTime12Hour(slot.endTime);
+  const label = STATUS_LABELS[slot.status];
 
+  // Selected range styling
   let selectedStyle = "";
   if (inRange) {
     if (isSingle) {
       selectedStyle =
-        "border-accent bg-accent text-black shadow-sm ring-2 ring-accent ring-offset-1 ring-offset-background rounded-lg";
+        "border-accent bg-accent text-black shadow-md ring-2 ring-accent ring-offset-1 ring-offset-background rounded-xl";
     } else if (isFirst) {
       selectedStyle =
-        "border-accent bg-accent text-black shadow-sm ring-2 ring-accent ring-offset-1 ring-offset-background rounded-l-lg rounded-r-none";
+        "border-accent bg-accent text-black shadow-md ring-2 ring-accent ring-offset-1 ring-offset-background rounded-l-xl rounded-r-none";
     } else if (isLast) {
       selectedStyle =
-        "border-accent bg-accent text-black shadow-sm ring-2 ring-accent ring-offset-1 ring-offset-background rounded-r-lg rounded-l-none";
+        "border-accent bg-accent text-black shadow-md ring-2 ring-accent ring-offset-1 ring-offset-background rounded-r-xl rounded-l-none";
     } else {
       // Middle of range
       selectedStyle =
-        "border-accent bg-accent text-black shadow-sm ring-y-2 ring-accent ring-offset-0 rounded-none border-x-0";
+        "border-accent bg-accent text-black shadow-md ring-2 ring-accent ring-offset-1 ring-offset-background rounded-none";
     }
   }
 
-  // Shared-window treatment: accent border on unselected available slots that are
-  // open on every court. The selected state always wins visually.
+  // Shared-window treatment: accent border on unselected available slots open on all courts
   const sharedStyle = isShared && !inRange ? " border-accent/60" : "";
 
-  const baseStyle = inRange
-    ? selectedStyle
-    : `rounded-lg ${STATUS_STYLES[slot.status] ?? STATUS_STYLES.available}${sharedStyle}`;
+  // Base state styles matching Section 8 Recommended Design System
+  let baseStyle = "";
+  if (inRange) {
+    baseStyle = selectedStyle;
+  } else if (slot.status === "pending") {
+    baseStyle = "rounded-xl border border-amber-500/30 bg-amber-500/10 text-foreground cursor-not-allowed";
+  } else if (slot.status === "booked") {
+    baseStyle = "rounded-xl border border-line/40 bg-surface/20 text-foreground/60 opacity-60 cursor-not-allowed";
+  } else if (slot.status === "blocked") {
+    baseStyle = "rounded-xl border border-line/40 bg-surface/20 text-foreground/50 opacity-50 cursor-not-allowed";
+  } else if (slot.status === "past") {
+    baseStyle = "rounded-xl border border-line/30 bg-surface/10 text-muted opacity-30 cursor-not-allowed";
+  } else if (slot.status === "disabled") {
+    baseStyle = "rounded-xl border border-line/20 bg-surface/10 text-muted opacity-40 cursor-not-allowed";
+  } else {
+    // Available default
+    baseStyle = `rounded-xl border border-line bg-surface-high text-foreground hover:border-accent hover:bg-accent/10 cursor-pointer shadow-2xs${sharedStyle}`;
+  }
 
   return (
     <button
@@ -190,19 +196,63 @@ function SlotButton({ slot, inRange, isFirst, isLast, isSingle, isShared, onSele
       onClick={onSelect}
       aria-pressed={inRange}
       aria-label={`${formattedStart} to ${formattedEnd}${
-        !isAvailable ? ` — ${STATUS_LABELS[slot.status] ?? slot.status}` : ""
+        !isAvailable ? ` — ${label ?? slot.status}` : ""
       }${inRange ? " (selected)" : ""}`}
-      className={`relative flex min-h-[64px] w-full flex-col items-center justify-center border p-2 text-center text-xs font-bold transition-all sm:min-h-[72px] sm:p-3 ${baseStyle}`}
+      className={`relative flex min-h-[72px] sm:min-h-[80px] w-full flex-col items-center justify-center p-3 sm:p-3.5 text-center transition-all ${baseStyle}`}
     >
-      <span className="block text-[12px] font-bold sm:text-xs leading-tight">
+      {/* Top-Right Signifiers */}
+      {!inRange && slot.status === "pending" && (
+        <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center text-amber-400">
+          <Clock className="h-3 w-3" />
+        </span>
+      )}
+      {!inRange && slot.status === "booked" && (
+        <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center text-muted/60">
+          <Lock className="h-3 w-3" />
+        </span>
+      )}
+      {!inRange && slot.status === "blocked" && (
+        <span className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center text-muted/60">
+          <Ban className="h-3 w-3" />
+        </span>
+      )}
+
+      {/* Start Time */}
+      <span
+        className={`block text-xs sm:text-sm font-bold leading-none ${
+          slot.status === "booked" || slot.status === "past" ? "line-through" : ""
+        }`}
+      >
         {formattedStart}
       </span>
-      <span className="mt-0.5 block text-[10px] font-medium opacity-75 sm:text-[11px] leading-tight">
+
+      {/* End Time */}
+      <span
+        className={`mt-1 block text-[10px] sm:text-[11px] font-medium leading-none ${
+          inRange
+            ? "text-black/80"
+            : slot.status === "booked"
+            ? "text-muted/50"
+            : slot.status === "blocked"
+            ? "text-muted/40"
+            : "text-muted"
+        }`}
+      >
         {formattedEnd}
       </span>
-      {!isAvailable && (
-        <span className="absolute inset-x-0 bottom-1.5 text-[9px] font-black uppercase tracking-wider opacity-60">
-          {STATUS_LABELS[slot.status]}
+
+      {/* Bottom Status Label */}
+      {!inRange && label && (
+        <span
+          className={`mt-2 text-[10px] font-semibold leading-none ${
+            slot.status === "pending"
+              ? "text-amber-300"
+              : slot.status === "booked" || slot.status === "blocked"
+              ? "text-muted/60"
+              : "text-muted"
+          }`}
+        >
+          {label}
         </span>
       )}
     </button>

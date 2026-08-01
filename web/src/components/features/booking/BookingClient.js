@@ -38,39 +38,46 @@ const INITIAL_AUTH = {
  * restore checkout and resume the same payment within the hold's TTL.
  * Session-scoped on purpose: it survives navigation in the tab but not new tabs.
  */
-const HOLD_STORAGE_KEY = "pb:checkout-hold";
+function getHoldStorageKey(venueId) {
+  return `pb:hold:${venueId}`;
+}
 
 function readPersistedHold(venueId) {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined" || !venueId) return null;
   try {
-    const raw = window.sessionStorage.getItem(HOLD_STORAGE_KEY);
+    const raw = window.sessionStorage.getItem(getHoldStorageKey(venueId));
     if (!raw) return null;
     const saved = JSON.parse(raw);
     const validShape =
       saved && saved.venueId === venueId && saved.bookingId && saved.expiresAt && saved.snapshot;
     // Don't bother restoring a hold that's about to lapse.
     if (!validShape || new Date(saved.expiresAt).getTime() - Date.now() < 15_000) {
-      window.sessionStorage.removeItem(HOLD_STORAGE_KEY);
+      window.sessionStorage.removeItem(getHoldStorageKey(venueId));
       return null;
     }
     return saved;
   } catch {
-    clearPersistedHold();
+    clearPersistedHold(venueId);
     return null;
   }
 }
 
-function persistHold(data) {
+function persistHold(venueId, data) {
+  if (typeof window === "undefined" || !venueId) return;
   try {
-    window.sessionStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
+    window.sessionStorage.setItem(
+      getHoldStorageKey(venueId),
+      JSON.stringify({ ...data, venueId }),
+    );
   } catch {
     // Storage unavailable (private mode/quota) — checkout still works in-memory.
   }
 }
 
-function clearPersistedHold() {
+function clearPersistedHold(venueId) {
+  if (typeof window === "undefined" || !venueId) return;
   try {
-    window.sessionStorage.removeItem(HOLD_STORAGE_KEY);
+    window.sessionStorage.removeItem(getHoldStorageKey(venueId));
   } catch {
     // Ignore — nothing to clear or storage unavailable.
   }
@@ -110,6 +117,7 @@ export function BookingClient({
   courts,
   availability,
   initialDate,
+  todayDate,
   session: activeSession,
   walletBalance: initialWalletBalance = 0,
 }) {
@@ -118,6 +126,7 @@ export function BookingClient({
     courts,
     initialAvailability: availability,
     initialDate,
+    todayDate,
   });
 
   const [auth, setAuth] = useState(INITIAL_AUTH);
@@ -152,7 +161,7 @@ export function BookingClient({
    * everyone, including this user.
    */
   const handleHoldExpire = () => {
-    clearPersistedHold();
+    clearPersistedHold(venue.id);
     if (auth.step === "waiver") {
       setHold((current) => ({ ...current, status: "expired" }));
     } else {
@@ -166,16 +175,18 @@ export function BookingClient({
     handleHoldExpire,
   );
 
+  const { clearSelections, refreshAvailability } = selection;
+
   /** Releases all checkout state and returns the user to the selection grid. */
   const handleReturnToGrid = useCallback(() => {
-    clearPersistedHold();
+    clearPersistedHold(venue.id);
     setAuth(INITIAL_AUTH);
     setHold(INITIAL_HOLD);
     setWaiver({ time: false, policy: false });
     setCheckoutError("");
-    selection.clearSelections();
-    selection.refreshAvailability();
-  }, [selection]);
+    clearSelections();
+    refreshAvailability();
+  }, [clearSelections, refreshAvailability, venue.id]);
 
   // Verify the optimistically restored hold in the background — if the server
   // reports it's paid/expired/missing, clear the stale local state.
@@ -188,13 +199,13 @@ export function BookingClient({
       .then((res) => {
         if (cancelled) return;
         if (!res.ok || res.data.status !== "pending_payment") {
-          clearPersistedHold();
+          clearPersistedHold(venue.id);
           setHold(INITIAL_HOLD);
         }
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [venue.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Opens the checkout modal at the right step for the session state. */
   function openCheckoutModal() {
@@ -300,7 +311,7 @@ export function BookingClient({
       // The payment window lapsed before this attempt — release local state via
       // the same path as a client-observed expiry.
       if (result.kind === "error" && result.code === "hold_expired") {
-        clearPersistedHold();
+        clearPersistedHold(venue.id);
         setHold((current) => ({ ...current, status: "expired" }));
         selection.refreshAvailability();
         return;
@@ -308,7 +319,7 @@ export function BookingClient({
 
       // Wallet-only / already-confirmed — go straight to the unified status page.
       if (result.kind === "confirmed") {
-        clearPersistedHold();
+        clearPersistedHold(venue.id);
         window.location.assign(`/booking/${result.bookingId}`);
         return;
       }
@@ -334,8 +345,7 @@ export function BookingClient({
           selectionKey,
           resume: snapshot,
         });
-        persistHold({
-          venueId: venue.id,
+        persistHold(venue.id, {
           bookingId: result.bookingId,
           expiresAt,
           selectionKey,
@@ -439,6 +449,7 @@ export function BookingClient({
               courtSelections={selection.courtSelections}
               sharedSlotTimes={selection.sharedSlotTimes}
               selectionNotice={selection.selectionNotice}
+              isFetching={selection.isFetchingAvailability || selection.isNavigating}
               onSlotSelect={selection.selectSlot}
             />
           </Card>

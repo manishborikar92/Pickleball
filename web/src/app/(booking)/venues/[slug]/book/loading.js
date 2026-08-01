@@ -68,7 +68,7 @@ export default function BookPageLoading() {
                   {Array.from({ length: 10 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl border border-line/40 bg-surface-panel/40 animate-pulse p-2"
+                      className="flex min-h-[72px] sm:min-h-[80px] flex-col items-center justify-center gap-1 rounded-xl border border-line/40 bg-surface-panel/40 animate-pulse p-2"
                     />
                   ))}
                 </div>
@@ -84,7 +84,7 @@ export default function BookPageLoading() {
                   {Array.from({ length: 10 }).map((_, i) => (
                     <div
                       key={i}
-                      className="flex h-16 sm:h-20 flex-col items-center justify-center gap-1 rounded-xl border border-line/40 bg-surface-panel/40 animate-pulse p-2"
+                      className="flex min-h-[72px] sm:min-h-[80px] flex-col items-center justify-center gap-1 rounded-xl border border-line/40 bg-surface-panel/40 animate-pulse p-2"
                     />
                   ))}
                 </div>

@@ -87,7 +87,7 @@ Severity reflects impact on correctness, security, users, or the ability to scal
 | H1 | No CSP / HSTS on the app | Add a nonce-based strict CSP via `proxy.js` + HSTS and security headers | M |
 | H2 | Server-side validation missing (client-only) | Adopt one shared schema (Zod) validated at every action boundary and reused client-side | M |
 | H3 | `cacheComponents` defeated by blanket `no-store` + no tags | Selective `"use cache"` + `cacheTag`/`revalidateTag`; per-call cache policy | L |
-| H4 | Booking route: no streaming, no `loading.js`, client re-fetch waterfall | Add Suspense + `(booking)/loading.js`; drop the redundant initial-date client fetch | M |
+| H4 | Booking route: no streaming, no `loading.js`, client re-fetch waterfall | Add Suspense + `(booking)/venues/[slug]/book/loading.js`; drop the redundant initial-date client fetch | M |
 | H5 | Hero LCP image is a CSS background | Render hero with `next/image` `fill priority` (AVIF/WebP) | S |
 | H6 | `signInAdminAction` unhandled errors + open redirect | try/catch with inline errors; validate `next` against `//` and `/\` | S |
 | H7 | Token-refresh gap on `/venues/*`; admin role spoofable via cookie | Refresh-on-401 in the DAL; derive role/permissions from `/users/me`, not the cookie | M |

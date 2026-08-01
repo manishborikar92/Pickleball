@@ -73,6 +73,7 @@ We document major technology selections and designs through ADRs.
 | **ADR-009** | Reviews as an Independent Domain Under `/reviews` | Approved | 2026-06-28 | [ADR-009 Reviews Module](adrs/ADR-009-reviews-module.md) |
 | **ADR-010** | Rewards as an Independent Domain Under `/rewards` with Voucher-Only Prizes | Approved | 2026-07-16 | [ADR-010 Rewards Module](adrs/ADR-010-rewards-module.md) |
 | **ADR-011** | Scheduled Notifications as an Independent Module with a PostgreSQL Outbox Scheduler | Approved | 2026-07-28 | [ADR-011 Notifications Module](adrs/ADR-011-notifications-module.md) |
+| **ADR-012** | Booking State Persistence and Refresh Recovery Architecture | Approved | 2026-07-31 | [ADR-012 Booking State Persistence](adrs/ADR-012-booking-state-persistence.md) |
 
 ---
 *For quick startup, see the root [README.md](../README.md).*

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 import {
   buildDateWindow,
@@ -22,51 +23,198 @@ const EMPTY_QUOTE = {
   breakdown: [],
 };
 
+const CURRENT_DRAFT_VERSION = 1;
+const DRAFT_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function getDraftStorageKey(venueId) {
+  return `pb:draft:${venueId}`;
+}
+
+function readPersistedDraft(venueId, initialDate) {
+  if (typeof window === "undefined" || !venueId) return null;
+  try {
+    const raw = window.sessionStorage.getItem(getDraftStorageKey(venueId));
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || typeof saved !== "object") return null;
+
+    // Schema versioning & venue isolation check
+    if (saved.version !== CURRENT_DRAFT_VERSION || saved.venueId !== venueId) {
+      window.sessionStorage.removeItem(getDraftStorageKey(venueId));
+      return null;
+    }
+
+    // Expiration TTL check (2 hours)
+    if (!saved.updatedAt || Date.now() - saved.updatedAt > DRAFT_TTL_MS) {
+      window.sessionStorage.removeItem(getDraftStorageKey(venueId));
+      return null;
+    }
+
+    // Past date check
+    if (saved.date && saved.date < initialDate) {
+      window.sessionStorage.removeItem(getDraftStorageKey(venueId));
+      return null;
+    }
+
+    return saved;
+  } catch {
+    clearPersistedDraft(venueId);
+    return null;
+  }
+}
+
+function persistDraft(venueId, data) {
+  if (typeof window === "undefined" || !venueId) return;
+  try {
+    const payload = {
+      version: CURRENT_DRAFT_VERSION,
+      venueId,
+      updatedAt: Date.now(),
+      ...data,
+    };
+    window.sessionStorage.setItem(getDraftStorageKey(venueId), JSON.stringify(payload));
+  } catch {
+    // Ignore storage quota/SecurityError gracefully
+  }
+}
+
+function clearPersistedDraft(venueId) {
+  if (typeof window === "undefined" || !venueId) return;
+  try {
+    window.sessionStorage.removeItem(getDraftStorageKey(venueId));
+  } catch {
+    // Ignore
+  }
+}
+
 /**
  * useBookingSelection — encapsulates the booking wizard's selection, availability,
- * coupon, and server-priced quote state (HI-12). Extracting this out of
- * `BookingClient` leaves that component a thin orchestrator of checkout + auth,
- * and makes the data/selection logic independently reasoned about.
+ * coupon, and server-priced quote state (HI-12).
  *
  * @param {object} params
  * @param {object} params.venue
  * @param {object[]} params.courts
  * @param {object[]} params.initialAvailability - Server-rendered availability for `initialDate`.
  * @param {string} params.initialDate
+ * @param {string} [params.todayDate] - Current date string for venue's timezone to anchor date window.
  */
-export function useBookingSelection({ venue, courts, initialAvailability, initialDate }) {
+export function useBookingSelection({ venue, courts, initialAvailability, initialDate, todayDate }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isNavigating, startTransition] = useTransition();
+
+  const venueId = venue?.id;
+  const urlDate = searchParams ? searchParams.get("date") : null;
+
+  // Anchor date window to venue's todayDate so window remains stable across date selections
+  const baseDate = todayDate || initialDate;
+
   const dates = useMemo(
     () => buildDateWindow({
-      startDate: initialDate,
+      startDate: baseDate,
       advanceBookingDays: venue.advanceBookingDays,
     }),
-    [initialDate, venue.advanceBookingDays],
+    [baseDate, venue.advanceBookingDays],
   );
 
-  const [selectedDate, setSelectedDate] = useState(dates[0]?.iso ?? initialDate);
+  // Single source of truth: selectedDate derived cleanly from URL search parameter
+  const selectedDate = useMemo(() => {
+    if (urlDate && typeof urlDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) {
+      if (dates.some((d) => d.iso === urlDate)) {
+        return urlDate;
+      }
+    }
+    return dates[0]?.iso ?? initialDate;
+  }, [urlDate, dates, initialDate]);
+
+  // Lazy draft evaluation for initial state
+  const initialDraft = useMemo(() => {
+    return readPersistedDraft(venueId, initialDate);
+  }, [venueId, initialDate]);
+
   const [availabilityData, setAvailabilityData] = useState(initialAvailability || []);
   const [availabilityError, setAvailabilityError] = useState("");
-  const [courtSelections, setCourtSelections] = useState(new Map());
-  const [selectionNotice, setSelectionNotice] = useState(null);
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCouponCode, setAppliedCouponCode] = useState("");
+
+  const [courtSelections, setCourtSelections] = useState(() => {
+    if (!initialDraft || initialDraft.date !== selectedDate || !Array.isArray(initialDraft.courtSelections)) {
+      return new Map();
+    }
+    const newMap = new Map();
+    for (const item of initialDraft.courtSelections) {
+      if (!item.courtId || !item.startTime || !item.endTime) continue;
+      const courtAvail = (initialAvailability || []).find((c) => c.courtId === item.courtId);
+      if (!courtAvail) continue;
+
+      const range = getSlotRange(courtAvail.slots, item.startTime, item.endTime);
+      const allAvailable = range.length > 0 && range.every((s) => s.status === "available");
+
+      if (allAvailable) {
+        newMap.set(item.courtId, { startTime: item.startTime, endTime: item.endTime });
+      }
+    }
+    return newMap;
+  });
+
+  const [selectionNotice, setSelectionNotice] = useState(() => {
+    if (!initialDraft || initialDraft.date !== selectedDate || !Array.isArray(initialDraft.courtSelections)) {
+      return null;
+    }
+    let hasInvalidSlot = false;
+    for (const item of initialDraft.courtSelections) {
+      if (!item.courtId || !item.startTime || !item.endTime) continue;
+      const courtAvail = (initialAvailability || []).find((c) => c.courtId === item.courtId);
+      if (!courtAvail) {
+        hasInvalidSlot = true;
+        continue;
+      }
+      const range = getSlotRange(courtAvail.slots, item.startTime, item.endTime);
+      const allAvailable = range.length > 0 && range.every((s) => s.status === "available");
+      if (!allAvailable) {
+        hasInvalidSlot = true;
+      }
+    }
+    return hasInvalidSlot ? "Some previously selected slots are no longer available." : null;
+  });
+
+  const [couponCode, setCouponCode] = useState(() => {
+    return initialDraft?.appliedCouponCode && typeof initialDraft.appliedCouponCode === "string"
+      ? initialDraft.appliedCouponCode
+      : "";
+  });
+  const [appliedCouponCode, setAppliedCouponCode] = useState(() => {
+    return initialDraft?.appliedCouponCode && typeof initialDraft.appliedCouponCode === "string"
+      ? initialDraft.appliedCouponCode
+      : "";
+  });
+
   const [couponMessage, setCouponMessage] = useState("");
   const [serverQuote, setServerQuote] = useState(EMPTY_QUOTE);
   const [quoteRequestError, setQuoteRequestError] = useState("");
 
-  // Availability for the initial date is already server-rendered and passed as a
-  // prop, so we skip the first client fetch to avoid a server→client→server
-  // waterfall / double-fetch (HI-4). Subsequent date changes fetch as normal.
   const initialFetchSkippedRef = useRef(false);
-  // Monotonic token so a manual refresh can't be clobbered by a stale in-flight
-  // fetch (and vice versa) — only the latest request may write state.
   const fetchTokenRef = useRef(0);
+
+  // Synchronize selection state when selectedDate changes (via date click or browser navigation)
+  const prevDateRef = useRef(selectedDate);
+  if (prevDateRef.current !== selectedDate) {
+    prevDateRef.current = selectedDate;
+    setCourtSelections(new Map());
+    setSelectionNotice(null);
+    setServerQuote(EMPTY_QUOTE);
+    setQuoteRequestError("");
+    if (venueId) clearPersistedDraft(venueId);
+  }
+
+  const [isFetchingAvailability, setIsFetchingAvailability] = useState(false);
 
   const fetchAvailability = useCallback((date) => {
     const token = ++fetchTokenRef.current;
-    return getAvailabilityAction(venue.id, date)
+    setIsFetchingAvailability(true);
+    return getAvailabilityAction(venueId, date)
       .then((res) => {
         if (token !== fetchTokenRef.current) return;
+        setIsFetchingAvailability(false);
         if (res.ok) {
           setAvailabilityData(res.data);
           setAvailabilityError("");
@@ -77,10 +225,11 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
       })
       .catch((error) => {
         if (token !== fetchTokenRef.current) return;
+        setIsFetchingAvailability(false);
         setAvailabilityData([]);
         setAvailabilityError(error.message || "Could not load availability.");
       });
-  }, [venue.id]);
+  }, [venueId]);
 
   useEffect(() => {
     if (!initialFetchSkippedRef.current && selectedDate === initialDate) {
@@ -91,18 +240,32 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     fetchAvailability(selectedDate);
   }, [selectedDate, initialDate, fetchAvailability]);
 
-  /**
-   * Re-fetches availability for the current date without touching the selection.
-   * Used after a hold expires or fails on slot contention, so the grid reflects
-   * what other users have taken in the meantime.
-   */
+  // Persist draft updates to sessionStorage
+  useEffect(() => {
+    if (!venueId) return;
+
+    const serializedSelections = Array.from(courtSelections.entries()).map(([courtId, range]) => ({
+      courtId,
+      startTime: range.startTime,
+      endTime: range.endTime,
+    }));
+
+    if (serializedSelections.length > 0 || appliedCouponCode) {
+      persistDraft(venueId, {
+        date: selectedDate,
+        courtSelections: serializedSelections,
+        appliedCouponCode,
+      });
+    } else {
+      clearPersistedDraft(venueId);
+    }
+  }, [venueId, selectedDate, courtSelections, appliedCouponCode]);
+
   const refreshAvailability = useCallback(
     () => fetchAvailability(selectedDate),
     [fetchAvailability, selectedDate],
   );
 
-  // Start times available on EVERY court — the shared booking windows the grid
-  // highlights when the venue has multiple courts (03-UI-UX-SPECIFICATION §2.2).
   const sharedSlotTimes = useMemo(
     () => getSharedAvailableSlotTimes(availabilityData, availabilityData.map((c) => c.courtId)),
     [availabilityData],
@@ -133,12 +296,12 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
 
   const selectionPayload = useMemo(
     () => buildBookingSelectionPayload({
-      venueId: venue.id,
+      venueId,
       selectedDate,
       selectedCourtsData,
       couponCode: appliedCouponCode,
     }),
-    [appliedCouponCode, selectedCourtsData, selectedDate, venue.id],
+    [appliedCouponCode, selectedCourtsData, selectedDate, venueId],
   );
 
   const hasSelection = selectedCourtsData.length > 0;
@@ -184,12 +347,6 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     };
   }, [appliedCouponCode, hasSelection, selectionPayload]);
 
-  /**
-   * Handles a slot click. All gesture logic lives in `reduceSlotClick` — the
-   * reducer mirrors one shared time range across every selected court, so an
-   * asymmetric selection can never be produced by the UI (02-BUSINESS-LOGIC
-   * §5.1); `buildBookingSelectionPayload` remains the checkout-time safeguard.
-   */
   const selectSlot = useCallback((courtId, slot) => {
     const { selections, notice } = reduceSlotClick({
       selections: courtSelections,
@@ -205,14 +362,13 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     }
   }, [availabilityData, courtSelections]);
 
-  /** Clears every court selection (e.g. after a hold expires mid-checkout). */
   const clearSelections = useCallback(() => {
     setCourtSelections(new Map());
     setSelectionNotice(null);
     setServerQuote(EMPTY_QUOTE);
     setQuoteRequestError("");
-  }, []);
-
+    if (venueId) clearPersistedDraft(venueId);
+  }, [venueId]);
 
   const applyCoupon = useCallback(() => {
     const parsed = couponSchema.safeParse(couponCode);
@@ -229,13 +385,24 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
   }, [couponCode]);
 
   const selectDate = useCallback((date) => {
-    setSelectedDate(date);
     setAvailabilityError("");
     setCourtSelections(new Map());
     setSelectionNotice(null);
     setServerQuote(EMPTY_QUOTE);
     setQuoteRequestError("");
-  }, []);
+    if (venueId) clearPersistedDraft(venueId);
+
+    // Synchronize selected date to URL search param using React 19 startTransition to prevent layout flashes
+    if (router && pathname && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("date") !== date) {
+        params.set("date", date);
+        startTransition(() => {
+          router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+        });
+      }
+    }
+  }, [venueId, router, pathname, startTransition]);
 
   return {
     // Data
@@ -243,6 +410,8 @@ export function useBookingSelection({ venue, courts, initialAvailability, initia
     selectedDate,
     availabilityData,
     availabilityError,
+    isFetchingAvailability,
+    isNavigating,
     courtSelections,
     selectedCourtsData,
     selectionPayload,

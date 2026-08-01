@@ -95,7 +95,7 @@ A phased, sequenced plan to execute the modernization. Each phase is independent
 
 **Steps:**
 1. **Cache policy in the DAL:** `getVenue` → `"use cache"` + `cacheTag('venue:'+slug)` + `cacheLife('hours')`; availability/bookings/wallet remain uncached. Dedupe `getVenue` with `react.cache()` (HI-6).
-2. **Stream the booking route:** wrap availability in `<Suspense>`; add `(booking)/loading.js` (HI-4); remove the redundant client re-fetch for the server-provided `initialDate` (HI-4).
+2. **Stream the booking route:** wrap availability in `<Suspense>`; add `(booking)/venues/[slug]/book/loading.js` (HI-4); remove the redundant client re-fetch for the server-provided `initialDate` (HI-4).
 3. **Invalidate on mutation:** `revalidateTag('venue:'+slug)` / `updateTag` in the relevant actions.
 4. **LCP hero (HI-5):** render `.court-hero` via `<Image fill priority>` with AVIF/WebP; remove the CSS background.
 5. **Fonts (ME-10):** move `Montserrat` into the root layout (or drop it).

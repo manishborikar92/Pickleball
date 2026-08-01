@@ -36,9 +36,9 @@ Route groups cleanly separate concerns and rendering posture:
 
 Error boundaries are present per group (`(marketing)/error.js`, `(booking)/error.js`, `(dashboard)/error.js`, `(admin)/error.js`, root `error.js`) and are well-tailored. `loading.js` exists for root, `(dashboard)`, and `(admin)` with decent skeletons.
 
-**Gaps (not structure problems):** `(booking)` has **no `loading.js`** despite being the most latency-sensitive group; there is **no `app/global-error.js`** to catch root-layout/font errors; `not-found.js` exists only at root.
+**Gaps (not structure problems):** `(booking)` previously had no route-specific `loading.js` despite being the most latency-sensitive route (resolved by adding `venues/[slug]/book/loading.js`); there is **no `app/global-error.js`** to catch root-layout/font errors; `not-found.js` exists only at root.
 
-**Verdict:** The structure is modern and correct. Do not reorganize. Fill the `loading.js`/`global-error.js` gaps.
+**Verdict:** The structure is modern and correct. Do not reorganize. Fill the `venues/[slug]/book/loading.js`/`global-error.js` gaps.
 
 ---
 

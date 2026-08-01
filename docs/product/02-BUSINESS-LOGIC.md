@@ -399,6 +399,9 @@ A booking is a **session**: one date, one contiguous time range, covering one or
 Step 1 — Browse & Select (no auth required)
   User views the booking page. Slot grids rendered per court.
   User selects court(s) and consecutive time slots.
+  Selected date is synchronized to URL search param `?date=YYYY-MM-DD` for deep-linking.
+  Uncommitted selection (courts, slot time range, applied promo code) persists in `sessionStorage` (`pb:draft:${venueId}`, version: 1, 2-hour TTL).
+  On refresh, restored slots are validated against live server availability; unavailable/past slots are deselected with a user notice.
   Live price preview updates as selections change (price-preview endpoint).
   No database writes. No lock held.
 
