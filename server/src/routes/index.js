@@ -35,7 +35,7 @@ export const createRouter = ({ config, startedAt, configureRoutes } = {}) => {
   const rewardsService = createDefaultRewardsService({ authorizationService });
   const notificationsService = createDefaultNotificationsService({ config });
 
-  const { router: paymentsRouter, reconciliationService } = createDefaultPaymentsRouter({
+  const { router: paymentsRouter } = createDefaultPaymentsRouter({
     bookingsService,
     config,
     authService: authorizationService,
