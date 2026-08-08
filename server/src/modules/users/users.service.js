@@ -3,6 +3,10 @@ export const createUsersService = ({ repository }) => ({
     return repository.getCurrentUser(userId);
   },
 
+  async updateProfile({ userId, name }) {
+    return repository.updateProfile({ userId, name });
+  },
+
   async getMyBookings({ userId, status, page = 1, limit = 20 }) {
     return repository.getMyBookings({
       userId,

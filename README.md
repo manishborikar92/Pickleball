@@ -25,9 +25,10 @@ This platform solves these friction points through:
 ### 2.1 Frontend (`web/`)
 - **Core Framework**: Next.js 16 (App Router, Cache Components, Partial Prerendering, Server Components)
 - **Styling**: Tailwind CSS 4 (premium dark aesthetic with CSS custom properties)
-- **State Management**: Server-side session via `getSession()` — no global client auth context
+- **State Management**: Server-side session via `verifySession()` — no global client auth context
 - **Proxy**: Dynamic `src/proxy.js` at the edge — cookie-presence redirects, route guards, and proactive token refresh
 - **Route Groups**: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`
+- **Customer Profile**: Authenticated customers can update their normalized name at `/dashboard/profile`, backed by `PATCH /api/v1/users/me`.
 
 ### 2.2 Backend (`server/`)
 - **Core Framework**: Express.js (Node 20+)

@@ -77,16 +77,16 @@ PATH A — First-time user (no account):
 
 PATH B — Returning user (name already set):
   Phone entry → OTP sent → OTP verified
-    → users record FOUND (name IS NOT NULL)
+    → users record FOUND (name and onboarding_completed_at are set)
     → JWT issued → next_step: "resume_booking"
   → Slot hold → Waiver → Payment
 
 PATH C — Already authenticated (valid session cookie):
-  GET /users/me confirms name IS NOT NULL → skip auth gate entirely
+  GET /users/me confirms the completed onboarding state → skip auth gate entirely
   → Slot hold → Waiver → Payment
 ```
 
-**Onboarding completeness** is derived from `users.name IS NOT NULL`. `onboarding_completed_at` is a timestamp for analytics only.
+**Onboarding completeness** is represented by `onboarding_completed_at` being set after a valid name is submitted. Protected onboarding routes additionally require both `users.name` and `onboarding_completed_at`.
 
 > **Implemented browser-session behavior.** The frontend never reads a JWT from `localStorage` or other browser storage. Auth server actions write secure HTTP-only access and refresh cookies; proxy refresh is optimistic, while server pages and DAL operations verify the session with the backend.
 
@@ -98,8 +98,8 @@ On `POST /auth/otp/verify`:
 3. Set `is_phone_verified = true`.
 4. Resolve `venue_user_roles` for this user to determine `next_step`:
    - Non-customer role exists → `next_step = "admin_dashboard"`
-   - No name set → `next_step = "complete_onboarding"`
-   - Name set → `next_step = "resume_booking"`
+   - Onboarding completion timestamp is not set → `next_step = "complete_onboarding"`
+   - Onboarding completion timestamp is set → `next_step = "resume_booking"`
 5. Create an `auth_sessions` row, issue a short-lived access token, and set the initial rotating refresh token cookie.
 
 ### 2.3 Name Collection — `POST /auth/onboarding`
@@ -114,7 +114,7 @@ On `POST /auth/otp/verify`:
 | Middleware | Check | Used on |
 |---|---|---|
 | `requireAuth` | Valid JWT | All authenticated routes |
-| `requireOnboarding` | `requireAuth` + `users.name IS NOT NULL` | Booking hold, waiver, payment, booking history, wallet, rewards |
+| `requireOnboarding` | `requireAuth` + `users.name IS NOT NULL` + `users.onboarding_completed_at IS NOT NULL` | Booking hold, waiver, payment, booking history, wallet, rewards |
 
 ---
 
@@ -250,8 +250,8 @@ requirePermission('edit_pricing'):
 
 requireOnboarding:
   1. requireAuth
-  2. Check req.user.name IS NOT NULL → proceed or 403 ONBOARDING_INCOMPLETE
-  (Note: admin users always have name set at provisioning, so this check
+  2. Check req.user.name IS NOT NULL and req.user.onboarding_completed_at IS NOT NULL → proceed or 403 ONBOARDING_INCOMPLETE
+  (Note: provisioned admin users have both completion fields set, so this check
    trivially passes for all admins; requireOnboarding is only meaningful
    for customer-facing routes)
 ```
@@ -265,24 +265,28 @@ requireOnboarding:
 | `POST /auth/admin/login` | | | | Admin credential endpoint |
 | `POST /auth/admin/activate`, `reset-password/*` | | | | Token-based only |
 | `/login` page | | | | Redirects away if already authenticated + onboarded |
-| `/onboarding` page | ✓ | | | Redirects away if `name IS NOT NULL` |
+| `/onboarding` page | ✓ | | | Redirects away if the completed onboarding state is present |
 | `GET /users/me`, `POST /auth/onboarding` | ✓ | | | Auth but not onboarding required |
 | `POST /auth/admin/change-password` | ✓ | | | Accessible even when `force_password_change` blocks other routes |
 | `POST /bookings/hold`, waiver, payment | ✓ | ✓ | | Core booking actions |
-| `/dashboard/bookings`, `/dashboard/wallet`, `/dashboard/rewards` pages | ✓ | ✓ | | Protected customer pages |
+| `/dashboard/bookings`, `/dashboard/wallet`, `/dashboard/rewards`, `/dashboard/profile` pages | ✓ | ✓ | | Protected customer pages |
+| `PATCH /users/me` | ✓ | ✓ | | Owner-scoped self-service name update; only `name` is accepted |
 | `/review/[id]` | ✓ | ✓ | | Booking owner also verified |
 | `/admin/login` page | | | | Redirects away if already admin-authenticated |
 | All `/admin/*` routes | ✓ | ✓ | ✓ | Admin only |
 
 ### 2.8 Edge Cases
 
-> **Implemented route correction.** The public checkout page is `/venues/[slug]/book`; customer account pages live under `/dashboard/{bookings,wallet,rewards}`. The older short route labels in the preceding reference table are historical product-plan terminology.
+> **Implemented route correction.** The public checkout page is `/venues/[slug]/book`; customer account pages live under `/dashboard/{bookings,wallet,rewards,profile}`. The older short route labels in the preceding reference table are historical product-plan terminology.
 
 **Interrupted customer onboarding (OTP verified, name never submitted):**
 JWT is valid. On return, `GET /users/me` returns `name: null` → frontend shows name collection. Same JWT works for `/auth/onboarding`. No re-OTP required within the 24h window.
 
 **JWT expired during onboarding:**
 User re-enters phone → OTP → existing `users` record found → `next_step: "complete_onboarding"` again. Same row reused.
+
+**Profile edit after onboarding:**
+An authenticated customer in the completed onboarding state may open `/dashboard/profile` and submit a normalized name to `PATCH /users/me`. The route uses the JWT subject for ownership, rejects unknown fields, and does not allow a customer to edit another user's record. Repeating the same name is safe; later edits do not move an existing `onboarding_completed_at` value. The current implementation supports only this completion state.
 
 **Duplicate phone prevention:**
 `users.phone` is `UNIQUE`. OTP verify is an upsert — same phone always resolves to the same `users` row.
@@ -297,7 +301,7 @@ Admin users have a `users.phone` if they want one (for future WhatsApp communica
 Scenario: A user who booked as a customer is later promoted to an admin role. The same `users` record is used. A `admin_credentials` row is created for them. A `venue_user_roles` row is updated to a non-customer role. Their next customer OTP login will return `next_step: "admin_dashboard"` instead of `resume_booking`. They can still access their booking history via customer routes with the same JWT.
 
 **Admin access to customer-facing routes:**
-Admin users have `onboarding_complete = true` (name is always set at provisioning). They can therefore also access customer-facing routes (`requireOnboarding` passes). This is by design — admins may need to test the booking flow.
+Admin users have `onboarding_complete = true` when their provisioned user record contains both the name and completion timestamp. They can therefore also access customer-facing routes (`requireOnboarding` passes). This is by design — admins may need to test the booking flow.
 
 **Force password change blocking:**
 If `admin_credentials.force_password_change = true`, login returns `next_step: "force_password_change"`. The admin panel frontend redirects to the change-password screen. All other admin routes return `403 FORCE_PASSWORD_CHANGE_REQUIRED` until the password is updated.
@@ -409,11 +413,11 @@ Step 2 — "Confirm & Pay" clicked
   Frontend relies on the HTTP-only cookie session; it never reads a JWT from browser storage.
 
   IF valid JWT found:
-    → Call GET /users/me to confirm token is live and name IS NOT NULL.
-    → If name IS NULL (incomplete onboarding): show name collection screen.
+    → Call GET /users/me to confirm token is live and onboarding is complete.
+    → If onboarding is incomplete: show name collection screen.
       → POST /auth/onboarding { name }
       → Proceed to Step 3.
-    → If name IS NOT NULL: skip auth gate entirely → go to Step 3.
+    → If onboarding is complete: skip auth gate entirely → go to Step 3.
 
   IF no valid JWT (or expired token):
     → Open Auth Gate bottom sheet.
@@ -432,7 +436,7 @@ Step 2 — "Confirm & Pay" clicked
       Phone entry → "Send OTP"
       OTP entry → "Verify OTP"
         → POST /auth/otp/verify
-        → users record FOUND (name IS NOT NULL)
+        → users record FOUND (completed onboarding state is present)
         → JWT issued, next_step: "resume_booking"
 
 Step 3 — All-or-Nothing Lock (authenticated + onboarding complete)

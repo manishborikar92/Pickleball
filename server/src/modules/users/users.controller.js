@@ -7,6 +7,15 @@ export const createUsersController = ({ userService }) => ({
     res.json(ApiResponse.success(user));
   }),
 
+  updateProfile: asyncHandler(async (req, res) => {
+    const user = await userService.updateProfile({
+      userId: req.auth.subject,
+      name: req.validated.body.name,
+    });
+
+    res.json(ApiResponse.success(user, 'Profile updated'));
+  }),
+
   myBookings: asyncHandler(async (req, res) => {
     const result = await userService.getMyBookings({
       userId: req.auth.subject,

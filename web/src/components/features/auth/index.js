@@ -2,6 +2,7 @@
 export { CustomerLoginForm } from "./CustomerLoginForm";
 export { CustomerOnboardingForm } from "./CustomerOnboardingForm";
 export { CustomerCheckoutAuthGate } from "./CustomerCheckoutAuthGate";
+export { ProfileForm } from "./ProfileForm";
 
 // Admin-focused authentication components
 export { AdminLoginForm } from "./AdminLoginForm";

@@ -33,11 +33,9 @@ const resolveOtpCode = (config) => {
   return String(crypto.randomInt(100000, 1000000));
 };
 
-const onboardingComplete = (user) => Boolean(user?.onboardingCompletedAt);
-
 const determineNextStep = ({ user, roles = [] }) => {
   const nonCustomerRole = roles.find((role) => role !== 'customer');
-  if (!onboardingComplete(user)) {
+  if (!user?.onboardingCompletedAt) {
     return 'complete_onboarding';
   }
   if (nonCustomerRole) {
@@ -51,7 +49,7 @@ const serializeUser = ({ user, isNewUser = false }) => ({
   phone: user.phone,
   name: user.name,
   is_new_user: isNewUser,
-  onboarding_complete: onboardingComplete(user),
+  onboarding_complete: Boolean(user?.onboardingCompletedAt),
 });
 
 const serializeAdminUser = ({ credential }) => ({

@@ -570,6 +570,75 @@ export const createOpenApiSpec = ({ config } = {}) => {
             },
           },
         },
+        patch: {
+          tags: ['Users'],
+          summary: 'Update the current user profile',
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['name'],
+                  properties: {
+                    name: {
+                      type: 'string',
+                      minLength: 2,
+                      maxLength: 100,
+                      example: 'Asha Mehta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            200: {
+              description: 'Current user profile updated successfully',
+              content: {
+                'application/json': {
+                  schema: {
+                    allOf: [
+                      { $ref: '#/components/schemas/ApiSuccess' },
+                      {
+                        type: 'object',
+                        properties: {
+                          data: { $ref: '#/components/schemas/UserProfile' },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+            400: {
+              description: 'Invalid or unsupported profile fields',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiError' },
+                },
+              },
+            },
+            401: {
+              description: 'Unauthorized access',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiError' },
+                },
+              },
+            },
+            403: {
+              description: 'Onboarding must be completed before profile updates',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ApiError' },
+                },
+              },
+            },
+          },
+        },
       },
       [`/users/me/bookings`]: {
         get: {

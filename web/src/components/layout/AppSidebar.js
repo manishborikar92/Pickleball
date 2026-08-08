@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/dashboard/bookings", label: "Bookings" },
   { href: "/dashboard/wallet", label: "Wallet" },
   { href: "/dashboard/rewards", label: "Rewards" },
+  { href: "/dashboard/profile", label: "Profile" },
   { href: `/venues/${VENUE.slug}/book`, label: "Book Again" },
 ];
 

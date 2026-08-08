@@ -53,9 +53,9 @@ All tables are stored in PostgreSQL. JSONB is used for flexible rule storage in 
 |---|---|---|---|
 | `id` | UUID | PK | |
 | `phone` | VARCHAR(20) | UNIQUE | Primary customer identifier; includes country code. Nullable for admin-only users who authenticate by email. |
-| `name` | VARCHAR(255) | | `NULL` until the user completes onboarding. A non-null `name` is the authoritative signal that onboarding is complete. |
+| `name` | VARCHAR(255) | | `NULL` until the user completes onboarding. A completed onboarding state includes both a non-null name and `onboarding_completed_at`. |
 | `is_phone_verified` | BOOLEAN | NOT NULL, default false | Set `true` on first successful OTP verification |
-| `onboarding_completed_at` | TIMESTAMPTZ | | Set once when `name` is first submitted via `/auth/onboarding`. `NULL` for users who have verified OTP but not yet submitted their name. |
+| `onboarding_completed_at` | TIMESTAMPTZ | | Set once when a valid `name` is first submitted via `/auth/onboarding`. `NULL` until onboarding is completed. |
 | `wallet_credits` | NUMERIC(10,2) | NOT NULL, default 0.00 | Monetary credit balance (INR); issued on force-majeure cancellations |
 | `created_at` | TIMESTAMPTZ | NOT NULL, default now() | |
 | `updated_at` | TIMESTAMPTZ | NOT NULL, default now() | |

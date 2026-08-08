@@ -17,6 +17,10 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.ok(response.body.paths['/auth/refresh']);
   assert.ok(response.body.paths['/auth/onboarding']);
   assert.ok(response.body.paths['/users/me']);
+  assert.ok(response.body.paths['/users/me'].patch);
+  assert.equal(response.body.paths['/users/me'].patch.requestBody.required, true);
+  assert.ok(response.body.paths['/users/me'].patch.responses['400']);
+  assert.ok(response.body.paths['/users/me'].patch.responses['403']);
   assert.ok(response.body.paths['/users/me/bookings']);
   assert.ok(response.body.paths['/users/me/wallet']);
   assert.ok(response.body.paths['/venues/{venueId}']);
@@ -71,6 +75,7 @@ test('OpenAPI JSON covers every built-in HTTP route', async () => {
     'POST /api/v1/auth/logout-all',
     'POST /api/v1/auth/onboarding',
     'GET /api/v1/users/me',
+    'PATCH /api/v1/users/me',
     'GET /api/v1/users/me/bookings',
     'GET /api/v1/users/me/wallet',
     'GET /api/v1/venues/{venueId}',

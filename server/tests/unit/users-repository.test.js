@@ -16,6 +16,7 @@ test('UsersRepository - getMyBookings multi-court serialization regression tests
       name: 'Multi-Court Repo User',
       phone,
       isPhoneVerified: true,
+      onboardingCompletedAt: new Date('2026-06-01T00:00:00.000Z'),
     },
   });
 
@@ -57,6 +58,39 @@ test('UsersRepository - getMyBookings multi-court serialization regression tests
     await prisma.court.deleteMany({ where: { id: { in: [court1.id, court2.id] } } }).catch(() => {});
     await prisma.venue.delete({ where: { id: venue.id } }).catch(() => {});
     await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+  });
+
+  await t.test('updates the name while preserving the onboarding completion timestamp', async () => {
+    const before = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { onboardingCompletedAt: true },
+    });
+    assert.ok(before.onboardingCompletedAt);
+
+    const first = await repository.updateProfile({
+      userId: user.id,
+      name: 'Updated Repo User',
+    });
+    const afterFirst = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { onboardingCompletedAt: true, name: true },
+    });
+
+    const second = await repository.updateProfile({
+      userId: user.id,
+      name: 'Updated Again Repo User',
+    });
+    const afterSecond = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { onboardingCompletedAt: true, name: true },
+    });
+
+    assert.equal(first.name, 'Updated Repo User');
+    assert.equal(afterFirst.name, 'Updated Repo User');
+    assert.deepEqual(afterFirst.onboardingCompletedAt, before.onboardingCompletedAt);
+    assert.equal(second.name, 'Updated Again Repo User');
+    assert.equal(afterSecond.name, 'Updated Again Repo User');
+    assert.deepEqual(afterSecond.onboardingCompletedAt, afterFirst.onboardingCompletedAt);
   });
 
   await t.test('Verify getMyBookings serializes multiple court names deterministically and exactly once', async () => {

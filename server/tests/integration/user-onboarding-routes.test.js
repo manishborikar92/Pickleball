@@ -6,6 +6,7 @@ import request from 'supertest';
 import createApp from '../../src/app.js';
 import { createAuthRouter } from '../../src/modules/auth/auth.routes.js';
 import { createUsersRouter } from '../../src/modules/users/users.routes.js';
+import { ForbiddenError } from '../../src/utils/api-error.js';
 
 const secret = 'test-access-secret-with-enough-length';
 const token = jwt.sign(
@@ -14,7 +15,10 @@ const token = jwt.sign(
   { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
 );
 
-function createTestApp(userService) {
+function createTestApp(
+  userService,
+  { onboardingMiddleware = (_req, _res, next) => next() } = {},
+) {
   const authService = {
     sendCustomerOtp: async () => ({}),
     verifyCustomerOtp: async () => ({}),
@@ -31,7 +35,7 @@ function createTestApp(userService) {
       router.use('/auth', createAuthRouter({ authService, userService }));
       router.use('/users', createUsersRouter({
         userService,
-        onboardingMiddleware: (_req, _res, next) => next(),
+        onboardingMiddleware,
       }));
     },
   });
@@ -79,4 +83,80 @@ test('POST /auth/onboarding completes name collection with JWT only', async () =
   assert.equal(response.status, 200);
   assert.equal(response.body.data.user.name, 'Asha Mehta');
   assert.equal(response.body.data.next_step, 'resume_booking');
+});
+
+test('PATCH /users/me updates the authenticated user profile', async () => {
+  const app = createTestApp({
+    updateProfile: async ({ userId, name }) => ({
+      id: userId,
+      phone: '+919876543210',
+      name,
+      onboarding_complete: true,
+      roles: [],
+      permissions: ['view_own_bookings'],
+    }),
+  });
+
+  const response = await request(app)
+    .patch('/api/v1/users/me')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ name: '  Asha   Mehta  ' });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.name, 'Asha Mehta');
+  assert.equal(response.body.data.id, 'user-1');
+});
+
+test('PATCH /users/me rejects unsupported or invalid profile payloads', async () => {
+  const app = createTestApp({
+    updateProfile: async () => {
+      throw new Error('must not call service');
+    },
+  });
+
+  const missingName = await request(app)
+    .patch('/api/v1/users/me')
+    .set('Authorization', `Bearer ${token}`)
+    .send({});
+  assert.equal(missingName.status, 400);
+
+  const unknownField = await request(app)
+    .patch('/api/v1/users/me')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ name: 'Asha Mehta', phone: '+919876543210' });
+  assert.equal(unknownField.status, 400);
+});
+
+test('PATCH /users/me requires onboarding completion', async () => {
+  const app = createTestApp(
+    { updateProfile: async () => ({ name: 'Asha Mehta' }) },
+    {
+      onboardingMiddleware: (_req, _res, next) => next(new ForbiddenError(
+        'Onboarding incomplete',
+        { code: 'ONBOARDING_INCOMPLETE' },
+      )),
+    },
+  );
+
+  const response = await request(app)
+    .patch('/api/v1/users/me')
+    .set('Authorization', `Bearer ${token}`)
+    .send({ name: 'Asha Mehta' });
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body.data.code, 'ONBOARDING_INCOMPLETE');
+});
+
+test('PATCH /users/me rejects unauthenticated requests', async () => {
+  const app = createTestApp({
+    updateProfile: async () => {
+      throw new Error('must not call service');
+    },
+  });
+
+  const response = await request(app)
+    .patch('/api/v1/users/me')
+    .send({ name: 'Asha Mehta' });
+
+  assert.equal(response.status, 401);
 });

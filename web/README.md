@@ -8,7 +8,7 @@ The Next.js 16 App Router frontend provides the user interface, booking dashboar
 
 - **User Journeys**: Renders booking timelines, consecutive slot grids, onboarding wizards, and dashboards.
 - **Optimistic Proxy Routing**: The Next.js custom `proxy.js` performs optimistic cookie-presence checks, coarse redirects, and **proactive token refresh** at the network edge (it refreshes an expired access token before the Server Component render runs).
-- **Server-Side Auth**: Authentication is verified in server layouts/pages via `getSession()`, passed as props to components.
+- **Server-Side Auth**: Authentication is verified in server layouts/pages via `verifySession()`, passed as props to components.
 - **Cache Components & PPR**: Uses Next.js 16 Cache Components (`"use cache"`) for static content and Partial Prerendering for dynamic pages.
 - **Access Control (RBAC)**: Enforces page routing permissions via server-side `requireRouteAccess()` and proxy cookie checks.
 - **Design Tokens**: Renders layouts matching design specifications using a dark theme sports aesthetic with Tailwind CSS 4.
@@ -21,11 +21,11 @@ The Next.js 16 App Router frontend provides the user interface, booking dashboar
 - `(marketing)/` — Static/cached public pages (landing, about, terms, privacy, support)
 - `(booking)/` — Dynamic booking flow (venue selection, checkout, confirmation, pending, failed)
 - `(auth)/` — Authentication pages (login, onboarding, admin login)
-- `(dashboard)/` — Customer authenticated area (overview, bookings, wallet)
+- `(dashboard)/` — Customer authenticated area (overview, bookings, wallet, rewards, profile)
 - `(admin)/` — Admin authenticated area (overview, bookings, schedule, pricing, courts, users, settings)
 
 ### Auth Architecture
-- **Session check**: Server layouts/pages call `getSession()` (memoized via React `cache()`), which reads cookies and calls `/api/v1/users/me`
+- **Session check**: Server layouts/pages call `verifySession()` (memoized via React `cache()`), which reads cookies and calls `/api/v1/users/me`
 - **No client-side auth context**: Session passed as props from server components
 - **Token refresh**: Proactive in `proxy.js` — an expired access token is refreshed at the edge before the render runs (it forwards the new cookies to the render and sets them on the browser response). As a fallback for client-invoked Server Actions, an expired token is also refreshed on a 401 inside the transport (`lib/dal/httpClient.js`).
 
@@ -39,7 +39,7 @@ enforced by an ESLint `no-restricted-imports` boundary).
   (`"use cache"` + `cacheTag`); user/time-sensitive reads stay uncached behind `<Suspense>`.
 - **Authorization** lives at the DAL boundary (`lib/dal/session.js` `verifySession()`), with
   role/permissions derived from `/users/me`. Pages call `requireRouteAccess()` with the real path.
-- **Mutations** are Server Actions in route-independent `lib/actions/*` (auth, booking, review) — each
+- **Mutations** are Server Actions in route-independent `lib/actions/*` (auth/profile, booking, review) — each
   validates with a shared Zod schema, authorizes, calls the backend, and revalidates cache tags.
 - **Validation** is one shared schema per input (`lib/schemas/*`), reused for client UX and
   authoritative server enforcement.
@@ -50,7 +50,7 @@ All frontend source files reside in `web/src/`:
 - `components/` — Reusable React components (features, layout, shared, seo)
 - `hooks/` — Client-side hooks (`useOverlay`, `useTable`, `useBookingSelection`, `useBookingStatusPoll`)
 - `lib/dal/` — Data Access Layer: reads + `httpClient` (transport, refresh-on-401) + `session` (authz)
-- `lib/actions/` — Server Actions (mutations only): auth, booking, review; `result.js` (shared typed `ok`/`fail` contract)
+- `lib/actions/` — Server Actions (mutations only): auth/profile, booking, review; `result.js` (shared typed `ok`/`fail` contract)
 - `lib/services/` — Multi-step domain logic (checkout, bookingStatus, reviewStatus)
 - `lib/schemas/` — Shared Zod validation schemas
 - `lib/` — Domain/utility modules (normalizers, bookingEngine, rbac, auth, cookies, csp, safeNext, mapLinks, utils)

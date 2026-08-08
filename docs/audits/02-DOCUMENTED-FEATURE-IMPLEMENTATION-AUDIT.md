@@ -64,7 +64,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 | 11 | **Promotions & Pricing** | Admin Coupon Management REST API & Frontend UI | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 12 | **Promotions & Pricing** | Admin Dynamic Pricing Rules REST API & Frontend UI | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 13 | **Promotions & Pricing** | Coupon Usage Tracking & Limit Enforcement | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §6.2, `docs/specs/01-DATABASE-SCHEMA.md` Domain C |
-| 14 | **Customer Profile** | Customer Self-Service Profile Update API (`PATCH /users/me`) | **Missing** | `docs/specs/02-API-SPECIFICATION.md` Section 4 |
+| 14 | **Customer Profile** | Customer Self-Service Profile Update API (`PATCH /users/me`) | **Implemented** | `docs/specs/02-API-SPECIFICATION.md` Section 4 |
 | 15 | **Admin Operations** | Admin Overview Dashboard Real Data API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/plans/web-modernization/03-issues-register.md` ME-3 |
 | 16 | **Admin Operations** | Admin User Lookup & Customer Booking History API | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 17 | **Admin Operations** | Admin Venue Settings Manager | **Partial** | `docs/product/03-UI-UX-SPECIFICATION.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
@@ -287,12 +287,14 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 #### Item 5.1: Customer Self-Service Profile Update API (`PATCH /users/me`)
 * **Source Documentation Reference(s):**
   * `docs/specs/02-API-SPECIFICATION.md` Section 4 (`PATCH /users/me`)
-* **Current Implementation Status:** Missing
+* **Current Implementation Status:** Implemented
 * **Brief Description of Documentation Specification:** Authenticated customers can update their name and profile information via `PATCH /users/me`.
-* **Brief Description of Codebase Reality:** `server/src/modules/users/users.routes.js` exposes `GET /users/me` (read profile) and `POST /onboarding` (first-time name setup), but does not implement `PATCH /users/me`.
-* **The Exact Gap That Remains:** Missing `PATCH /users/me` backend route, controller, and service logic for updating customer profile details after onboarding.
+* **Brief Description of Codebase Reality:** `PATCH /users/me` is available behind JWT authentication and the existing onboarding gate. It validates and normalizes the supported `name` field, updates the caller's own `User` record transactionally, preserves an existing onboarding completion timestamp, and returns the canonical auth profile. The customer dashboard exposes the flow at `/dashboard/profile` through the sidebar with a dashboard-styled responsive form, explicit accessible field labeling, account details, and session refresh after a successful save.
+* **The Exact Gap That Remains:** None for the documented name-update scope. Additional profile fields remain intentionally out of scope until they are added to the domain model and API contract.
 * **Dependent Files / Modules / Areas:**
-  * Backend: `server/src/modules/users/users.routes.js`, `server/src/modules/users/users.controller.js`, `server/src/modules/users/users.service.js`
+  * Backend: `server/src/modules/users/users.routes.js`, `server/src/modules/users/users.controller.js`, `server/src/modules/users/users.service.js`, `server/src/modules/users/users.repository.js`, `server/src/modules/users/users.validators.js`, `server/src/modules/auth/auth.service.js`, `server/src/middleware/require-onboarding.middleware.js`
+  * Frontend: `web/src/app/(dashboard)/dashboard/profile/page.js`, `web/src/components/features/auth/ProfileForm.js`, `web/src/components/layout/AppSidebar.js`, `web/src/lib/actions/auth.js`, `web/src/lib/rbac.js`; the shared `Form.js` primitives and onboarding `NameForm.js` remain unchanged and are not feature-specific dependencies.
+  * Contract and verification: `server/src/modules/openapi/openapi.spec.js`, `server/postman/users.postman_collection.json`, `server/tests/integration/user-onboarding-routes.test.js`, `server/tests/unit/auth-service.test.js`, `server/tests/unit/require-onboarding.middleware.test.js`, `server/tests/unit/users-service.test.js`, `server/tests/unit/users-repository.test.js`, `server/tests/integration/openapi.test.js`, `web/tests/profile.test.js`
 
 ---
 

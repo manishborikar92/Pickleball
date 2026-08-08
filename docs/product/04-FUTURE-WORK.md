@@ -8,7 +8,7 @@
 - Access tokens, refresh tokens, refresh-token rotation, current-device logout, all-device logout, and session revocation.
 - Admin login foundation using `admin_credentials`, bcrypt password verification, status checks, lockout tracking, and the shared session/token lifecycle.
 - Customer onboarding through `POST /auth/onboarding`.
-- Current-user profile through `GET /users/me`.
+- Current-user profile through `GET /users/me`, self-service name updates through `PATCH /users/me`, and the authenticated `/dashboard/profile` editor.
 - Booking availability, hold lock concurrency, waiver, PhonePe payment, wallet credits, reviews, and reward engine APIs.
 - In-process scheduler (`core/scheduler.js`) driving slot hold cleanup, payment reconciliation, reward expiry, and PostgreSQL outbox notification dispatch (T-24h/T-2h reminders, post-session review requests — ADR-011).
 - Admin settings UI (`/admin/settings`) with accessible notification toggles and recent activity log.

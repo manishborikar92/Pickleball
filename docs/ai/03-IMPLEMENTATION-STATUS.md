@@ -18,7 +18,7 @@ We classify codebase features using the following lifecycle states:
 | Optimistic Proxy + Proactive Refresh | **Built** | `docs/product/03-UI-UX-SPECIFICATION.md` | `web/proxy.js` |
 | Data Access Layer + Authz Boundary | **Built** | `docs/plans/web-modernization/` | `web/src/lib/dal` |
 | Server Actions (mutations, route-independent) | **Built** | `docs/plans/web-modernization/` | `web/src/lib/actions` |
-| Customer Profiles | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/users` |
+| Customer Profiles & Self-Service Update | **Built** | `docs/specs/02-API-SPECIFICATION.md` Section 4 | `server/src/modules/users` + `web/src/app/(dashboard)/dashboard/profile` |
 | Admin Auth (Credentials) | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/auth` |
 | Scheduling & Hours | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/venues` |
 | Slot Locking Engine | **Built** | `docs/product/02-BUSINESS-LOGIC.md` | `server/src/modules/bookings` |
@@ -41,6 +41,9 @@ We classify codebase features using the following lifecycle states:
 - [x] **In-Context Authentication**: Login modal holds consecutive slot parameter state variables.
 - [x] **Onboarding Redirects**: Forces redirect to `/onboarding` if profile properties are missing.
 - [x] **Token Rotation**: The access token is refreshed proactively in `web/proxy.js` at the edge (before the render) and, as a fallback for authenticated Server Action calls, on a 401 inside `web/src/lib/dal/httpClient.js`. Role/permissions derive from `/users/me`, not a cookie.
+- [x] **Self-Service Profile Update**: Authenticated, onboarded customers update their own normalized name through `PATCH /users/me`. The transaction preserves an existing onboarding completion timestamp and returns the canonical profile used by `web/src/lib/dal/session.js`; `/dashboard/profile` exposes a dashboard-styled, responsive account form through the customer sidebar.
+- [x] **Onboarding Signal Consistency**: Authentication and profile serialization derive `onboarding_complete` from the current `onboarding_completed_at` completion signal; protected onboarding routes require both a profile name and completion timestamp.
+- [x] **Profile Update Verification**: Backend route, validation, authorization, service delegation, timestamp preservation, onboarding-state authorization, OpenAPI/Postman coverage, accessible dashboard composition, session refresh, and frontend route/schema coverage are tested in the users/OpenAPI suites and `web/tests/profile.test.js`.
 
 ### 2.2 Admin Authentication & Management (Partial)
 - [x] **Email & Password Guards**: Restricts dashboard panels to admins.

@@ -13,6 +13,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { apiRequest } from "@/lib/dal/httpClient";
+import { verifySession } from "@/lib/dal/session";
 import { COOKIE_NAMES } from "@/config/auth.config";
 import { extractCookieValue, resolveRole } from "@/lib/auth";
 import { setSessionCookies, clearSessionCookies } from "@/lib/cookies";
@@ -82,6 +83,35 @@ export async function completeOnboardingAction(name) {
     });
 
     await setSessionCookies({ accessToken, user: payload.data.user });
+    return ok(payload.data);
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function updateProfileAction(name) {
+  const parsed = nameSchema.safeParse(name);
+  if (!parsed.success) {
+    return fail(null, { code: "bad_request", message: parsed.error.issues[0]?.message });
+  }
+
+  const session = await verifySession();
+  if (!session?.user) {
+    return fail(null, { code: "unauthorized", message: "Authentication required." });
+  }
+
+  try {
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get(COOKIE_NAMES.ACCESS_TOKEN)?.value || "";
+    const refreshToken = cookieStore.get(COOKIE_NAMES.REFRESH_TOKEN)?.value || "";
+    const { payload } = await apiRequest("/api/v1/users/me", {
+      method: "PATCH",
+      body: { name: parsed.data },
+      accessToken,
+      refreshToken,
+      retryOnUnauthorized: true,
+    });
+
     return ok(payload.data);
   } catch (error) {
     return fail(error);

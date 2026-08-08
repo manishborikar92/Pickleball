@@ -497,7 +497,17 @@ If the booking has an associated unrevealed reward instance, an accent badge ("ð
 
 Shows current `wallet_credits` balance and a list of `wallet_transactions` (credits issued, credits redeemed) with dates and reasons.
 
-### 3.3 My Rewards
+### 3.3 Profile
+
+**Route:** `/dashboard/profile`
+
+The Profile page is a separate account-settings destination in the authenticated customer dashboard and is reachable from the shared sidebar navigation. It uses the standard dashboard shell, left-aligned section header, responsive card layout, shared form controls, and a scrollable content region on shorter desktop viewports.
+
+The editable field is the customer's normalized full name. The form provides explicit labeling, shared Zod validation, a disabled submit state while `PATCH /users/me` is in flight, inline validation feedback, server-error feedback, and a success confirmation. The canonical response updates the visible name and refreshes the dashboard session so the sidebar reflects the new value immediately.
+
+The verified sign-in phone number is displayed as read-only account context. Phone-number changes are not part of the current profile API and remain an assisted support workflow. No other profile fields are implied by this page until they are added to the domain model and API contract.
+
+### 3.4 My Rewards
 
 Lists all reward instances for the user, grouped by: **Pending** (unrevealed, not expired) and **Past** (revealed or expired).
 
@@ -509,7 +519,7 @@ Lists all reward instances for the user, grouped by: **Pending** (unrevealed, no
 
 ---
 
-### 3.4 Reward Reveal Overlay
+### 3.5 Reward Reveal Overlay
 
 **Implemented interaction (authoritative):** Rewards are revealed in the `RewardExperience` overlay, not at a standalone route. On a booking-confirmation page, a pending reward can auto-present after a short delay; if dismissed, a foil teaser card reopens the same overlay. The same experience is available on `/dashboard/rewards`. The overlay is a bottom sheet on mobile and a centered dialog on desktop, with an explicit keyboard/assistive-technology reveal button as well as the cosmetic scratch gesture.
 

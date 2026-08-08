@@ -34,6 +34,7 @@ export const routeAccess = {
   "/dashboard/bookings": { auth: true, permission: "view_own_bookings" },
   "/dashboard/wallet": { auth: true, permission: "view_own_bookings" },
   "/dashboard/rewards": { auth: true, permission: "view_own_bookings" },
+  "/dashboard/profile": { auth: true, permission: "view_own_bookings" },
   "/admin": { auth: true, permission: "manage_bookings" },
   "/admin/overview": { auth: true, permission: "manage_bookings" },
   "/admin/bookings": { auth: true, permission: "manage_bookings" },

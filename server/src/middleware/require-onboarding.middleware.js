@@ -17,7 +17,7 @@ export const requireOnboarding = ({ prisma } = {}) => async (req, _res, next) =>
       },
     });
 
-    if (!user?.name) {
+    if (!user?.name || !user.onboardingCompletedAt) {
       throw new ForbiddenError('Onboarding incomplete', { code: 'ONBOARDING_INCOMPLETE' });
     }
 

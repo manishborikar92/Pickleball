@@ -393,7 +393,7 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
 }
 ```
 
-`onboarding_complete` is computed as `name IS NOT NULL`. `roles` shows the user's venue assignments — an empty array means customer-only access.
+`onboarding_complete` is computed from the current onboarding completion timestamp. Protected onboarding routes also require a non-null profile name. `roles` shows the user's venue assignments — an empty array means customer-only access.
 
 **If `name` is `null`** (OTP verified but onboarding not finished):
 ```json
@@ -417,19 +417,21 @@ The frontend uses this response on app load to decide whether to show the name c
 
 ### `PATCH /users/me`
 
-> [!WARNING]
-> **Implementation Status: Planned API Contract / Not Yet Implemented**
-> This endpoint is a planned future contract for self-service customer profile updates (e.g. updating the user's name). It is not currently implemented in the live backend.
-> **Dependency:** Currently, name submission is handled once during registration/onboarding via `POST /auth/onboarding`. Full self-service profile modification is deferred until a profile/settings page is added to the customer web application.
-
-*Protected (JWT + onboarding complete).* Update name after onboarding is done. For initial name collection during onboarding, use `POST /auth/onboarding` instead.
+*Protected (JWT + onboarding complete).* Update the authenticated customer's name after onboarding. The endpoint is owner-scoped by the JWT subject; it never accepts a user ID. For initial name collection during onboarding, use `POST /auth/onboarding` instead.
 
 **Body:**
 ```json
 { "name": "Arjun Mehta" }
 ```
 
-**Response `200`:** Updated user object.
+Only `name` is accepted. Leading/trailing whitespace is trimmed, runs of whitespace are collapsed to one space, and the normalized value must contain 2–100 characters.
+
+**Response `200`:** Updated canonical user profile, including the existing roles and permissions fields used by the frontend session boundary.
+
+**Errors:**
+- `400` — missing, invalid, overlong, or unsupported profile fields.
+- `401` — missing or invalid JWT.
+- `403` (`ONBOARDING_INCOMPLETE`) — the customer must complete onboarding before editing the profile.
 
 ---
 
@@ -1626,5 +1628,3 @@ All errors follow a consistent structure:
 | `FORBIDDEN` | 403 | Insufficient permissions |
 | `NOT_FOUND` | 404 | Resource does not exist |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
-
-

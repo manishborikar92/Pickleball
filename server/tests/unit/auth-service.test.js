@@ -209,6 +209,32 @@ test('verifyCustomerOtp creates user, session, access token, and refresh token',
   assert.equal(repository.data.sessions.size, 1);
 });
 
+test('verifyCustomerOtp keeps a named customer incomplete until onboarding is completed', async () => {
+  const repository = createMemoryRepository();
+  repository.data.users.set('+919876543210', {
+    id: 'user-without-completion-1',
+    phone: '+919876543210',
+    name: 'Asha Mehta',
+    onboardingCompletedAt: null,
+    isPhoneVerified: true,
+    roles: [],
+    permissions: [Permissions.VIEW_OWN_BOOKINGS],
+  });
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 8),
+  });
+
+  await service.sendCustomerOtp({ phone: '+919876543210' });
+  const result = await service.verifyCustomerOtp({ phone: '+919876543210', otp: '123456' });
+
+  assert.equal(result.user.onboarding_complete, false);
+  assert.equal(result.next_step, 'complete_onboarding');
+});
+
 test('refreshSession rotates refresh token and revokes the used token', async () => {
   const repository = createMemoryRepository();
   let bytesValue = 1;
@@ -646,5 +672,3 @@ test('AuthService.hasPermission evaluates user permissions at a venue correctly'
   });
   assert.equal(missingUser, false);
 });
-
-

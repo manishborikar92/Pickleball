@@ -13,10 +13,10 @@ This repository contains a Next.js 16 frontend and an Express.js/PostgreSQL back
 ## Core Files
 - Server Router: [server/src/app.js](server/src/app.js)
 - Database Schema: [server/prisma/schema.prisma](server/prisma/schema.prisma)
-- Frontend Pages Root: [web/src/app](web/src/app)
+- Frontend Pages Root: [web/src/app](web/src/app), including the authenticated customer profile editor at `web/src/app/(dashboard)/dashboard/profile`
 
 ## Core Architecture Snapshot
-- **Frontend**: Next.js 16 App Router with Cache Components, Partial Prerendering, Server Components, and edge proxy with proactive token refresh. Route groups: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`. Server-side auth via `getSession()` — no client-side auth context.
+- **Frontend**: Next.js 16 App Router with Cache Components, Partial Prerendering, Server Components, and edge proxy with proactive token refresh. Route groups: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`. Server-side auth via `verifySession()` — no client-side auth context.
 - **Availability Ownership**: Handled fully inside the `venues` module; availability slots are generated dynamically from base schedules and exception overlays.
 - **Concurrency Safety**: Double-bookings are prevented atomically at slot hold creation time by a PostgreSQL partial unique index (`booking_slots_no_double_book`) on the `booking_slots` table.
 - **Booking Holds**: Active holds are represented as pending bookings (status `pending_payment`) with a 10-minute expiration TTL.

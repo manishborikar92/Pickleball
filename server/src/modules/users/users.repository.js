@@ -60,6 +60,33 @@ const serializeWalletTransaction = (transaction) => ({
 export const createUsersRepository = ({ prisma } = {}) => {
   const db = () => prisma || getPrisma();
 
+  const updateUserName = async ({ userId, name }) => {
+    try {
+      return await db().$transaction(async (tx) => {
+        const existing = await tx.user.findUnique({ where: { id: userId } });
+        if (!existing) {
+          throw new NotFoundError('User not found');
+        }
+
+        const user = await tx.user.update({
+          where: { id: userId },
+          data: {
+            name,
+            onboardingCompletedAt: existing.onboardingCompletedAt || new Date(),
+          },
+          include: includeUserAuthContext,
+        });
+
+        return serializeAuthProfile(user);
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundError('User not found');
+      }
+      throw error;
+    }
+  };
+
   return {
     async getCurrentUser(userId) {
       const user = await db().user.findUnique({
@@ -75,30 +102,11 @@ export const createUsersRepository = ({ prisma } = {}) => {
     },
 
     async completeOnboarding({ userId, name }) {
-      try {
-        return await db().$transaction(async (tx) => {
-          const existing = await tx.user.findUnique({ where: { id: userId } });
-          if (!existing) {
-            throw new NotFoundError('User not found');
-          }
+      return updateUserName({ userId, name });
+    },
 
-          const user = await tx.user.update({
-            where: { id: userId },
-            data: {
-              name,
-              onboardingCompletedAt: existing.onboardingCompletedAt || new Date(),
-            },
-            include: includeUserAuthContext,
-          });
-
-          return serializeAuthProfile(user);
-        });
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-          throw new NotFoundError('User not found');
-        }
-        throw error;
-      }
+    async updateProfile({ userId, name }) {
+      return updateUserName({ userId, name });
     },
 
     async getMyBookings({ userId, status, page = 1, limit = 20 }) {

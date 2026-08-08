@@ -2,6 +2,8 @@
 
 This report presents a comprehensive, repository-wide audit of all remaining customer-facing feature gaps, missing integrations, and deferred workflows on the Pickleball platform. The findings are strictly limited to features and functionalities that are explicitly documented in the project's Markdown (`.md`) files but have not yet been fully implemented in the codebase.
 
+The customer self-service profile update (`PATCH /users/me`) and its `/dashboard/profile` experience are implemented and therefore intentionally do not appear as an outstanding gap in this report. The current implementation and verification evidence are tracked in [02-DOCUMENTED-FEATURE-IMPLEMENTATION-AUDIT.md](02-DOCUMENTED-FEATURE-IMPLEMENTATION-AUDIT.md), Item 5.1.
+
 ---
 
 ## 1. Availability
