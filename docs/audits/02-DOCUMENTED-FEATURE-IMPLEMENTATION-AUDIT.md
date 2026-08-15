@@ -2,7 +2,7 @@
 
 This document presents a comprehensive, evidence-based review across all specifications in `docs/`, `server/`, and `web/`. Every item reported below is traceable directly to one or more project `.md` or `.txt` specification files and cross-referenced against the actual implementation in `server/` and `web/`.
 
-Fully implemented features (such as PostgreSQL/Prisma migration, customer-side slot lock concurrency engine, PhonePe PG v2 payment integration with fresh entropy retries, S2S webhook processing, customer OTP auth with edge session rotation, reviews with moderation, and voucher-based scratch card reward engine) have been validated and excluded from the gap inventory per strict audit guidelines.
+Fully implemented features (such as PostgreSQL/Prisma migration, customer-side slot lock concurrency engine, customer OTP auth with edge session rotation, customer profile self-service updates, scheduled WhatsApp notifications, reviews with moderation, and voucher-based scratch card reward engine) have been validated and excluded from the gap inventory per strict audit guidelines.
 
 ---
 
@@ -37,6 +37,7 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
     - [Item 6.5: Admin Force-Cancellation & Credit Issuance Endpoint](#item-65-admin-force-cancellation--credit-issuance-endpoint)
   - [2.7 Payments & Settlement Operations](#27-payments--settlement-operations)
     - [Item 7.1: Nightly Settlement Reconciliation Job](#item-71-nightly-settlement-reconciliation-job)
+    - [Item 7.2: Complete Replacement of PhonePe with Razorpay Payment Gateway](#item-72-complete-replacement-of-phonepe-with-razorpay-payment-gateway)
   - [2.8 Media Storage & Photo Uploads](#28-media-storage--photo-uploads)
     - [Item 8.1: Cloudflare R2 Integration for Court & Review Photos](#item-81-cloudflare-r2-integration-for-court--review-photos)
   - [2.9 Rewards & Gamification (Scratch Cards)](#29-rewards--gamification-scratch-cards)
@@ -71,9 +72,10 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 | 18 | **Admin Operations** | Admin Court Details & Status Management API | **Missing** | `docs/product/03-UI-UX-SPECIFICATION.md` §7 |
 | 19 | **Admin Operations** | Admin Force-Cancellation & Credit Issuance Endpoint | **Partial** | `docs/product/02-BUSINESS-LOGIC.md` §7, `docs/specs/02-API-SPECIFICATION.md` §11 |
 | 20 | **Payments & Settlement** | Nightly Settlement Reconciliation Job | **Missing** | `docs/integrations/02-PAYMENT-INTEGRATION.md` §11.2 |
-| 21 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
-| 22 | **Rewards & Gamification** | Reward Engine (Scratch Cards) | **Implemented** | `docs/adrs/ADR-010-rewards-module.md` |
-| 23 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
+| 21 | **Payments & Settlement** | Complete Replacement of PhonePe with Razorpay Payment Gateway | **Pending Replacement** | Project Architecture Requirement, `docs/integrations/02-PAYMENT-INTEGRATION.md` |
+| 22 | **Media & Storage** | Cloudflare R2 Integration for Photos | **Missing** | `docs/product/01-PROJECT-OVERVIEW.md` §4.4, `docs/product/04-FUTURE-WORK.md` §2 |
+| 23 | **Rewards & Gamification** | Reward Engine (Scratch Cards) | **Implemented** | `docs/adrs/ADR-010-rewards-module.md` |
+| 24 | **Testing & CI Tooling** | Web Modernization E2E Testing & CI Scaffolding | **Partial** | `docs/plans/web-modernization/README.md` §Status, `06-implementation-plan.md` Phases 6–7 |
 
 ---
 
@@ -382,6 +384,54 @@ Fully implemented features (such as PostgreSQL/Prisma migration, customer-side s
 * **The Exact Gap That Remains:** Missing nightly settlement report fetch/parsing job, transaction matching service, and admin discrepancy notification/flagging mechanism.
 * **Dependent Files / Modules / Areas:**
   * Backend: `server/src/modules/payments/reconciliation.service.js`, `server/src/core/scheduler.js`
+
+---
+
+#### Item 7.2: Complete Replacement of PhonePe with Razorpay Payment Gateway
+* **Source Documentation Reference(s):**
+  * `docs/integrations/02-PAYMENT-INTEGRATION.md` (to be rewritten for Razorpay)
+  * `docs/adrs/ADR-004-booking-lifecycle-payments.md`
+  * `docs/specs/02-API-SPECIFICATION.md` Section 7 & Section 8
+  * Project Architecture Clarification (Pre-Launch Total Gateway Replacement)
+* **Current Implementation Status:** Pending Full Replacement
+* **Brief Description of Documentation Specification:**
+  The PhonePe Payment Gateway (PG) integration is to be completely replaced with a Razorpay-native, secure, maintainable, and production-ready implementation across the entire repository. Because the system is pre-launch and in active development, this is a clean, total replacement rather than a backward-compatible migration; no PhonePe legacy code, fallback paths, or leftover artifacts are to be retained.
+
+  The target specification spans three core phases:
+  1. **Discovery, Analysis & Research Documentation:**
+     - Comprehensive analysis of the existing PhonePe implementation across payment lifecycle flows, order ID generation with crypto-entropy retries, API endpoints (`POST /bookings/:id/initiate-payment`, `GET /payments/verify`, `POST /payments/webhooks/phonepe`, `GET /payments/status/:orderId`), client-server redirect protocol, payment state transitions in PostgreSQL (`Payment` model, `PaymentStatus` enum), webhook handling, configuration, environment variables, dependencies, tests, and documentation.
+     - In-depth research using official Razorpay documentation to define the optimal integration architecture for this platform: Razorpay Standard Checkout / Custom SDK flow, Orders API (`orders.create`), Payment Verification (`razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`), server-side HMAC-SHA256 signature validation, Webhooks (`payment.captured`, `payment.failed`, `order.paid`, `refund.processed`), Refund APIs, error taxonomies, and idempotent retry strategies.
+     - Documenting the research, official citations, legacy vs. target payment flows, and architectural decisions under `docs/` (updating `docs/integrations/02-PAYMENT-INTEGRATION.md` and related ADRs/specs) for long-term project reference.
+  2. **Razorpay-Native Implementation & Total Codebase Purge:**
+     - Implement clean Razorpay services and repositories using the official Razorpay SDK / REST APIs rather than adapting legacy PhonePe code.
+     - Database schema updates: Replace PhonePe fields (`phonepe_merchant_order_id`, `phonepe_transaction_id`, etc.) with Razorpay-native identifiers (`razorpay_order_id`, `razorpay_payment_id`, `razorpay_signature`, `razorpay_refund_id`), update Prisma schema, and run migrations.
+     - Backend endpoints: Replace PhonePe routes, controllers, and providers with Razorpay order creation, payment verification, webhook ingestion with secret signature validation, status polling, and refund endpoints.
+     - Frontend checkout integration: Replace the PhonePe redirect flow with the Razorpay standard modal / checkout flow, handling client callbacks, payment dismissal, and checkout recovery state.
+     - Environment & configuration: Replace all `PHONEPE_*` environment variables in `env.js`, `.env.example`, and config files with `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, etc.
+     - Complete eradication of PhonePe: Systematically remove all PhonePe packages (`@phonepe/pg-sdk-node`), files (`phonepe-payment.provider.js`, `phonepe-auth.js`, etc.), imports, routes, controllers, utilities, tests, mocks, scripts, comments, documentation entries, and deployment/CI references.
+  3. **End-to-End Verification & Validation:**
+     - Validate that Razorpay operates as the sole payment provider in sandbox/test mode with full coverage of order creation, successful capture, signature verification, booking confirmation, PIN generation, reward triggering, and refunds.
+     - Validate failure modes: payment rejection, user modal dismissal, network timeouts, duplicate webhook events, and retry idempotency.
+     - Verify that automated test suites, linting, and build pass cleanly, followed by a repository-wide search confirming zero leftover PhonePe references.
+* **Brief Description of Codebase Reality:**
+  The current codebase contains a fully built PhonePe PG v2 implementation:
+  - Backend: `@phonepe/pg-sdk-node` dependency, `server/src/modules/payments/phonepe-payment.provider.js`, `phonepe-auth.js`, `verify.controller.js`, `webhook.controller.js`, `webhook.routes.js`, PhonePe route handlers in `payments.routes.js`, and PhonePe environment schema in `server/src/config/env.js`.
+  - Database: `server/prisma/schema.prisma` defines payment columns and indexes centered on PhonePe order/transaction references.
+  - Frontend: `web/src/app/(customer)/booking/redirect/page.js`, `web/src/lib/services/checkout.js`, and PhonePe redirect handling in `BookingFlow.js`.
+  - Documentation: `docs/integrations/02-PAYMENT-INTEGRATION.md`, `ADR-004-booking-lifecycle-payments.md`, `docs/specs/02-API-SPECIFICATION.md`, and `docs/superpowers/plans/2026-07-21-payment-redirect-completion.md` are all authored around PhonePe PG v2.
+* **The Exact Gap That Remains:**
+  Complete replacement of the PhonePe integration with Razorpay across all layers:
+  1. Authoring the official Razorpay research and architecture documentation under `docs/`.
+  2. Implementing Razorpay backend order creation, payment verification, webhook receiver, status checks, and refund services.
+  3. Implementing frontend Razorpay checkout modal integration and response handling.
+  4. Updating Prisma schema with Razorpay payment columns/enums and executing migrations.
+  5. Updating environment configuration and removing all `PHONEPE_*` variables.
+  6. Removing all PhonePe files, dependencies, routes, mocks, tests, and documentation references.
+  7. Performing end-to-end sandbox verification and codebase-wide remnant scans.
+* **Dependent Files / Modules / Areas:**
+  * Backend: `server/package.json`, `server/src/config/env.js`, `server/prisma/schema.prisma`, `server/src/modules/payments/*`, `server/src/modules/bookings/*`, `server/src/routes/index.js`
+  * Frontend: `web/src/app/(customer)/booking/*`, `web/src/lib/services/checkout.js`, `web/src/components/features/booking/*`, `web/src/lib/dal/*`
+  * Documentation: `docs/integrations/02-PAYMENT-INTEGRATION.md`, `docs/adrs/ADR-004-booking-lifecycle-payments.md`, `docs/specs/01-DATABASE-SCHEMA.md`, `docs/specs/02-API-SPECIFICATION.md`, `docs/ai/01-IMPLEMENTATION-OVERVIEW.md`, `docs/ai/03-IMPLEMENTATION-STATUS.md`
 
 ---
 
