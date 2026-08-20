@@ -27,6 +27,7 @@ import {
   resolveRole,
   secureCookieOptions,
 } from "@/lib/auth";
+import { getSetCookieHeader } from "@/lib/httpHeaders";
 
 /**
  * Typed transport error. `status` is the HTTP status; `code` is a stable machine
@@ -90,7 +91,7 @@ function buildHeaders({ accessToken, refreshToken }) {
  * Deduped per-request via React `cache()` so parallel 401s in one render share a
  * single refresh call (per-instance single-flight — ME-6).
  *
- * @returns {Promise<{ accessToken: string, refreshToken: string, role: string, adminRole: string, onboarded: boolean } | null>}
+ * @returns {Promise<{ accessToken: string, refreshToken: string, refreshTokenRotated: boolean, role: string, adminRole: string, onboarded: boolean } | null>}
  */
 const refreshSession = cache(async function refreshSession(refreshToken) {
   if (!refreshToken) return null;
@@ -106,14 +107,19 @@ const refreshSession = cache(async function refreshSession(refreshToken) {
     if (!response.ok) return null;
 
     const payload = await response.json();
-    const setCookie = response.headers.get("set-cookie");
+    const setCookie = getSetCookieHeader(response.headers);
     const user = payload.data?.user;
     const role = resolveRole(user);
     if (!role) return null;
 
+    const rotatedRefreshToken = extractCookieValue(setCookie, COOKIE_NAMES.REFRESH_TOKEN);
+
     return {
       accessToken: payload.data.access_token,
-      refreshToken: extractCookieValue(setCookie, COOKIE_NAMES.REFRESH_TOKEN) || refreshToken,
+      // Keep the original credential for this retry when the backend returns
+      // a grace response, but do not persist it as the browser's credential.
+      refreshToken: rotatedRefreshToken || refreshToken,
+      refreshTokenRotated: Boolean(rotatedRefreshToken),
       role,
       adminRole: role !== CUSTOMER_ROLE ? role : "",
       onboarded: Boolean(user?.onboarding_complete),
@@ -131,7 +137,9 @@ async function persistRefreshedTokens(tokens) {
   try {
     const store = await cookies();
     store.set(COOKIE_NAMES.ACCESS_TOKEN, tokens.accessToken, secureCookieOptions(COOKIE_MAX_AGE.ACCESS_TOKEN));
-    store.set(COOKIE_NAMES.REFRESH_TOKEN, tokens.refreshToken, secureCookieOptions(COOKIE_MAX_AGE.REFRESH_TOKEN));
+    if (tokens.refreshTokenRotated) {
+      store.set(COOKIE_NAMES.REFRESH_TOKEN, tokens.refreshToken, secureCookieOptions(COOKIE_MAX_AGE.REFRESH_TOKEN));
+    }
     if (tokens.role) {
       store.set(COOKIE_NAMES.AUTH_ROLE, tokens.role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
     } else {
@@ -151,7 +159,7 @@ async function persistRefreshedTokens(tokens) {
 
 async function parseResponse(response) {
   if (response.status === 204) {
-    return { payload: null, setCookie: response.headers.get("set-cookie") };
+    return { payload: null, setCookie: getSetCookieHeader(response.headers) };
   }
   const payload = await response.json();
   if (!response.ok) {
@@ -161,7 +169,7 @@ async function parseResponse(response) {
       code: codeForStatus(status),
     });
   }
-  return { payload, setCookie: response.headers.get("set-cookie") };
+  return { payload, setCookie: getSetCookieHeader(response.headers) };
 }
 
 /**

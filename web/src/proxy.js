@@ -7,15 +7,19 @@ import {
   isTokenExpired,
   resolveRole,
 } from "@/lib/auth";
+import { getSetCookieHeader } from "@/lib/httpHeaders";
 import { safeNext } from "@/lib/safeNext";
 
 // ── Cookie helpers (NextResponse context) ──
 
-function setTokenCookies(response, { accessToken, refreshToken, role, adminRole, onboarded }) {
+function setTokenCookies(response, { accessToken, refreshToken, refreshTokenRotated, role, adminRole, onboarded }) {
   if (accessToken) {
     response.cookies.set(COOKIE_NAMES.ACCESS_TOKEN, accessToken, secureCookieOptions(COOKIE_MAX_AGE.ACCESS_TOKEN));
   }
-  if (refreshToken) {
+  // A grace refresh reuses the already-rotated credential for this request but
+  // intentionally has no Set-Cookie header. Never persist that revoked token
+  // back to the browser, or it can overwrite a concurrent refresh's successor.
+  if (refreshToken && refreshTokenRotated) {
     response.cookies.set(COOKIE_NAMES.REFRESH_TOKEN, refreshToken, secureCookieOptions(COOKIE_MAX_AGE.REFRESH_TOKEN));
   }
   if (role) {
@@ -56,8 +60,9 @@ async function refreshTokens(refreshToken) {
     if (!response.ok) return null;
 
     const payload = await response.json();
-    const setCookieHeader = response.headers.get("set-cookie");
-    const newRefreshToken = extractCookieValue(setCookieHeader, COOKIE_NAMES.REFRESH_TOKEN) || refreshToken;
+    const setCookieHeader = getSetCookieHeader(response.headers);
+    const rotatedRefreshToken = extractCookieValue(setCookieHeader, COOKIE_NAMES.REFRESH_TOKEN);
+    const newRefreshToken = rotatedRefreshToken || refreshToken;
     const user = payload.data?.user;
     const role = resolveRole(user);
     if (!role) return null;
@@ -66,6 +71,7 @@ async function refreshTokens(refreshToken) {
     return {
       accessToken: payload.data.access_token,
       refreshToken: newRefreshToken,
+      refreshTokenRotated: Boolean(rotatedRefreshToken),
       role,
       adminRole,
       onboarded: Boolean(user?.onboarding_complete),

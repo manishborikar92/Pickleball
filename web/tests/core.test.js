@@ -8,6 +8,7 @@ import {
   routeAccess,
 } from "../src/lib/rbac.js";
 import { safeNext } from "../src/lib/safeNext.js";
+import { getSetCookieHeader } from "../src/lib/httpHeaders.js";
 import { formatTime12Hour } from "../src/lib/formatters.js";
 import {
   nameSchema,
@@ -76,6 +77,17 @@ test("safeNext rejects open-redirect payloads (HI-8)", () => {
   assert.equal(safeNext("", "/fallback"), "/fallback");
   assert.equal(safeNext(null, "/fallback"), "/fallback");
   assert.equal(safeNext(undefined), "/");
+});
+
+test("Set-Cookie extraction supports server Headers implementations", () => {
+  assert.equal(
+    getSetCookieHeader({ getSetCookie: () => ["pb_refresh_token=rotated; HttpOnly"] }),
+    "pb_refresh_token=rotated; HttpOnly",
+  );
+  assert.equal(
+    getSetCookieHeader({ get: (name) => name === "set-cookie" ? "pb_refresh_token=fallback; HttpOnly" : null }),
+    "pb_refresh_token=fallback; HttpOnly",
+  );
 });
 
 test("shared schemas normalize customer auth inputs (ADR-W003)", () => {
