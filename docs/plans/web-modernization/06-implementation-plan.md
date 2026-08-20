@@ -228,7 +228,7 @@ Phases 0, 1, 6, and 7a can start immediately and in parallel. Phase 2 is the key
 1. **`lib/api.js` removed.** All imports of `getVenue`/`getAvailability`/`getUserBookings`/`getWallet`/`getBookingById`/`getPaymentStatus` must move to `lib/dal/*`.
 2. **Read Server Actions removed** from `book/actions.js`; client/server callers move to the DAL.
 2b. **All Server Actions relocated to `lib/actions/*`** (ME-19/ADR-W009). Every `import … from "@/app/(…)/actions"` in components/lib (10 files) changes to `@/lib/actions/*`; the route-segment action files are deleted. A new ESLint boundary rule forbids `@/app/*` imports from `src/{components,lib,hooks}`.
-3. **Session DTO source changes:** `role`/`permissions` now come from `/users/me`, not the cookie — requires the backend to include roles/permissions in that response (coordinate with `server/`).
+3. **Session DTO source changes:** the singular effective `role` and separate `permissions` now come from `/users/me`, not the cookie; the backend also exposes contextual assignments as `venue_roles`.
 4. **Error contract unified:** consumers that relied on `api.js` throwing, or on `{success,error}` from reads, adopt the single typed result.
 5. **`lib/validation.js` replaced by `lib/schemas/*` (Zod).**
 6. **Checkout moves server-side:** `BookingClient` no longer orchestrates hold→waiver→pay; it calls one `checkoutBookingAction`.
@@ -241,7 +241,7 @@ Phases 0, 1, 6, and 7a can start immediately and in parallel. Phase 2 is the key
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
 | Phase 2 regresses auth/checkout | Med | High | Land E2E (7a) first; preview deploy; manual verification vs live backend (unit suite mocks the DB) |
-| Backend doesn't return roles/permissions in `/users/me` | Med | High (blocks HI-10) | Coordinate with `server/` early; until then, derive cautiously and keep fail-closed RBAC |
+| ~~Backend doesn't return role/permissions in `/users/me`~~ | ~~Med~~ | ~~High (blocks HI-10)~~ | **Resolved:** backend and DAL now use the singular `role` contract, preserve `venue_roles`, and fail closed when role data is missing. |
 | CSP breaks PhonePe iframe / MapTiler | Med | Med | Report-only rollout; explicit `connect-src`/`frame-src` allowlists |
 | Over-caching leaks stale availability | Low | Med | Only cache venue config; availability stays uncached behind Suspense; tag-based invalidation |
 | Single-flight refresh under horizontal scaling | Low | Med | Rely on documented backend grace window; add per-instance single-flight |
@@ -260,7 +260,7 @@ Phases 0, 1, 6, and 7a can start immediately and in parallel. Phase 2 is the key
 - [ ] Every mutation action validates (Zod) and authorizes (`verifySession`) before calling the backend (HI-2, HI-14).
 - [ ] Booking route streams with a skeleton; `getVenue` fetched once; hero is an optimized image (HI-3/4/5/6).
 - [ ] Checkout survives a 15-minute idle via refresh-on-401 (HI-9).
-- [ ] Role/permissions derive from `/users/me`; `pb_admin_role` clears on demotion (HI-10, LO-13).
+- [x] Role/permissions derive from `/users/me`; `pb_admin_role` clears on demotion (HI-10, LO-13).
 - [ ] All forms use `useActionState`; fields announce labels/errors (HI-11, ME-13).
 - [ ] Open redirect closed; `safeNext` covers all redirects (HI-8).
 - [ ] `npm run lint`, `npm run test`, `tsc --noEmit`, `npm run build`, and Playwright all green in CI.

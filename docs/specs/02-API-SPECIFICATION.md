@@ -30,6 +30,10 @@ All endpoints are served under `/api/v1`. The backend is the single authority on
 
 All protected routes use a `requirePermission('capability_key')` middleware that resolves the requesting user's role at the current venue via `venue_user_roles`, then checks `role_permissions` for the required capability.
 
+### Authenticated User Role Contract
+
+Every session-creating response (`POST /auth/otp/verify`, `POST /auth/admin/login`, and `POST /auth/refresh`) returns one effective `user.role` string plus a separate `user.permissions` array. The canonical customer role is `customer`; `customer_auth` is not a role in the domain model. The `/users/me` profile and onboarding response also expose the effective `role`, while `venue_roles` retains the user's venue-scoped assignments. The top-level role is a response/UI summary; server authorization continues to resolve the requested venue's permissions from the database.
+
 ### Permission Errors
 
 | Status | Meaning |
@@ -90,7 +94,9 @@ Verifies the OTP, creates an auth session, sets the refresh-token cookie, and re
       "phone": "+919876543210",
       "name": null,
       "is_new_user": true,
-      "onboarding_complete": false
+      "onboarding_complete": false,
+      "role": "customer",
+      "permissions": ["view_own_bookings"]
     },
     "next_step": "complete_onboarding"
   }
@@ -134,7 +140,10 @@ Verifies the OTP, creates an auth session, sets the refresh-token cookie, and re
       "id": "<uuid>",
       "phone": "+919876543210",
       "name": "Arjun Mehta",
-      "onboarding_complete": true
+      "onboarding_complete": true,
+      "role": "customer",
+      "venue_roles": [],
+      "permissions": ["view_own_bookings"]
     },
     "next_step": "resume_booking"
   }
@@ -170,7 +179,7 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
       "id": "<uuid>",
       "email": "manager@besanagpur.com",
       "name": "Ravi Kumar",
-      "roles": ["manager"],
+      "role": "manager",
       "permissions": ["edit_schedule", "edit_pricing", "manage_bookings", "issue_credits"]
     },
     "next_step": "admin_dashboard"
@@ -346,7 +355,9 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
       "phone": "+919876543210",
       "name": "Arjun Mehta",
       "is_new_user": false,
-      "onboarding_complete": true
+      "onboarding_complete": true,
+      "role": "customer",
+      "permissions": ["view_own_bookings"]
     }
   }
 }
@@ -385,7 +396,8 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
     "phone": "+919876543210",
     "name": "Arjun Mehta",
     "onboarding_complete": true,
-    "roles": [
+    "role": "customer",
+    "venue_roles": [
       { "venue_id": "<uuid>", "venue_name": "Besa, Nagpur", "role": "customer" }
     ],
     "permissions": ["view_own_bookings"]
@@ -393,7 +405,7 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
 }
 ```
 
-`onboarding_complete` is computed from the current onboarding completion timestamp. Protected onboarding routes also require a non-null profile name. `roles` shows the user's venue assignments — an empty array means customer-only access.
+`onboarding_complete` is computed from the current onboarding completion timestamp. Protected onboarding routes also require a non-null profile name. `role` is the effective role summary returned for the authenticated session; `venue_roles` shows the user's venue assignments. An empty `venue_roles` array means the user has no venue assignment and receives the default customer role and permissions.
 
 **If `name` is `null`** (OTP verified but onboarding not finished):
 ```json
@@ -405,7 +417,8 @@ These endpoints serve non-customer roles (`super_admin`, `manager`, `staff`) onl
     "phone": "+919876543210",
     "name": null,
     "onboarding_complete": false,
-    "roles": [],
+    "role": "customer",
+    "venue_roles": [],
     "permissions": ["view_own_bookings"]
   }
 }
@@ -426,7 +439,7 @@ The frontend uses this response on app load to decide whether to show the name c
 
 Only `name` is accepted. Leading/trailing whitespace is trimmed, runs of whitespace are collapsed to one space, and the normalized value must contain 2–100 characters.
 
-**Response `200`:** Updated canonical user profile, including the existing roles and permissions fields used by the frontend session boundary.
+**Response `200`:** Updated canonical user profile, including the `role`, `venue_roles`, and `permissions` fields used by the frontend session boundary.
 
 **Errors:**
 - `400` — missing, invalid, overlong, or unsupported profile fields.

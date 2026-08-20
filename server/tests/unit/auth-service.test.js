@@ -31,9 +31,10 @@ function createMemoryRepository(clock = () => fixedNow) {
   const sessions = new Map();
   const refreshTokens = new Map();
   const adminCredentials = new Map();
+  const authContexts = new Map();
 
   return {
-    data: { users, otps, sessions, refreshTokens, adminCredentials },
+    data: { users, otps, sessions, refreshTokens, adminCredentials, authContexts },
     async createOtpRequest(record) {
       const saved = { id: nextId('otp'), createdAt: clock(), ...record };
       otps.push(saved);
@@ -57,8 +58,6 @@ function createMemoryRepository(clock = () => fixedNow) {
         phone,
         name: null,
         isPhoneVerified: true,
-        roles: [],
-        permissions: [Permissions.VIEW_OWN_BOOKINGS],
       };
       users.set(phone, user);
       return { user, isNewUser: true };
@@ -145,10 +144,15 @@ function createMemoryRepository(clock = () => fixedNow) {
       }
     },
     async getUserAuthContext(userId) {
-      const user = [...users.values()].find((item) => item.id === userId);
+      const user = [...users.values()].find((item) => item.id === userId)
+        || [...adminCredentials.values()].find((item) => item.user.id === userId)?.user;
+      const context = authContexts.get(userId);
+      if (context) {
+        return { user, ...context };
+      }
       return {
         user,
-        roles: ['customer'],
+        role: 'customer',
         permissions: [Permissions.VIEW_OWN_BOOKINGS],
       };
     },
@@ -202,6 +206,8 @@ test('verifyCustomerOtp creates user, session, access token, and refresh token',
   });
 
   assert.equal(result.user.phone, '+919876543210');
+  assert.equal(result.user.role, 'customer');
+  assert.deepEqual(result.user.permissions, [Permissions.VIEW_OWN_BOOKINGS]);
   assert.equal(result.user.onboarding_complete, false);
   assert.equal(result.next_step, 'complete_onboarding');
   assert.equal(result.access_token.split('.').length, 3);
@@ -217,8 +223,6 @@ test('verifyCustomerOtp keeps a named customer incomplete until onboarding is co
     name: 'Asha Mehta',
     onboardingCompletedAt: null,
     isPhoneVerified: true,
-    roles: [],
-    permissions: [Permissions.VIEW_OWN_BOOKINGS],
   });
   const service = createAuthService({
     repository,
@@ -253,6 +257,8 @@ test('refreshSession rotates refresh token and revokes the used token', async ()
   const oldToken = await repository.findRefreshTokenByHash(hashRefreshToken(verified.refreshToken.raw));
 
   assert.equal(refreshed.access_token.split('.').length, 3);
+  assert.equal(refreshed.user.role, 'customer');
+  assert.deepEqual(refreshed.user.permissions, [Permissions.VIEW_OWN_BOOKINGS]);
   assert.notEqual(refreshed.refreshToken.raw, verified.refreshToken.raw);
   assert.notEqual(oldToken.revokedAt, null);
 });
@@ -273,7 +279,7 @@ test('loginAdmin issues token pair for an active admin credential', async () => 
     forcePasswordChange: false,
     failedLoginAttempts: 0,
     user: adminUser,
-    roles: ['manager'],
+    role: 'manager',
     permissions: ['manage_bookings'],
   });
 
@@ -293,9 +299,51 @@ test('loginAdmin issues token pair for an active admin credential', async () => 
   });
 
   assert.equal(result.user.email, 'manager@besanagpur.com');
+  assert.equal(result.user.role, 'manager');
+  assert.deepEqual(result.user.permissions, ['manage_bookings']);
   assert.equal(result.next_step, 'admin_dashboard');
   assert.equal(result.access_token.split('.').length, 3);
   assert.equal(repository.data.sessions.size, 1);
+});
+
+test('refreshSession preserves the admin role and permissions', async () => {
+  const repository = createMemoryRepository();
+  const adminUser = {
+    id: 'admin-user-refresh-1',
+    phone: '+919999999999',
+    name: 'Ravi Kumar',
+    isPhoneVerified: true,
+  };
+  const permissions = ['manage_bookings'];
+  repository.data.authContexts.set(adminUser.id, { role: 'manager', permissions });
+  repository.data.adminCredentials.set('manager-refresh@besanagpur.com', {
+    id: 'admin-credential-refresh-1',
+    email: 'manager-refresh@besanagpur.com',
+    passwordHash: await createPasswordHash('SecurePass123!'),
+    status: 'active',
+    forcePasswordChange: false,
+    failedLoginAttempts: 0,
+    user: adminUser,
+    role: 'manager',
+    permissions,
+  });
+
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+    randomBytes: () => Buffer.alloc(32, 6),
+  });
+
+  const login = await service.loginAdmin({
+    email: 'manager-refresh@besanagpur.com',
+    password: 'SecurePass123!',
+  });
+  const refreshed = await service.refreshSession({ refreshToken: login.refreshToken.raw });
+
+  assert.equal(refreshed.user.role, 'manager');
+  assert.deepEqual(refreshed.user.permissions, permissions);
 });
 
 test('sendCustomerOtp enforces 60-second cooldown', async () => {
@@ -328,6 +376,41 @@ test('sendCustomerOtp enforces 60-second cooldown', async () => {
   mockTime = new Date(mockTime.getTime() + 31 * 1000);
   const result = await service.sendCustomerOtp({ phone: '+919876543210' });
   assert.equal(result.phone, '+919876543210');
+});
+
+test('loginAdmin fails closed when the credential has no non-customer role assignment', async () => {
+  const repository = createMemoryRepository();
+  const adminUser = {
+    id: 'admin-user-without-role',
+    phone: '+919999999999',
+    name: 'Unassigned Admin',
+  };
+  repository.data.adminCredentials.set('unassigned@baselinearena.com', {
+    id: 'admin-credential-without-role',
+    email: 'unassigned@baselinearena.com',
+    passwordHash: await createPasswordHash('SecurePass123!'),
+    status: 'active',
+    forcePasswordChange: false,
+    failedLoginAttempts: 0,
+    user: adminUser,
+    role: 'customer',
+    permissions: [Permissions.VIEW_OWN_BOOKINGS],
+  });
+
+  const service = createAuthService({
+    repository,
+    otpProvider: { sendOtp: async () => {} },
+    config: baseConfig,
+    clock: () => fixedNow,
+  });
+
+  await assert.rejects(
+    () => service.loginAdmin({
+      email: 'unassigned@baselinearena.com',
+      password: 'SecurePass123!',
+    }),
+    (error) => error.statusCode === 403 && /role assignment/i.test(error.message),
+  );
 });
 
 test('verifyCustomerOtp blocks verification after maxAttempts limit is reached', async () => {
@@ -393,7 +476,7 @@ test('loginAdmin automatically unlocks and resets attempts if lock has expired',
     failedLoginAttempts: 10,
     lockedUntil: pastLockTime,
     user: adminUser,
-    roles: ['manager'],
+    role: 'manager',
     permissions: ['manage_bookings'],
   });
 

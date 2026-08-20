@@ -1,3 +1,5 @@
+import { CUSTOMER_ROLE } from "../config/auth.config.js";
+
 export const roles = {
   super_admin: {
     label: "Super Admin",
@@ -16,10 +18,10 @@ export const roles = {
   },
   staff: {
     label: "Staff",
-    inherits: ["customer"],
+    inherits: [CUSTOMER_ROLE],
     permissions: ["manage_bookings", "walk_in_entry"],
   },
-  customer: {
+  [CUSTOMER_ROLE]: {
     label: "Customer",
     inherits: [],
     permissions: ["view_own_bookings"],
@@ -73,7 +75,7 @@ const collectPermissions = (roleName, visited = new Set()) => {
   return [...new Set([...inherited, ...role.permissions])];
 };
 
-export function getRolePermissions(roleName = "customer") {
+export function getRolePermissions(roleName = CUSTOMER_ROLE) {
   return collectPermissions(roleName);
 }
 

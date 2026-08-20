@@ -79,10 +79,12 @@ export function isTokenExpired(token) {
 }
 
 /**
- * Resolves the effective role from a user's roles array.
- * Prefers the first non-customer role (super_admin/manager/staff), falls back to customer.
+ * Reads the canonical role from an API-authenticated user object.
+ * Role values are server-authoritative; this helper is only used to populate
+ * optimistic cookies after an API response has already been accepted.
  */
-export function resolveRole(user, fallback = "customer") {
-  const roles = Array.isArray(user?.roles) ? user.roles : [];
-  return roles.find((role) => role !== "customer") || roles[0] || fallback;
+export function resolveRole(user) {
+  return typeof user?.role === "string" && user.role.length > 0
+    ? user.role
+    : "";
 }

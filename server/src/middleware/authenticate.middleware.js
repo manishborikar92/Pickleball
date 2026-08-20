@@ -71,16 +71,9 @@ export const authenticate = (options = {}) => async (req, _res, next) => {
       throw new UnauthorizedError('Session is no longer active');
     }
 
-    const roles = Array.isArray(decoded.roles)
-      ? decoded.roles
-      : [decoded.role].filter(Boolean);
-
     let principal = {
       subject: decoded.sub,
       sessionId: resolveSessionId(decoded),
-      role: decoded.role || roles[0],
-      roles,
-      permissions: Array.isArray(decoded.permissions) ? decoded.permissions : [],
       claims: decoded,
     };
 
@@ -93,7 +86,6 @@ export const authenticate = (options = {}) => async (req, _res, next) => {
       principal = {
         ...principal,
         user: resolved,
-        role: resolved.role || resolved.roleType || principal.role,
       };
     }
 

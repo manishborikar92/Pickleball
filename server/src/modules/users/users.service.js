@@ -27,12 +27,7 @@ export const createUsersService = ({ repository }) => ({
     });
 
     return {
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        onboarding_complete: user.onboarding_complete,
-      },
+      user,
       next_step: 'resume_booking',
     };
   },

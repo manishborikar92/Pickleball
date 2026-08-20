@@ -26,6 +26,8 @@ function createTestApp(serviceOverrides = {}, configOverrides = {}) {
           id: 'user-1',
           phone: '+919876543210',
           name: null,
+          role: 'customer',
+          permissions: ['view_own_bookings'],
           onboarding_complete: false,
         },
         next_step: 'complete_onboarding',
@@ -39,6 +41,8 @@ function createTestApp(serviceOverrides = {}, configOverrides = {}) {
           id: 'user-1',
           phone: '+919876543210',
           name: 'Asha Mehta',
+          role: 'customer',
+          permissions: ['view_own_bookings'],
           onboarding_complete: true,
         },
       };
@@ -53,6 +57,9 @@ function createTestApp(serviceOverrides = {}, configOverrides = {}) {
           id: 'admin-user-1',
           email: 'manager@besanagpur.com',
           name: 'Ravi Kumar',
+          role: 'manager',
+          permissions: ['manage_bookings'],
+          onboarding_complete: true,
         },
         next_step: 'admin_dashboard',
       };
@@ -91,6 +98,8 @@ test('POST /auth/otp/verify sets refresh cookie and returns access token', async
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.access_token, 'access-token');
+  assert.equal(response.body.data.user.role, 'customer');
+  assert.deepEqual(response.body.data.user.permissions, ['view_own_bookings']);
   assert.equal(response.body.data.next_step, 'complete_onboarding');
   assert.match(response.headers['set-cookie'][0], /pb_refresh_token=refresh-1/);
   assert.match(response.headers['set-cookie'][0], /HttpOnly/);
@@ -128,6 +137,8 @@ test('refresh endpoint reads the configured refresh cookie name', async () => {
           id: 'user-1',
           phone: '+919876543210',
           name: 'Asha Mehta',
+          role: 'customer',
+          permissions: ['view_own_bookings'],
           onboarding_complete: true,
         },
       };
@@ -155,6 +166,7 @@ test('POST /auth/refresh rotates refresh cookie', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.access_token, 'access-token-2');
+  assert.equal(response.body.data.user.role, 'customer');
   assert.match(response.headers['set-cookie'][0], /pb_refresh_token=refresh-2/);
 });
 
@@ -180,6 +192,7 @@ test('POST /auth/admin/login sets refresh cookie and returns admin next step', a
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.access_token, 'admin-access-token');
+  assert.equal(response.body.data.user.role, 'manager');
   assert.equal(response.body.data.next_step, 'admin_dashboard');
   assert.match(response.headers['set-cookie'][0], /pb_refresh_token=admin-refresh-1/);
 });
@@ -190,7 +203,7 @@ test('POST /auth/logout-all clears refresh cookie after revoking sessions', asyn
     auth: { accessTokenSecret: secret },
   });
   const token = jwt.sign(
-    { sub: 'user-1', roles: ['customer'], permissions: ['view_own_bookings'] },
+    { sub: 'user-1', role: 'customer', permissions: ['view_own_bookings'] },
     secret,
     { expiresIn: '5m', issuer: 'baseline-api', audience: 'baseline-web' },
   );
@@ -215,6 +228,8 @@ test('POST /auth/refresh skips setting cookie when skipCookieUpdate is true', as
           id: 'user-1',
           phone: '+919876543210',
           name: 'Asha Mehta',
+          role: 'customer',
+          permissions: ['view_own_bookings'],
           onboarding_complete: true,
         },
         skipCookieUpdate: true,
@@ -241,12 +256,12 @@ test('SSR-style concurrent refresh simulation', async () => {
         return {
           access_token: 'access-token-new-1',
           refreshToken: { raw: 'refresh-token-new-1' },
-          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', onboarding_complete: true },
+          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', role: 'customer', permissions: ['view_own_bookings'], onboarding_complete: true },
         };
       } else {
         return {
           access_token: 'access-token-new-1',
-          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', onboarding_complete: true },
+          user: { id: 'user-1', phone: '+919876543210', name: 'Asha Mehta', role: 'customer', permissions: ['view_own_bookings'], onboarding_complete: true },
           skipCookieUpdate: true,
         };
       }
@@ -287,4 +302,3 @@ test('POST /auth/refresh returns 401 when token is revoked outside grace window'
   assert.equal(response.status, 401);
   assert.match(response.body.message, /Refresh token has been revoked/);
 });
-

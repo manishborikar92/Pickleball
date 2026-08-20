@@ -16,6 +16,10 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.ok(response.body.paths['/auth/admin/login']);
   assert.ok(response.body.paths['/auth/refresh']);
   assert.ok(response.body.paths['/auth/onboarding']);
+  assert.equal(
+    response.body.paths['/auth/onboarding'].post.responses['200'].content['application/json'].schema.allOf[1].properties.data.$ref,
+    '#/components/schemas/OnboardingResponse',
+  );
   assert.ok(response.body.paths['/users/me']);
   assert.ok(response.body.paths['/users/me'].patch);
   assert.equal(response.body.paths['/users/me'].patch.requestBody.required, true);
@@ -38,6 +42,19 @@ test('OpenAPI JSON documents auth and onboarding endpoints', async () => {
   assert.ok(response.body.paths['/reviews/moderation']);
   assert.ok(response.body.paths['/reviews/{reviewId}']);
   assert.ok(response.body.components.securitySchemes.bearerAuth);
+
+  const authUser = response.body.components.schemas.AuthResponse.properties.user;
+  assert.ok(authUser.required.includes('role'));
+  assert.ok(authUser.required.includes('permissions'));
+  assert.equal(authUser.properties.roles, undefined);
+
+  const userProfile = response.body.components.schemas.UserProfile;
+  assert.ok(userProfile.required.includes('role'));
+  assert.ok(userProfile.required.includes('venue_roles'));
+  assert.equal(userProfile.properties.roles, undefined);
+
+  const onboardingResponse = response.body.components.schemas.OnboardingResponse;
+  assert.equal(onboardingResponse.properties.user.$ref, '#/components/schemas/UserProfile');
 });
 
 test('Swagger UI route is available outside production', async () => {

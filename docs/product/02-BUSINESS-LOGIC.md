@@ -59,6 +59,8 @@ The platform uses **two entirely separate authentication systems** that coexist 
 
 Both systems issue the same access-token shape and session model. The `requireAuth` middleware is auth-method-agnostic: it verifies the JWT signature, expiry, and subject/session claims. Role resolution always comes from `venue_user_roles` to `role_permissions`, regardless of how the token was obtained.
 
+Authentication responses expose one effective `role` string and a separate `permissions` array. The canonical customer role is `customer`; venue-scoped assignments remain available as `venue_roles` on the current-user profile. These response fields support session state and UI decisions, but they do not replace venue-scoped server authorization.
+
 ---
 
 ### 2.1 Customer Auth — Three-Path OTP Flow
@@ -229,10 +231,10 @@ Admin sets admin_credentials.status = 'suspended'
 Both customer OTP auth and admin password auth issue the same JWT format:
 
 ```json
-{ "sub": "<user_id>", "sid": "<session_id>", "roles": [], "permissions": [], "exp": <epoch> }
+{ "sub": "<user_id>", "sid": "<session_id>", "exp": <epoch> }
 ```
 
-The `requireAuth` middleware verifies signature, expiry, and identity claims. It does not know or care how the token was obtained. All role and permission resolution comes from the database at request time.
+The `requireAuth` middleware verifies signature, expiry, and identity claims. It does not know or care how the token was obtained. Role and permission data are intentionally not trusted from JWT claims: all authorization resolution comes from the database at request time, while authentication responses serialize the effective role and permissions for clients.
 
 ```
 requireAuth:

@@ -17,6 +17,7 @@ This repository contains a Next.js 16 frontend and an Express.js/PostgreSQL back
 
 ## Core Architecture Snapshot
 - **Frontend**: Next.js 16 App Router with Cache Components, Partial Prerendering, Server Components, and edge proxy with proactive token refresh. Route groups: `(marketing)`, `(booking)`, `(auth)`, `(dashboard)`, `(admin)`. Server-side auth via `verifySession()` — no client-side auth context.
+- **Auth role contract**: Authentication responses and `/users/me` expose one effective `role` string plus separate `permissions`; `/users/me` also exposes venue-scoped assignments as `venue_roles`. The canonical customer role is `customer`. Role cookies are optimistic routing hints only, and server authorization resolves permissions from database state.
 - **Availability Ownership**: Handled fully inside the `venues` module; availability slots are generated dynamically from base schedules and exception overlays.
 - **Concurrency Safety**: Double-bookings are prevented atomically at slot hold creation time by a PostgreSQL partial unique index (`booking_slots_no_double_book`) on the `booking_slots` table.
 - **Booking Holds**: Active holds are represented as pending bookings (status `pending_payment`) with a 10-minute expiration TTL.

@@ -58,8 +58,8 @@ There is **no `(booking)/layout.js`**, and the `proxy.js:202` matcher (`/login`,
 ### HI-9 — Token refresh gap on `/venues/*` (mid-checkout 401)
 `proxy.js:202` matcher excludes `/venues/:path*`; the booking page lives there. Access TTL is 15 min (`auth.config.js:17`). A user idling on the booking page past TTL then invoking `createBookingHoldAction`/`initiateBookingPaymentAction` sends a stale token (`book/actions.js:54,85`) → 401 with no refresh path. **Impact:** checkout fails with a raw error and no recovery. **Fix:** add refresh-on-401 inside the DAL/auth-required actions (actions can set cookies), and/or extend the matcher.
 
-### HI-10 — Role/permissions derived from a client-presentable cookie, not the API
-`session.js:34` reads `role` from the `pb_auth_role` cookie and `:42` falls back to `getRolePermissions(role)`; the authoritative `user.roles` from `/users/me` is fetched but discarded. The edge admin gate trusts `pb_admin_role` (`proxy.js:133`), never reconciled on demotion (persists up to 30 days). **Impact:** role spoofing if cookies can be injected; demoted admins retain access until expiry/logout. **Fix:** have the backend return canonical roles/permissions in `/users/me` and derive them there; treat role cookies as optimistic hints only; clear `pb_admin_role` on any refresh returning a non-admin role.
+### HI-10 — Role/permissions derived from a client-presentable cookie, not the API (Resolved)
+**Resolved:** The backend returns a canonical singular `role`, separate `permissions`, and contextual `venue_roles` from `/users/me`. `session.js` derives its session DTO from that response rather than the cookie, and the edge refresh path clears `pb_admin_role` when the refreshed role is not privileged. Role cookies remain optimistic routing hints only; server-side authorization still resolves venue permissions from trusted database state.
 
 ### HI-11 — React 19 form primitives unused; forms are hand-rolled
 `useActionState`/`useFormStatus`/`useOptimistic` = **0 occurrences**. Every form (`PhoneForm`, `OtpForm`, `NameForm`, `ReviewForm`, `AdminLoginForm`, `CustomerOnboardingForm`, coupon) is `useState` + manual `isSubmitting`/`error` + an `onSubmit` interpreting `{success}`. **Impact:** more code, more bug surface, worse progressive enhancement, duplicated client/server validation. **Fix:** migrate to `<form action>` + `useActionState` with Zod, reusing one schema.
@@ -174,8 +174,8 @@ Non-reactive to resize; safe only via `ssr:false`. **Fix:** read in an effect / 
 ### LO-12 — `secureCookieOptions` uses `sameSite: "lax"` uniformly
 `lib/auth.js:18` applies `lax` to refresh/admin cookies too. **Fix:** `strict` for refresh/admin; `lax` only where a top-level GET redirect needs it.
 
-### LO-13 — `cookies.js` `setSessionCookies` never clears a stale `pb_admin_role`
-`lib/cookies.js:29-31` sets `ADMIN_ROLE` only when `role !== "customer"`, but never deletes it when a now-customer logs in without a full `clearSessionCookies`. **Fix:** explicitly delete `ADMIN_ROLE` when role is customer.
+### LO-13 — `cookies.js` `setSessionCookies` never clears a stale `pb_admin_role` (Resolved)
+`setSessionCookies` now deletes `ADMIN_ROLE` when the authenticated role is customer or when role data is missing. The proxy and refresh-on-401 paths also clear stale role markers when refreshed authentication data is absent or demoted.
 
 ---
 

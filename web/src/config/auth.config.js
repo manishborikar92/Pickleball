@@ -13,6 +13,8 @@ export const COOKIE_NAMES = {
   USER_ONBOARDED: "pb_user_onboarded",
 };
 
+export const CUSTOMER_ROLE = "customer";
+
 export const COOKIE_MAX_AGE = {
   ACCESS_TOKEN: 15 * 60,             // 15 minutes
   REFRESH_TOKEN: 60 * 60 * 24 * 30,  // 30 days

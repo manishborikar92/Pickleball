@@ -18,8 +18,7 @@ import { cache } from "react";
 
 import { apiRequest } from "@/lib/dal/httpClient";
 import { canAccessRoute, hasPermission } from "@/lib/rbac";
-import { resolveRole } from "@/lib/auth";
-import { COOKIE_NAMES } from "@/config/auth.config";
+import { COOKIE_NAMES, CUSTOMER_ROLE } from "@/config/auth.config";
 
 /**
  * @typedef {Object} SessionUser
@@ -30,7 +29,7 @@ import { COOKIE_NAMES } from "@/config/auth.config";
  *
  * @typedef {Object} Session
  * @property {SessionUser} user
- * @property {string} role                 - Effective role derived from /users/me.
+ * @property {string} role                 - Effective role returned by /users/me.
  * @property {string[]} permissions        - Permission keys from /users/me.
  * @property {Array<{venueId: string, venueName: string, role: string}>} venueRoles
  */
@@ -60,13 +59,18 @@ export const verifySession = cache(async function verifySession() {
     });
 
     const data = payload.data;
-    // Authoritative role/permissions from the API response (HI-10).
-    const venueRoles = (data.roles || []).map((entry) => ({
+    // Authoritative role/permissions from the API response (HI-10). A missing
+    // role is an invalid session shape and must fail closed rather than
+    // defaulting an unknown principal to customer access.
+    if (typeof data.role !== "string" || data.role.length === 0) {
+      return null;
+    }
+
+    const venueRoles = (Array.isArray(data.venue_roles) ? data.venue_roles : []).map((entry) => ({
       venueId: entry.venue_id,
       venueName: entry.venue_name,
       role: entry.role,
     }));
-    const role = resolveRole({ roles: venueRoles.map((r) => r.role) });
     const permissions = Array.isArray(data.permissions) ? data.permissions : [];
 
     return {
@@ -76,7 +80,7 @@ export const verifySession = cache(async function verifySession() {
         phone: data.phone || "",
         onboarded: Boolean(data.onboarding_complete),
       },
-      role,
+      role: data.role,
       permissions,
       venueRoles,
     };
@@ -103,11 +107,11 @@ export async function requireUser(pathname) {
   }
 
   // Onboarding gate for customers who have not set a name yet.
-  if (session.role === "customer" && !session.user.name) {
+  if (session.role === CUSTOMER_ROLE && !session.user.name) {
     if (pathname !== "/onboarding") {
       redirect(`/onboarding?next=${encodeURIComponent(pathname)}`);
     }
-  } else if (session.role === "customer" && session.user.name && pathname === "/onboarding") {
+  } else if (session.role === CUSTOMER_ROLE && session.user.name && pathname === "/onboarding") {
     redirect("/dashboard/overview");
   }
 

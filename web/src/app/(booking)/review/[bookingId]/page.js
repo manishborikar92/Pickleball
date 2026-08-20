@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { verifySession } from "@/lib/dal/session";
+import { CUSTOMER_ROLE } from "@/config/auth.config";
 import { resolveReviewResult } from "@/lib/services/reviewStatus";
 import { getPageMetadata } from "@/config/metadata.config";
 import { VENUE } from "@/config/venue.config";
@@ -33,7 +34,7 @@ export default async function ReviewPage({ params }) {
 
   // Backend review routes require a completed profile; mirror requireUser's
   // onboarding gate and return here afterwards.
-  if (session?.user && session.role === "customer" && !session.user.name) {
+  if (session?.user && session.role === CUSTOMER_ROLE && !session.user.name) {
     redirect(`/onboarding?next=${encodeURIComponent(`/review/${bookingId}`)}`);
   }
 

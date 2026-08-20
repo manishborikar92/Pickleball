@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { COOKIE_NAMES, COOKIE_MAX_AGE } from "@/config/auth.config";
+import { COOKIE_NAMES, COOKIE_MAX_AGE, CUSTOMER_ROLE } from "@/config/auth.config";
 import {
   secureCookieOptions,
   extractCookieValue,
@@ -20,10 +20,14 @@ function setTokenCookies(response, { accessToken, refreshToken, role, adminRole,
   }
   if (role) {
     response.cookies.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+  } else {
+    response.cookies.delete({ name: COOKIE_NAMES.AUTH_ROLE, path: "/" });
   }
   if (adminRole) {
     // Privileged marker — sameSite "strict" (admin flows are same-site). LO-12.
     response.cookies.set(COOKIE_NAMES.ADMIN_ROLE, adminRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
+  } else {
+    response.cookies.delete({ name: COOKIE_NAMES.ADMIN_ROLE, path: "/" });
   }
   if (onboarded !== undefined) {
     response.cookies.set(COOKIE_NAMES.USER_ONBOARDED, String(onboarded), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
@@ -56,7 +60,8 @@ async function refreshTokens(refreshToken) {
     const newRefreshToken = extractCookieValue(setCookieHeader, COOKIE_NAMES.REFRESH_TOKEN) || refreshToken;
     const user = payload.data?.user;
     const role = resolveRole(user);
-    const adminRole = role !== "customer" ? role : "";
+    if (!role) return null;
+    const adminRole = role !== CUSTOMER_ROLE ? role : "";
 
     return {
       accessToken: payload.data.access_token,
@@ -97,8 +102,8 @@ export async function proxy(request) {
     if (newTokens) {
       accessToken = newTokens.accessToken;
       refreshToken = newTokens.refreshToken;
-      customerRole = newTokens.role === "customer" ? "customer" : customerRole;
-      adminRole = newTokens.adminRole || adminRole;
+      customerRole = newTokens.role === CUSTOMER_ROLE ? CUSTOMER_ROLE : "";
+      adminRole = newTokens.adminRole || "";
       onboarded = newTokens.onboarded;
       tokensRefreshed = true;
     } else {
@@ -113,7 +118,7 @@ export async function proxy(request) {
 
   const hasToken = !!(accessToken || refreshToken);
   const hasAdminRole = !!adminRole;
-  const hasCustomerRole = customerRole === "customer";
+  const hasCustomerRole = customerRole === CUSTOMER_ROLE;
 
   // ── Helper to create a redirect with refreshed cookies ──
 

@@ -10,10 +10,10 @@
  */
 
 import { cookies } from "next/headers";
-import { COOKIE_NAMES, COOKIE_MAX_AGE } from "@/config/auth.config";
+import { COOKIE_NAMES, COOKIE_MAX_AGE, CUSTOMER_ROLE } from "@/config/auth.config";
 import { secureCookieOptions } from "@/lib/auth";
 
-export async function setSessionCookies({ accessToken, refreshToken, user, role = "customer" }) {
+export async function setSessionCookies({ accessToken, refreshToken, user, role }) {
   const cookieStore = await cookies();
 
   if (accessToken) {
@@ -25,10 +25,18 @@ export async function setSessionCookies({ accessToken, refreshToken, user, role 
   }
 
   if (user) {
-    cookieStore.set(COOKIE_NAMES.AUTH_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
-    if (role !== "customer") {
+    const effectiveRole = role || user.role;
+    if (typeof effectiveRole !== "string" || effectiveRole.length === 0) {
+      cookieStore.delete({ name: COOKIE_NAMES.AUTH_ROLE, path: "/" });
+      cookieStore.delete({ name: COOKIE_NAMES.ADMIN_ROLE, path: "/" });
+      cookieStore.delete({ name: COOKIE_NAMES.USER_ONBOARDED, path: "/" });
+      return;
+    }
+
+    cookieStore.set(COOKIE_NAMES.AUTH_ROLE, effectiveRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+    if (effectiveRole !== CUSTOMER_ROLE) {
       // Privileged marker — sameSite "strict" (admin flows are same-site). LO-12.
-      cookieStore.set(COOKIE_NAMES.ADMIN_ROLE, role, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
+      cookieStore.set(COOKIE_NAMES.ADMIN_ROLE, effectiveRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
     } else {
       // Clear any stale admin marker when a now-customer session is written (LO-13).
       cookieStore.delete({ name: COOKIE_NAMES.ADMIN_ROLE, path: "/" });

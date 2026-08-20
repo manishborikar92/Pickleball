@@ -14,7 +14,7 @@ import { redirect } from "next/navigation";
 
 import { apiRequest } from "@/lib/dal/httpClient";
 import { verifySession } from "@/lib/dal/session";
-import { COOKIE_NAMES } from "@/config/auth.config";
+import { COOKIE_NAMES, CUSTOMER_ROLE } from "@/config/auth.config";
 import { extractCookieValue, resolveRole } from "@/lib/auth";
 import { setSessionCookies, clearSessionCookies } from "@/lib/cookies";
 import { safeNext } from "@/lib/safeNext";
@@ -55,10 +55,16 @@ export async function verifyCustomerOtpAction(phone, otp) {
       body: { phone: parsedPhone.data, otp: parsedOtp.data },
     });
 
+    const role = resolveRole(payload.data.user);
+    if (!role) {
+      throw new Error("Authentication response did not include a role.");
+    }
+
     await setSessionCookies({
       accessToken: payload.data.access_token,
       refreshToken: extractCookieValue(setCookie, COOKIE_NAMES.REFRESH_TOKEN),
       user: payload.data.user,
+      role,
     });
 
     return ok(payload.data);
@@ -82,7 +88,11 @@ export async function completeOnboardingAction(name) {
       accessToken,
     });
 
-    await setSessionCookies({ accessToken, user: payload.data.user });
+    const role = resolveRole(payload.data.user);
+    if (!role) {
+      throw new Error("Onboarding response did not include a role.");
+    }
+    await setSessionCookies({ accessToken, user: payload.data.user, role });
     return ok(payload.data);
   } catch (error) {
     return fail(error);
@@ -158,7 +168,10 @@ export async function signInAdminAction(_prevState, formData) {
       body: { email, password },
     });
 
-    const role = resolveRole(payload.data.user, "staff");
+    const role = resolveRole(payload.data.user);
+    if (!role || role === CUSTOMER_ROLE) {
+      throw new Error("Admin authentication response did not include an admin role.");
+    }
     await setSessionCookies({
       accessToken: payload.data.access_token,
       refreshToken: extractCookieValue(setCookie, COOKIE_NAMES.REFRESH_TOKEN),

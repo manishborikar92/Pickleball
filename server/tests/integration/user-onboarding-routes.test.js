@@ -48,7 +48,8 @@ test('GET /users/me returns the authenticated user profile', async () => {
       phone: '+919876543210',
       name: null,
       onboarding_complete: false,
-      roles: [],
+      role: 'customer',
+      venue_roles: [],
       permissions: ['view_own_bookings'],
     }),
   });
@@ -59,6 +60,9 @@ test('GET /users/me returns the authenticated user profile', async () => {
 
   assert.equal(response.status, 200);
   assert.equal(response.body.data.id, 'user-1');
+  assert.equal(response.body.data.role, 'customer');
+  assert.deepEqual(response.body.data.venue_roles, []);
+  assert.equal(response.body.data.roles, undefined);
   assert.equal(response.body.data.onboarding_complete, false);
 });
 
@@ -69,6 +73,9 @@ test('POST /auth/onboarding completes name collection with JWT only', async () =
         id: userId,
         phone: '+919876543210',
         name,
+        role: 'customer',
+        venue_roles: [],
+        permissions: ['view_own_bookings'],
         onboarding_complete: true,
       },
       next_step: 'resume_booking',
@@ -92,7 +99,8 @@ test('PATCH /users/me updates the authenticated user profile', async () => {
       phone: '+919876543210',
       name,
       onboarding_complete: true,
-      roles: [],
+      role: 'customer',
+      venue_roles: [],
       permissions: ['view_own_bookings'],
     }),
   });
@@ -105,6 +113,9 @@ test('PATCH /users/me updates the authenticated user profile', async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.data.name, 'Asha Mehta');
   assert.equal(response.body.data.id, 'user-1');
+  assert.equal(response.body.data.role, 'customer');
+  assert.deepEqual(response.body.data.venue_roles, []);
+  assert.equal(response.body.data.roles, undefined);
 });
 
 test('PATCH /users/me rejects unsupported or invalid profile payloads', async () => {

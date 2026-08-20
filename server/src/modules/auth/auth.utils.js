@@ -41,8 +41,6 @@ export const verifyPasswordHash = async (password, hash) => {
 export const createAccessToken = ({
   userId,
   sessionId,
-  _roles = [],
-  _permissions = [],
   config,
   now = new Date(),
 }) => {

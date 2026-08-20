@@ -40,7 +40,7 @@ We classify codebase features using the following lifecycle states:
 - [x] **Profile Creation**: Customer entries are auto-generated upon verifying OTP.
 - [x] **In-Context Authentication**: Login modal holds consecutive slot parameter state variables.
 - [x] **Onboarding Redirects**: Forces redirect to `/onboarding` if profile properties are missing.
-- [x] **Token Rotation**: The access token is refreshed proactively in `web/proxy.js` at the edge (before the render) and, as a fallback for authenticated Server Action calls, on a 401 inside `web/src/lib/dal/httpClient.js`. Role/permissions derive from `/users/me`, not a cookie.
+- [x] **Token Rotation**: The access token is refreshed proactively in `web/proxy.js` at the edge (before the render) and, as a fallback for authenticated Server Action calls, on a 401 inside `web/src/lib/dal/httpClient.js`. The singular effective `role` and separate `permissions` derive from `/users/me`; contextual assignments are exposed as `venue_roles`, not a cookie.
 - [x] **Self-Service Profile Update**: Authenticated, onboarded customers update their own normalized name through `PATCH /users/me`. The transaction preserves an existing onboarding completion timestamp and returns the canonical profile used by `web/src/lib/dal/session.js`; `/dashboard/profile` exposes a dashboard-styled, responsive account form through the customer sidebar.
 - [x] **Onboarding Signal Consistency**: Authentication and profile serialization derive `onboarding_complete` from the current `onboarding_completed_at` completion signal; protected onboarding routes require both a profile name and completion timestamp.
 - [x] **Profile Update Verification**: Backend route, validation, authorization, service delegation, timestamp preservation, onboarding-state authorization, OpenAPI/Postman coverage, accessible dashboard composition, session refresh, and frontend route/schema coverage are tested in the users/OpenAPI suites and `web/tests/profile.test.js`.
@@ -127,9 +127,9 @@ Divergences represent technical modifications made during implementation to solv
 1. **Query-String Destination Redirects**:
    - *Specification*: `03-UI-UX-SPECIFICATION.md` does not specify redirection behaviors for users returning to the checkout booking process from onboarding screens.
    - *Codebase Reality*: The edge router handles onboarding routing dynamically by checking search queries `?next=/booking`. It redirects users back to checkout after onboarding is completed.
-2. **JWT Subject Role Scoping**:
-   - *Specification*: Permissions are listed as database-query rules.
-   - *Codebase Reality*: Querying PostgreSQL tables on every incoming request is inefficient. Role maps are cached inside the JWT subject payload, reducing query IOPS.
+2. **JWT Identity-Only Claims**:
+   - *Specification*: Permissions are resolved from database-query rules.
+   - *Codebase Reality*: The JWT contains identity and session claims only; role and permission data are resolved from trusted database state at request time. Authentication responses expose a singular effective `role`, separate `permissions`, and (for `/users/me`) contextual `venue_roles` without placing authorization data in the token.
 3. **Reward Management Routes Under `/rewards` (not `/admin`)**:
    - *Specification*: `02-API-SPECIFICATION.md` originally placed reward management under `/admin/venues/:id/reward-mechanisms` and `/admin/reward-instances`.
    - *Codebase Reality*: No `/admin` route namespace exists in the backend — "admin" is an authorization concern (ADR-007), not a module. Reward management lives under `/rewards` with per-route `edit_pricing` / `manage_bookings` guards, mirroring ADR-009's reviews-moderation precedent. The API spec has been updated to the built paths (ADR-010).

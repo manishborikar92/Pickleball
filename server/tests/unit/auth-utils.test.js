@@ -31,8 +31,6 @@ test('createAccessToken signs a user/session scoped JWT', () => {
   const token = createAccessToken({
     userId: 'user-1',
     sessionId: 'session-1',
-    roles: ['customer'],
-    permissions: ['view_own_bookings'],
     config: {
       accessTokenSecret: 'access-secret-with-at-least-32-characters',
       accessTokenTtlSeconds: 900,
@@ -47,6 +45,7 @@ test('createAccessToken signs a user/session scoped JWT', () => {
   const decoded = jwt.decode(token);
   assert.equal(decoded.sub, 'user-1');
   assert.equal(decoded.sid, 'session-1');
+  assert.equal(decoded.role, undefined);
   assert.equal(decoded.roles, undefined);
   assert.equal(decoded.permissions, undefined);
 });

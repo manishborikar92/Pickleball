@@ -70,7 +70,7 @@ export const createAuthRepository = ({ prisma } = {}) => {
     const authContext = flattenAuthContext(credential.user);
     return {
       ...credential,
-      roles: authContext.roles,
+      role: authContext.role,
       permissions: authContext.permissions,
     };
   },

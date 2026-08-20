@@ -60,13 +60,19 @@ export const createOpenApiSpec = ({ config } = {}) => {
             expires_in: { type: 'integer', example: 900 },
             user: {
               type: 'object',
-              required: ['id', 'phone', 'onboarding_complete'],
+              required: ['id', 'name', 'role', 'permissions', 'onboarding_complete'],
               properties: {
                 id: { type: 'string', example: 'user-1' },
-                phone: { type: 'string', example: '+919876543210' },
+                phone: { type: 'string', nullable: true, example: '+919876543210' },
                 email: { type: 'string', format: 'email', example: 'manager@besanagpur.com' },
-                name: { type: 'string', example: 'Ravi Kumar' },
+                name: { type: 'string', nullable: true, example: 'Ravi Kumar' },
+                role: { type: 'string', example: 'customer' },
+                permissions: {
+                  type: 'array',
+                  items: { type: 'string', example: 'view_own_bookings' },
+                },
                 onboarding_complete: { type: 'boolean', example: true },
+                is_new_user: { type: 'boolean', example: false },
               },
             },
             next_step: { type: 'string', example: 'admin_dashboard' },
@@ -74,13 +80,14 @@ export const createOpenApiSpec = ({ config } = {}) => {
         },
         UserProfile: {
           type: 'object',
-          required: ['id', 'phone', 'name', 'onboarding_complete', 'roles', 'permissions'],
+          required: ['id', 'phone', 'name', 'onboarding_complete', 'role', 'venue_roles', 'permissions'],
           properties: {
             id: { type: 'string', example: 'user-1' },
-            phone: { type: 'string', example: '+919876543210' },
-            name: { type: 'string', example: 'Asha Mehta' },
+            phone: { type: 'string', nullable: true, example: '+919876543210' },
+            name: { type: 'string', nullable: true, example: 'Asha Mehta' },
             onboarding_complete: { type: 'boolean', example: true },
-            roles: {
+            role: { type: 'string', example: 'customer' },
+            venue_roles: {
               type: 'array',
               items: {
                 type: 'object',
@@ -96,6 +103,14 @@ export const createOpenApiSpec = ({ config } = {}) => {
               type: 'array',
               items: { type: 'string', example: 'view_own_bookings' },
             },
+          },
+        },
+        OnboardingResponse: {
+          type: 'object',
+          required: ['user', 'next_step'],
+          properties: {
+            user: { $ref: '#/components/schemas/UserProfile' },
+            next_step: { type: 'string', example: 'resume_booking' },
           },
         },
         RewardMechanismConfig: {
@@ -517,7 +532,7 @@ export const createOpenApiSpec = ({ config } = {}) => {
                       {
                         type: 'object',
                         properties: {
-                          data: { $ref: '#/components/schemas/AuthResponse' },
+                          data: { $ref: '#/components/schemas/OnboardingResponse' },
                         },
                       },
                     ],

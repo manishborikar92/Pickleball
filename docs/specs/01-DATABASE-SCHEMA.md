@@ -124,6 +124,8 @@ Maps a user to a role within a specific venue. A user may hold different roles a
 
 > At launch with a single venue and a small operator team, all admin users are assigned `super_admin` at the single venue. The multi-venue operational UI for managing cross-venue assignments is deferred, but the schema supports it from day one.
 
+> **API representation:** this venue-scoped relational model remains intentionally plural. Authentication responses expose a single effective `role` summary for session/UI use, while `/users/me` exposes these assignments as `venue_roles`; authorization still evaluates the requested venue's database assignment and permissions.
+
 ---
 
 ### `admin_credentials`

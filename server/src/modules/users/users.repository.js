@@ -1,28 +1,26 @@
 import { Prisma } from '@prisma/client';
 import { getPrisma } from '../../lib/prisma.js';
 import { NotFoundError } from '../../utils/api-error.js';
-import { DEFAULT_CUSTOMER_PERMISSIONS } from '../../shared/auth-constants.js';
+import { flattenAuthContext } from '../../shared/auth-context.js';
 import { includeUserAuthContext } from '../../shared/auth-includes.js';
 import { formatTime, toDateOnly } from '../bookings/booking-time.js';
 
 const serializeAuthProfile = (user) => {
-  const roles = user.venueRoles?.map((assignment) => ({
+  const venueRoles = user.venueRoles?.map((assignment) => ({
     venue_id: assignment.venueId,
     venue_name: assignment.venue?.name,
     role: assignment.role.name,
   })) || [];
-
-  const permissions = user.venueRoles?.flatMap((assignment) => (
-    assignment.role.permissions.map((rolePermission) => rolePermission.permission.key)
-  )) || [];
+  const authContext = flattenAuthContext(user);
 
   return {
     id: user.id,
     phone: user.phone,
     name: user.name,
     onboarding_complete: Boolean(user.onboardingCompletedAt),
-    roles,
-    permissions: [...new Set(permissions.length > 0 ? permissions : DEFAULT_CUSTOMER_PERMISSIONS)],
+    role: authContext.role,
+    venue_roles: venueRoles,
+    permissions: authContext.permissions,
   };
 };
 

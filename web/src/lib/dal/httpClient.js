@@ -20,7 +20,7 @@
 import { cookies } from "next/headers";
 import { cache } from "react";
 
-import { COOKIE_NAMES, COOKIE_MAX_AGE } from "@/config/auth.config";
+import { COOKIE_NAMES, COOKIE_MAX_AGE, CUSTOMER_ROLE } from "@/config/auth.config";
 import {
   getApiBaseUrl,
   extractCookieValue,
@@ -109,12 +109,13 @@ const refreshSession = cache(async function refreshSession(refreshToken) {
     const setCookie = response.headers.get("set-cookie");
     const user = payload.data?.user;
     const role = resolveRole(user);
+    if (!role) return null;
 
     return {
       accessToken: payload.data.access_token,
       refreshToken: extractCookieValue(setCookie, COOKIE_NAMES.REFRESH_TOKEN) || refreshToken,
       role,
-      adminRole: role !== "customer" ? role : "",
+      adminRole: role !== CUSTOMER_ROLE ? role : "",
       onboarded: Boolean(user?.onboarding_complete),
     };
   } catch {
@@ -133,9 +134,13 @@ async function persistRefreshedTokens(tokens) {
     store.set(COOKIE_NAMES.REFRESH_TOKEN, tokens.refreshToken, secureCookieOptions(COOKIE_MAX_AGE.REFRESH_TOKEN));
     if (tokens.role) {
       store.set(COOKIE_NAMES.AUTH_ROLE, tokens.role, secureCookieOptions(COOKIE_MAX_AGE.SESSION));
+    } else {
+      store.delete({ name: COOKIE_NAMES.AUTH_ROLE, path: "/" });
     }
     if (tokens.adminRole) {
       store.set(COOKIE_NAMES.ADMIN_ROLE, tokens.adminRole, secureCookieOptions(COOKIE_MAX_AGE.SESSION, { sameSite: "strict" }));
+    } else {
+      store.delete({ name: COOKIE_NAMES.ADMIN_ROLE, path: "/" });
     }
     store.set(COOKIE_NAMES.USER_ONBOARDED, String(tokens.onboarded), secureCookieOptions(COOKIE_MAX_AGE.SESSION));
   } catch {

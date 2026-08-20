@@ -5,7 +5,12 @@ import {
   ForbiddenError,
   UnauthorizedError,
 } from '../../utils/api-error.js';
-import { Permissions } from '../../shared/auth-constants.js';
+import {
+  DEFAULT_CUSTOMER_ROLE,
+  isAdminRole,
+  Permissions,
+  Roles,
+} from '../../shared/auth-constants.js';
 import {
   createAccessToken,
   createOtpHash,
@@ -33,31 +38,35 @@ const resolveOtpCode = (config) => {
   return String(crypto.randomInt(100000, 1000000));
 };
 
-const determineNextStep = ({ user, roles = [] }) => {
-  const nonCustomerRole = roles.find((role) => role !== 'customer');
+const determineNextStep = ({ user, role = DEFAULT_CUSTOMER_ROLE }) => {
   if (!user?.onboardingCompletedAt) {
     return 'complete_onboarding';
   }
-  if (nonCustomerRole) {
+  if (isAdminRole(role)) {
     return 'admin_dashboard';
   }
   return 'resume_booking';
 };
 
-const serializeUser = ({ user, isNewUser = false }) => ({
+const serializeUser = ({ user, role, permissions, isNewUser = false }) => ({
   id: user.id,
   phone: user.phone,
+  ...(user.adminCredential?.email ? { email: user.adminCredential.email } : {}),
   name: user.name,
+  role,
+  permissions,
   is_new_user: isNewUser,
   onboarding_complete: Boolean(user?.onboardingCompletedAt),
 });
 
 const serializeAdminUser = ({ credential }) => ({
   id: credential.user.id,
+  phone: credential.user.phone,
   email: credential.email,
   name: credential.user.name,
-  roles: credential.roles || [],
+  role: credential.role,
   permissions: credential.permissions || [],
+  onboarding_complete: Boolean(credential.user?.onboardingCompletedAt),
 });
 
 export const createAuthService = ({
@@ -69,8 +78,6 @@ export const createAuthService = ({
 }) => {
   const issueTokenPair = async ({
     user,
-    roles,
-    permissions,
     sessionId,
     parentRefreshTokenId = null,
     replaceRefreshTokenId = null,
@@ -79,8 +86,6 @@ export const createAuthService = ({
     const accessToken = createAccessToken({
       userId: user.id,
       sessionId,
-      roles,
-      permissions,
       config: config.auth,
       now,
     });
@@ -187,7 +192,7 @@ export const createAuthService = ({
         phone: normalizedPhone,
       });
       const authContext = await repository.getUserAuthContext(user.id);
-      const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
+      const role = authContext.role || DEFAULT_CUSTOMER_ROLE;
       const permissions = authContext.permissions.length > 0
         ? authContext.permissions
         : [Permissions.VIEW_OWN_BOOKINGS];
@@ -199,15 +204,13 @@ export const createAuthService = ({
       });
       const tokenPair = await issueTokenPair({
         user,
-        roles,
-        permissions,
         sessionId: session.id,
       });
 
       return {
         ...tokenPair,
-        user: serializeUser({ user, isNewUser }),
-        next_step: determineNextStep({ user, roles }),
+        user: serializeUser({ user, role, permissions, isNewUser }),
+        next_step: determineNextStep({ user, role }),
       };
     },
 
@@ -260,13 +263,16 @@ export const createAuthService = ({
         throw new UnauthorizedError('Invalid credentials');
       }
 
+      const role = credential.role;
+      if (!role || role === Roles.CUSTOMER) {
+        throw new ForbiddenError('Admin role assignment required');
+      }
+
       await repository.recordAdminLoginSuccess({
         id: credential.id,
         ipAddress,
       });
 
-      const roles = credential.roles?.length ? credential.roles : ['staff'];
-      const permissions = credential.permissions?.length ? credential.permissions : [];
       const session = await repository.createSession({
         userId: credential.user.id,
         expiresAt: addSeconds(now, config.auth.refreshTokenTtlSeconds),
@@ -275,8 +281,6 @@ export const createAuthService = ({
       });
       const tokenPair = await issueTokenPair({
         user: credential.user,
-        roles,
-        permissions,
         sessionId: session.id,
       });
 
@@ -318,7 +322,7 @@ export const createAuthService = ({
           timeSinceRevocation <= gracePeriodMs;
 
         const authContext = await repository.getUserAuthContext(tokenRecord.userId);
-        const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
+        const role = authContext.role || DEFAULT_CUSTOMER_ROLE;
         const permissions = authContext.permissions.length > 0
           ? authContext.permissions
           : [Permissions.VIEW_OWN_BOOKINGS];
@@ -327,15 +331,13 @@ export const createAuthService = ({
           const accessToken = createAccessToken({
             userId: tokenRecord.userId,
             sessionId: tokenRecord.sessionId,
-            roles,
-            permissions,
             config: config.auth,
             now: currentNow,
           });
           return {
             access_token: accessToken,
             expires_in: config.auth.accessTokenTtlSeconds,
-            user: serializeUser({ user: authContext.user }),
+            user: serializeUser({ user: authContext.user, role, permissions }),
             skipCookieUpdate: true,
           };
         } else {
@@ -360,7 +362,7 @@ export const createAuthService = ({
       }
 
       const authContext = await repository.getUserAuthContext(existing.userId);
-      const roles = authContext.roles.length > 0 ? authContext.roles : ['customer'];
+      const role = authContext.role || DEFAULT_CUSTOMER_ROLE;
       const permissions = authContext.permissions.length > 0
         ? authContext.permissions
         : [Permissions.VIEW_OWN_BOOKINGS];
@@ -368,8 +370,6 @@ export const createAuthService = ({
       try {
         const tokenPair = await issueTokenPair({
           user: authContext.user,
-          roles,
-          permissions,
           sessionId: existing.sessionId,
           parentRefreshTokenId: existing.id,
           replaceRefreshTokenId: existing.id,
@@ -377,7 +377,7 @@ export const createAuthService = ({
 
         return {
           ...tokenPair,
-          user: serializeUser({ user: authContext.user }),
+          user: serializeUser({ user: authContext.user, role, permissions }),
         };
       } catch (err) {
         if (err.message === 'TOKEN_ALREADY_ROTATED') {

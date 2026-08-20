@@ -74,7 +74,7 @@ The pure split is excellent: `lib/auth.js` is framework-free (safe in proxy, RSC
 - Layouts do not re-render on client-side sibling navigation, so even a *correct* layout check would not re-run between `/admin/overview` and `/admin/settings`. Pages themselves carry **no** auth check.
 - `(booking)` routes have **no layout** running `requireRouteAccess`, and the proxy matcher (`/login`, `/onboarding`, `/dashboard/:path*`, `/admin/:path*`, `/booking/:path*`) does **not** match `/venues/*` or `/review/*`.
 
-Additionally, `role`/`permissions` in `getSession` are taken from the `pb_auth_role` cookie (`lib/session.js:34,42`) rather than the authoritative `/users/me` response, and the admin gate at the edge trusts the `pb_admin_role` cookie which is never reconciled on demotion.
+The earlier cookie-sourced role finding has since been resolved: the current DAL derives the singular effective `role` and separate `permissions` from the authoritative `/users/me` response, and the refresh path reconciles the optimistic `pb_admin_role` marker on demotion.
 
 **Verdict:** Keep the pure-module split and the proxy-refresh model. Replace layout-as-authz-boundary with a **Data Access Layer** that verifies session + authorization at the point of data access (the Next.js 16 recommendation), and derive role from the API response.
 
