@@ -22,6 +22,7 @@ Below is the structured layout of the documentation in this repository:
 - **Operations & VM Runbooks (`docs/operations/`)**
   - [01-COSTING-ANALYSIS.md](operations/01-COSTING-ANALYSIS.md) — SMS, Meta messages, and payment transaction cost spreadsheets.
   - [02-SETUP-GUIDE.md](operations/02-SETUP-GUIDE.md) — Hetzner VM creation, Dokploy config, local environment setup, and seeding.
+  - [03-DATABASE-OPERATIONS.md](operations/03-DATABASE-OPERATIONS.md) — PostgreSQL architecture, local Docker setup, migrations, backups, and Coolify deployment.
 - **AI Context Layer (`docs/ai/`)**
   - [01-IMPLEMENTATION-OVERVIEW.md](ai/01-IMPLEMENTATION-OVERVIEW.md) — High-level Express/Next.js implementation snapshot.
   - [02-CODEBASE-MAP.md](ai/02-CODEBASE-MAP.md) — Folder navigation, module ownership, and spec-to-code traceability.

@@ -31,3 +31,5 @@ logs/
 # Documentation Ignores
 /docs/prompts/
 
+# Local Database Backups
+/backups/

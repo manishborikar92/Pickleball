@@ -18,7 +18,6 @@ export const getPrisma = () => {
 
   const adapter = new PrismaPg({
     connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false },
   });
 
   prismaInstance = new PrismaClient({ adapter });
